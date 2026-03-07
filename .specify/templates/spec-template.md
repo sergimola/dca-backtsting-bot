@@ -5,6 +5,14 @@
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
+**Constitution Gates (MANDATORY)**: Every specification MUST declare how it satisfies the
+project constitution. At minimum, specify whether and how the feature conforms to:
+- Green Light Protocol (tests must pass before merges)
+- Fixed-point arithmetic for monetary math (no floats)
+- BDD acceptance criteria (Given/When/Then) covering execution invariants
+
+Failure to document and provide automated tests for these gates will block Phase 0 approval.
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -64,6 +72,23 @@
 ---
 
 [Add more user stories as needed, each with an assigned priority]
+
+### Canonical Test Data & Mathematical Proofs *(MANDATORY FOR CORE DOMAIN)*
+
+<!--
+  ACTION REQUIRED: For any feature touching the core domain, execution engine, or trading logic,
+  you MUST provide hard mathematical test cases derived from the canonical Python bot (src/trading_bot.py).
+  This table forces implementers to prove zero precision loss and exact parity before writing code.
+-->
+
+| Input State | Action | Expected Exact Value (Decimal) | Legacy Bot Reference |
+|-------------|--------|--------------------------------|----------------------|
+| [e.g., P0=100, entry=2%] | Calculate P1 | `98.00000000` | src/trading_bot.py line XXX |
+| [e.g., Position open, low < trigger] | Execute buy | [exact Decimal value from test] | src/trading_bot.py line YYY |
+| [e.g., mmr=0.5, price drops 10%] | Check liquidation | [exact Decimal value from test] | src/trading_bot.py line ZZZ |
+
+**Rationale**: These test cases are binding specifications. Implementation MUST produce these exact
+values. Deviations indicate precision loss or logical divergence from the canonical bot.
 
 ### Edge Cases
 

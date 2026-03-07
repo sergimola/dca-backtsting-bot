@@ -31,7 +31,15 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+Gates are determined by `.specify/memory/constitution.md` and include at minimum:
+- No Live Trading enforcement (simulation-only)
+- Green Light Protocol: entire test suite must be Green before merges/feature work
+- Fixed-point arithmetic requirement for all monetary math
+- Single-position invariant and Gap-Down execution rules
+- Architecture constraints (core engine in Rust/Go; adapters outside domain)
+
+Plans MUST explicitly list how the feature meets these gates and include links to
+the BDD acceptance scenarios and TDD unit tests that validate compliance.
 
 ## Project Structure
 
@@ -47,52 +55,29 @@ specs/[###-feature]/
 └── tasks.md             # Phase 2 output (/speckit.tasks command - NOT created by /speckit.plan)
 ```
 
-### Source Code (repository root)
+### Source Code (Polyglot Architecture)
+
 <!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
+  MANDATORY ARCHITECTURE: This project follows a strict polyglot design with two distinct domains.
+  Do NOT deviate from this structure. The core engine (Go/Rust) must remain free of orchestration,
+  API, or UI concerns. Adapters go in infrastructure/. Always specify which domain a feature belongs to.
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
+core-engine/             # Go/Rust - Pure Domain, Fixed-Point Math, State Machine
+├── domain/              # Core trading logic, state machines, event schemas
+├── infrastructure/      # Isolated Adapters (ClickHouse, Broker, message queues)
+└── tests/               # Unit + integration tests proving parity with canonical Python bot
 
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
-├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+orchestrator/            # TypeScript/Python - API, Workload Distributor
+├── api/                 # REST/GraphQL endpoints, request routing
+├── jobs/                # Queue publishers, workload distribution
+└── ui/                  # Web/CLI interfaces
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Feature Placement Contract**: Every feature MUST explicitly state whether it belongs to
+`core-engine/` (mathematical, state, domain) or `orchestrator/` (API, jobs, UI). Core-engine
+tasks MUST NOT include HTTP, API, or UI logic.
 
 ## Complexity Tracking
 

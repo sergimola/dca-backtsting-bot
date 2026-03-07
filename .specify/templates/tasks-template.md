@@ -10,6 +10,15 @@ description: "Task list template for feature implementation"
 
 **Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
 
+**Green Light Protocol**: All task lists SHOULD include automated tests where applicable. The
+Green Light Protocol (no commits while tests are failing) is enforced by project policy and must be
+observed when implementing tasks, particularly for core domain changes.
+
+**Domain Boundary Check**: Every task MUST explicitly state whether it belongs in `core-engine/`
+(compiled language: Go/Rust) or `orchestrator/` (scripting language: TypeScript/Python). Core-engine
+tasks MUST NOT include HTTP, API, or UI logic. This boundary is enforced during PR review; violations
+will block merge. Mark tasks with `[core-engine]` or `[orchestrator]` prefix.
+
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
 ## Format: `[ID] [P?] [Story] Description`
@@ -20,10 +29,11 @@ description: "Task list template for feature implementation"
 
 ## Path Conventions
 
-- **Single project**: `src/`, `tests/` at repository root
-- **Web app**: `backend/src/`, `frontend/src/`
-- **Mobile**: `api/src/`, `ios/src/` or `android/src/`
-- Paths shown below assume single project - adjust based on plan.md structure
+**MANDATORY: Polyglot Architecture Paths Only**
+- **Core Engine (Go/Rust)**: `core-engine/domain/`, `core-engine/infrastructure/`, `core-engine/tests/`
+- **Orchestrator (TS/Python)**: `orchestrator/api/`, `orchestrator/jobs/`, `orchestrator/ui/`
+- **Tests**: Must be adjacent to code or in dedicated `core-engine/tests/` or `orchestrator/tests/`
+- *Strict Rule*: Do NOT use generic `src/models/`, `src/services/`, or `backend/src/` patterns. These violate Clean Architecture.
 
 <!-- 
   ============================================================================
@@ -88,12 +98,12 @@ Examples of foundational tasks (adjust based on your project):
 
 ### Implementation for User Story 1
 
-- [ ] T012 [P] [US1] Create [Entity1] model in src/models/[entity1].py
-- [ ] T013 [P] [US1] Create [Entity2] model in src/models/[entity2].py
-- [ ] T014 [US1] Implement [Service] in src/services/[service].py (depends on T012, T013)
-- [ ] T015 [US1] Implement [endpoint/feature] in src/[location]/[file].py
-- [ ] T016 [US1] Add validation and error handling
-- [ ] T017 [US1] Add logging for user story 1 operations
+- [ ] T012 [P] [core-engine] [US1] Create [Entity1] struct in core-engine/domain/[entity1].go or .rs
+- [ ] T013 [P] [core-engine] [US1] Create fixed-point math helper in core-engine/domain/math.go or .rs
+- [ ] T014 [core-engine] [US1] Implement [Adapter] in core-engine/infrastructure/[adapter].go or .rs (depends on T012, T013)
+- [ ] T015 [orchestrator] [US1] Create API endpoint in orchestrator/api/routes/[route].ts
+- [ ] T016 [core-engine] [US1] Add integration test in core-engine/tests/test_[entity1].go or .rs
+- [ ] T017 [orchestrator] [US1] Add logging and observability in orchestrator/api/middleware.ts
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
