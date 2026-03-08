@@ -218,6 +218,7 @@ User
 | total_fills | count of OrderFilledEvents | 3 |
 | realized_pnl | final P&L (same as total_pnl for closed positions) | "15.50000000" |
 | unrealized_pnl | if position still OPEN: P&L at last market price | "0" or "-5.00000000" |
+| safety_order_usage_counts | frequency map: { index: count } for each safety order filled during backtest | { "1": 45, "2": 12, "3": 0 } |
 
 **Calculation Rules**:
 - All decimal calculations use `Decimal` (no floats)

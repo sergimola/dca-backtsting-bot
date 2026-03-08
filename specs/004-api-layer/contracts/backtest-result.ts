@@ -90,6 +90,9 @@ export interface PnlSummary {
 
   /** Unrealized P&L if position still open */
   unrealized_pnl?: string;
+
+  /** Number of times each safety order index was filled (e.g., { "1": 45, "2": 12, "3": 0 }) */
+  safety_order_usage_counts: Record<number, number>;
 }
 
 /**
