@@ -31,10 +31,3 @@ func (sm *StateMachine) NewPosition(tradeID string, timestamp time.Time, prices,
 	
 	return NewPosition(tradeID, timestamp, prices, amounts), nil
 }
-
-// ProcessCandle applies the Minute Loop Protocol to one candle
-// (Implementation to follow in minute_loop.go)
-func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, error) {
-	// TODO: Implement Minute Loop Protocol (Phase 3)
-	return nil, nil
-}
