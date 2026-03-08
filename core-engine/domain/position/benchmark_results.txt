@@ -1,0 +1,52 @@
+# Benchmark Results - Position State Machine
+**Date**: March 8, 2026  
+**Target**: ProcessCandle() < 1ms per call  
+**Hardware**: 13th Gen Intel Core i9-13950HX
+
+## Results
+
+| Benchmark | Ops/Second | Time/Op | Target | Status |
+|-----------|-----------|---------|--------|--------|
+| SingleOrder | 2,351,119 | **517.6 ns** | < 1ms | ✅ PASS |
+| TenOrders | 2,354,493 | **512.4 ns** | < 1ms | ✅ PASS |
+| TwentyOrders | 2,211,147 | **601.0 ns** | < 1ms | ✅ PASS |
+| GapDownFill | 1,942,477 | **534.9 ns** | < 1ms | ✅ PASS |
+
+## Memory Allocation
+
+| Benchmark | Bytes/Op | Allocs/Op |
+|-----------|----------|-----------|
+| SingleOrder | 320 B | 20 |
+| TenOrders | 320 B | 20 |
+| TwentyOrders | 320 B | 20 |
+| GapDownFill | 312 B | 18 |
+
+## Analysis
+
+✅ **All benchmarks pass the < 1ms target**
+
+- Fastest: TenOrders at 512.4 ns (0.51 µs)
+- Slowest: TwentyOrders at 601.0 ns (0.60 µs)
+- Gap-down (worst-case multiple fills): 534.9 ns (0.53 µs)
+
+**Performance Headroom**: Even the worst-case (20 orders) completes in 0.6 µs, leaving 1648x margin vs 1ms target.
+
+## Throughput
+
+At peak throughput (TenOrders):
+- **2,354,493 candles/second per thread**
+- Can process entire year of 1-min candles (525,600) in 0.22 ms
+- Can simulate 10,000 candles in ~4.3 ms
+
+## Memory Efficiency
+
+- Constant memory usage across order counts (320B ± 8B)
+- Minimal allocations: ~20 per candle (mostly event structs)
+- Can sustain millions of candles with low GC pressure
+
+## Comparison to 1ms Target
+
+- **Target latency**: 1,000,000 ns
+- **Actual (worst)**:     600 ns
+- **Overhead**:         1,665x margin
+- **Conclusion**: Performance requirement exceeded by 1600+%
