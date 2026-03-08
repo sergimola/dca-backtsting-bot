@@ -3,8 +3,6 @@ package position
 import (
 	"testing"
 	"time"
-
-	"github.com/shopspring/decimal"
 )
 
 // ============================================================================
@@ -271,7 +269,6 @@ func TestUS1_T029_ReentryAfterTakeProfit(t *testing.T) {
 	// Event is already tested in T028
 	// This verifies that on the NEXT candle, a new position can be opened
 	
-	sm := NewStateMachine()
 	tradeID := "test-trade-005"
 	openTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
 	

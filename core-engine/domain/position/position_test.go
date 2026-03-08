@@ -93,7 +93,7 @@ func TestUS1_T047_FullPositionLifecycle(t *testing.T) {
 	// Verify position quantity increased (2 orders filled)
 	expectedQty := mustDecimal("2.0") // 1.0 from P[0] + 1.0 from P[1]
 	if !pos.PositionQuantity.Equal(expectedQty) {
-		t.Logf("candle 2: position quantity=%.8f (expected ~2.0 after 2 fills)", pos.PositionQuantity)
+		t.Logf("candle 2: position quantity=%v (expected ~2.0 after 2 fills)", pos.PositionQuantity)
 	}
 	
 	// Candle 3: Take-profit close (high hits P_tp)
@@ -213,5 +213,5 @@ func TestUS1_T048_CumulativeProfitCalculation(t *testing.T) {
 		t.Errorf("expected CloseTimestamp to be set after close")
 	}
 	
-	t.Logf("Profit calculation: %.8f", pos.Profit)
+	t.Logf("Profit calculation: %v", pos.Profit)
 }

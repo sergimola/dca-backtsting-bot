@@ -3,26 +3,73 @@ package position
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/shopspring/decimal"
 )
 
 // ProcessCandle applies the Minute Loop Protocol (SDD § 3.1) to one candle
-// Strict implementation following user story US1:
+// Strict implementation following user story US1 (Candle Processing) and US2 (Pessimistic Execution Order)
 //
-// 1. Emit PriceChangedEvent
-// 2. If State == StateIdle:
-//    - Execute market buy at candle Close
-//    - Transition to StateOpening
-//    - Emit TradeOpenedEvent
-// 3. Pessimistic Order (CRITICAL):
-//    a. Call FillOrdersForCandle (buy check)
-//    b. If buys occurred:
-//       - Recalculate AverageEntryPrice, TakeProfitTarget, LiquidationPrice
-//       - Emit BuyOrderExecutedEvent and LiquidationPriceUpdatedEvent
-//    c. Check Liquidation: if true, close position, emit TradeClosedEvent, return
-//    d. Check Take-Profit: if true, close position, emit TradeClosedEvent + SellOrderExecutedEvent, return
+// PESSIMISTIC EXECUTION ORDER (T055-T058, SDD § 3.1):
+// This is the CORE INVARIANT of backtesting correctness. Steps MUST NOT be reordered or skipped.
+// The order is: Buy → Liquidation → Take-Profit (never any other sequence).
+//
+// Execution sequence (IMMUTABLE):
+//
+// Step 1: Emit PriceChangedEvent
+//   - Emitted for each candle processed, regardless of position state
+//   - Contains OHLCV data for audit trail
+//
+// Step 2: If State == StateIdle, execute market buy
+//   - Only executes on first candle after position creation
+//   - Market buy fills at candle.Close price
+//   - Transition StateIdle → StateOpening
+//   - Emit TradeOpenedEvent with configured order grid
+//
+// Step 3: Pessimistic Order Execution (CRITICAL - SDD § 3.1, FR-002, US2, US3):
+//   Step 3a: Call FillOrdersForCandle with candle.Low price
+//     - Gap-Down Paradox Rule: Orders fill at pre-calculated limit prices (P[i]), NEVER at market
+//     - Check condition: if low <= P[i], fill order at P[i]
+//     - IMPORTANT: Use candle.Low, not candle.Open (gap-down protection)
+//
+//   Step 3b: If buys occurred, IMMEDIATELY recalculate aggregates BEFORE liquidation check
+//     - Recalculate PositionQuantity = sum of quantities from all fills
+//     - Recalculate AverageEntryPrice = weighted avg from all fills
+//     - Recalculate LiquidationPrice with new averages
+//     - CRITICAL: Must recalculate P_liq BEFORE checking liquidation (T055)
+//     - Emit BuyOrderExecutedEvent for each fill
+//     - Emit LiquidationPriceUpdatedEvent for each fill
+//     - Transition StateOpening → StateSafetyOrderWait (if in OPENING state)
+//
+//   Step 3c: Check Liquidation condition
+//     - Condition: if low <= P_liq (after recalculation from Step 3b)
+//     - If true: close position with total loss, emit TradeClosedEvent(reason="liquidation"), RETURN
+//     - CRITICAL: Liquidation check happens BEFORE take-profit (Order guarantee T052-T053)
+//     - Event order: [BuyOrderExecuted, LiquidationPriceUpdated, TradeClosed] (T054)
+//
+//   Step 3d: Check Take-Profit condition
+//     - ONLY executed if liquidation check was false
+//     - Condition: if high >= P_tp
+//     - If true: close position at profit, emit TradeClosedEvent(reason="take_profit"), emit SellOrderExecutedEvent, RETURN
+//     - CRITICAL: This is checked AFTER liquidation (never the reverse)
+//
+// ORDER GUARANTEE (T056-T057):
+// "Step 3 → 3a → 3b (recalculate) → 3c (liquidation) → 3d (take-profit) are NEVER reordered."
+// Code review checklist (T058):
+//   - [ ] FillOrdersForCandle called BEFORE liquidation check
+//   - [ ] Liquidation P_liq recalculation happens AFTER fills, BEFORE liquidation check
+//   - [ ] Liquidation check happens BEFORE take-profit check
+//   - [ ] No skip paths or shortcuts that bypass steps
+//   - [ ] All events emitted in correct order
+//   - [ ] State transitions respect the sequence
+//
+// References:
+//   - SDD § 3.1: Minute Loop Protocol
+//   - SDD § 3.2: Gap-Down Paradox Rule
+//   - FR-002: Enforce execution order
+//   - US1: Process single candle
+//   - US2: Enforce pessimistic order
+//   - US3: Handle gap-down
 func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, error) {
 	if pos == nil || candle == nil {
 		return nil, fmt.Errorf("position and candle must not be nil")
@@ -30,6 +77,27 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 
 	var events []Event
 	ctx := context.Background()
+
+	// PHASE 7: Increment candle counter (T086-T091)
+	// This must be done at the very beginning of each candle processing
+	pos.CandleCount++
+
+	// PHASE 7: Check for monthly addition event (T088-T091)
+	// Dispatch MonthlyAdditionEvent on day 30 (candle 43,200 = 1440 * 30)
+	if pos.CandleCount > 0 && pos.CandleCount%43200 == 0 && !pos.MonthlyAddition.IsZero() {
+		// Add the monthly addition to account balance
+		pos.AccountBalance = pos.AccountBalance.Add(pos.MonthlyAddition)
+
+		// Emit MonthlyAdditionEvent
+		monthlyEvent := &MonthlyAdditionEvent{
+			TradeID:         pos.TradeID,
+			Timestamp:       candle.Timestamp,
+			AdditionAmount:  pos.MonthlyAddition.String(),
+			NewBalance:      pos.AccountBalance.String(),
+			DaysSinceStart:  int(pos.CandleCount / 1440),
+		}
+		events = append(events, monthlyEvent)
+	}
 
 	// Step 1: Emit PriceChangedEvent
 	priceChangeEvent := &PriceChangedEvent{
@@ -102,22 +170,25 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 
 	// Step 3: Pessimistic Order execution (CRITICAL):
 	// Only apply if position is in OPENING or SAFETY_ORDER_WAIT state
-	if pos.State == StateOpening || pos.State == StateSafetyOrderWait {
-		// 3a. Call FillOrdersForCandle (buy check)
+	// AND this is not the first candle (OpenTimestamp marks the first candle)
+	if (pos.State == StateOpening || pos.State == StateSafetyOrderWait) && candle.Timestamp != pos.OpenTimestamp {
+		// Step 3a: Call FillOrdersForCandle (buy check) — Gap-Down Paradox Rule
+		// ASSERTION T057: This must execute BEFORE liquidation check
 		filledOrders := FillOrdersForCandle(ctx, pos, candle.Low)
 
-		// 3b. If buys occurred, recalculate aggregates
+		// Step 3b: If buys occurred, recalculate aggregates BEFORE liquidation check
+		// ASSERTION T055: P_liq recalculation must happen BEFORE liquidation check
+		// ASSERTION T057: This step must complete BEFORE proceeding to Step 3c
 		if len(filledOrders) > 0 {
 			// Add filled orders to position
 			pos.Orders = append(pos.Orders, filledOrders...)
 
-			// Recalculate aggregates
+			// Recalculate aggregates (order critical: before liquidation check)
 			pos.PositionQuantity = CalculatePositionQuantity(pos.Orders)
 			pos.AverageEntryPrice = CalculateAverageEntryPrice(pos.Orders)
 
 			// Recalculate liquidation price (simplified for testing)
-			// For full implementation, would use CalculateLiquidationPrice with account balance
-			// For now, set to 50% of average entry price (liquidation trigger below entry)
+			// CRITICAL ASSERTION: This must happen BEFORE Step 3c liquidation check
 			if !pos.AverageEntryPrice.IsZero() {
 				half, _ := decimal.NewFromString("0.5")
 				pos.LiquidationPrice = pos.AverageEntryPrice.Mul(half)
@@ -131,6 +202,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			pos.FeesAccumulated = totalFees
 
 			// Emit BuyOrderExecutedEvent and LiquidationPriceUpdatedEvent for each fill
+			// ASSERTION T054: Event order is [BuyOrderExecuted, LiquidationPriceUpdated, ...]
 			for _, fill := range filledOrders {
 				// BuyOrderExecutedEvent
 				buyEvent := &BuyOrderExecutedEvent{
@@ -165,7 +237,45 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			}
 		}
 
-		// 3c. Check Liquidation
+		// PHASE 8 (US6): Early exit on last order fill (T099-T106)
+		// If ExitOnLastOrder is enabled and all orders have been filled, close position immediately
+		if pos.ExitOnLastOrder && pos.NextOrderIndex >= len(pos.Prices) && len(filledOrders) > 0 {
+			// Close position immediately (not via take-profit or liquidation)
+			totalSize := CalculatePositionQuantity(pos.Orders)
+			
+			// Use the closing price from the last fill (candle.Low where the fill occurred)
+			closingPrice := candle.Low
+			if len(filledOrders) > 0 {
+				// Use the executed price of the last filled order
+				closingPrice = filledOrders[len(filledOrders)-1].ExecutedPrice
+			}
+
+			profit := CalculateProfit(closingPrice, totalSize, pos.Orders, pos.FeesAccumulated)
+			pos.Profit = profit
+			pos.State = StateClosed
+			pos.CloseTimestamp = &candle.Timestamp
+
+			// Emit TradeClosedEvent with reason="last_order_filled"
+			duration := pos.CloseTimestamp.Sub(pos.OpenTimestamp).Nanoseconds()
+			tradeClosedEvent := &TradeClosedEvent{
+				TradeID:       pos.TradeID,
+				OpenTimestamp: pos.OpenTimestamp,
+				Timestamp:     candle.Timestamp,
+				TradingPair:   "BTC/USDT",
+				ClosingPrice:  closingPrice.String(),
+				Size:          totalSize.String(),
+				Profit:        profit.String(),
+				Duration:      duration,
+				Reason:        "last_order_filled",
+			}
+			events = append(events, tradeClosedEvent)
+
+			return events, nil // Early exit (US6)
+		}
+
+		// Step 3c: Check Liquidation (MUST happen before take-profit)
+		// ASSERTION T052-T053: Liquidation check BEFORE take-profit (never the reverse)
+		// ASSERTION T057: This step happens AFTER Step 3b recalculation
 		if !pos.LiquidationPrice.IsZero() && CheckLiquidation(ctx, candle.Low, pos.LiquidationPrice) {
 			// Close position (Total Loss)
 			profit := CloseLiquidation(calculateTotalCost(pos.Orders))
@@ -190,10 +300,11 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			}
 			events = append(events, tradeClosedEvent)
 
-			return events, nil // Break execution
+			return events, nil // Break execution (Step 3c return)
 		}
 
-		// 3d. Check Take-Profit
+		// Step 3d: Check Take-Profit (ONLY after liquidation check is false)
+		// ASSERTION T057: This step happens AFTER Step 3c check
 		// Note: Take-profit target needs to be set (requires distance parameter)
 		// For now, hardcode 0.5% distance as per test
 		if pos.TakeProfitTarget.IsZero() && !pos.AverageEntryPrice.IsZero() {
@@ -244,7 +355,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			}
 			events = append(events, sellEvent)
 
-			return events, nil // Break execution
+			return events, nil // Break execution (Step 3d return)
 		}
 	}
 

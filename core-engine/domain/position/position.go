@@ -46,6 +46,14 @@ type Position struct {
 	Profit            decimal.Decimal // Total profit/loss
 	FeesAccumulated   decimal.Decimal // Sum of all fees
 
+	// Account tracking (for re-entry and monthly additions)
+	AccountBalance    decimal.Decimal // Current available balance for position sizing
+	MonthlyAddition   decimal.Decimal // Capital added monthly (SDD § 3.2 US5)
+	CandleCount       int64           // Cumulative candles processed (for day_counter in monthly additions)
+
+	// Exit strategy (US6: Early Exit on Last Order Fill)
+	ExitOnLastOrder   bool            // If true, close position immediately when last order fills (SDD § 3.3 US6)
+
 	// Metadata
 	OpenPrice      decimal.Decimal // Market buy execution price
 	NextOrderIndex int             // Which order (by index) fills next
@@ -61,8 +69,19 @@ func NewPosition(tradeID string, timestamp time.Time, prices, amounts []decimal.
 		Prices:        prices,
 		Amounts:       amounts,
 		Orders:        []OrderFill{},
+		CandleCount:   0,
 		// All aggregates start at zero (clamped later)
 	}
+}
+
+// CalculateReentryPrice computes the pessimistic re-entry price after take-profit close
+// Re-entry price = close_price × 1.0005 (SDD § 3.1 US4)
+func CalculateReentryPrice(closePrice decimal.Decimal) decimal.Decimal {
+	if closePrice.IsZero() {
+		return decimal.Zero
+	}
+	buffer, _ := decimal.NewFromString("1.0005")
+	return closePrice.Mul(buffer)
 }
 
 // Fee rates (SDD § 2.6)
