@@ -456,7 +456,7 @@
 
 **Implementation Tasks**:
 
-- [ ] T060 Create `frontend/src/components/TradeEventsTable.tsx` component:
+- [x] T060 Create `frontend/src/components/TradeEventsTable.tsx` component:
   - Props: `{ events: TradeEvent[]; }`
   - State: `{ sortBy: 'timestamp' | 'eventType' | ...; sortOrder: 'asc' | 'desc'; pageIndex: number; pageSize: number = 25 }`
   - Render table with columns:
@@ -475,11 +475,11 @@
     - >1000 rows: use react-window for virtual scrolling
     - Show page indicator: "Showing 1-25 of 150 events"
   - Responsive layout: horizontal scroll on mobile (TailwindCSS overflow-x-auto)
-- [ ] T061 [P] Create pagination component `frontend/src/components/Pagination.tsx`:
+- [x] T061 [P] Create pagination component `frontend/src/components/Pagination.tsx`:
   - Props: `{ pageIndex: number; pageSize: number; totalItems: number; onPageChange: (index: number) => void; }`
   - Render: [Prev] [Page 1] [Page 2] ... [Next] with page numbers as buttons
   - Disable [Prev] on first page, [Next] on last page
-- [ ] T062 [P] Create component tests for TradeEventsTable in `frontend/src/__tests__/components/TradeEventsTable.test.tsx`:
+- [x] T062 [P] Create component tests for TradeEventsTable in `frontend/src/__tests__/components/TradeEventsTable.test.tsx`:
   - Test render: table displays all columns with headers
   - Test data display: rows show correct event data
   - Test sorting: click Timestamp header → sorts by timestamp ascending (oldest first)
@@ -489,13 +489,13 @@
   - Test pagination: displays 25 rows per page + pagination controls
   - Test pagination buttons: prev/next navigate between pages
   - Test large dataset: 1000+ rows don't cause performance issues (optional; use performance test)
-- [ ] T063 [P] Create component tests for Pagination in `frontend/src/__tests__/components/Pagination.test.tsx`:
+- [x] T063 [P] Create component tests for Pagination in `frontend/src/__tests__/components/Pagination.test.tsx`:
   - Test render: page buttons display
   - Test next navigation: click next → pageIndex increments
   - Test prev navigation: click prev → pageIndex decrements
   - Test first page: [Prev] disabled
   - Test last page: [Next] disabled
-- [ ] T064 [P] Run tests: `cd frontend && npm test -- components/Trade` → verify all table tests pass
+- [x] T064 [P] Run tests: `cd frontend && npm test -- components/Trade` → verify all table tests pass
 
 ---
 
@@ -511,7 +511,7 @@
 
 **Implementation Tasks**:
 
-- [ ] T065 Create `frontend/src/components/ResultsDashboard.tsx` container component:
+- [x] T065 Create `frontend/src/components/ResultsDashboard.tsx` container component:
   - Props: `{ results: BacktestResults; onReset: () => void; onModify: () => void; }`
   - Render layout (TailwindCSS Grid):
     - Header: "Backtest Results" title + Backtest ID
@@ -525,12 +525,12 @@
   - Button actions:
     - [Run New Backtest]: onReset() → clears form, displays ConfigurationPage
     - [Modify & Re-run]: onModify() → pre-populates form, displays ConfigurationPage
-- [ ] T066 Create component tests for ResultsDashboard in `frontend/src/__tests__/components/ResultsDashboard.test.tsx`:
+- [x] T066 Create component tests for ResultsDashboard in `frontend/src/__tests__/components/ResultsDashboard.test.tsx`:
   - Test render: all 3 sub-components render (metrics, chart, table)
   - Test props passing: PnlSummary receives correct pnlData, Chart receives soUsageData, Table receives events
   - Test action buttons: onReset called when [Run New] clicked, onModify called when [Modify & Re-run] clicked
   - Test responsive layout: layout adjusts on small screens (chart and table stack vertically)
-- [ ] T067 [P] Run tests: `cd frontend && npm test -- components/ResultsDashboard` → verify all tests pass
+- [x] T067 [P] Run tests: `cd frontend && npm test -- components/ResultsDashboard` → verify all tests pass
 
 ---
 
@@ -546,15 +546,15 @@
 
 **Implementation Tasks**:
 
-- [ ] T068 Update `frontend/src/pages/ResultsPage.tsx`:
+- [x] T068 Update `frontend/src/pages/ResultsPage.tsx`:
   - Props: `{ results: BacktestResults; onReset: () => void; onModify: (config: BacktestConfiguration) => void; }`
   - Render ResultsDashboard component with results prop
   - Pass onReset and onModify callbacks to ResultsDashboard
-- [ ] T069 Create integration test for ResultsPage in `frontend/src/__tests__/integration/results-flow.test.tsx`:
+- [x] T069 Create integration test for ResultsPage in `frontend/src/__tests__/integration/results-flow.test.tsx`:
   - Test result display: results page shows metrics, chart, table
   - Test reset button: click [Run New] → onReset called
   - Test modify button: click [Modify & Re-run] → onModify called with previous config
-- [ ] T070 [P] Run tests: `cd frontend && npm test -- integration/results-flow` → verify tests pass
+- [x] T070 [P] Run tests: `cd frontend && npm test -- integration/results-flow` → verify tests pass
 
 ---
 
