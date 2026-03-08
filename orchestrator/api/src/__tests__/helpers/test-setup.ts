@@ -4,6 +4,8 @@
  */
 
 import { Express } from 'express';
+import * as fsPromises from 'fs/promises';
+import * as path from 'path';
 import { createApp } from '../../app';
 import { ResultStore } from '../../services/ResultStore';
 import { ProcessManager } from '../../services/ProcessManager';
@@ -11,8 +13,15 @@ import { BacktestService } from '../../services/BacktestService';
 import { ResultAggregator } from '../../services/ResultAggregator';
 import { IdempotencyCache } from '../../services/IdempotencyCache';
 import { HealthMonitor } from '../../services/HealthMonitor';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+
+/**
+ * Check if Core Engine binary is available
+ * Using mock script for tests, which is always guaranteed to exist
+ * Used to conditionally skip acceptance tests
+ */
+export function hasCoreEngineBinary(): boolean {
+  return true;
+}
 
 let testAppInstance: Express | null = null;
 let testServices: {
@@ -36,17 +45,18 @@ export async function setupTestApp(): Promise<Express> {
 
   // Create temporary directory for test results
   tempDir = path.join(__dirname, '../../../.test-data', `run-${Date.now()}`);
-  await fs.mkdir(tempDir, { recursive: true });
+  await fsPromises.mkdir(tempDir, { recursive: true });
 
   // Initialize services
   const resultStore = new ResultStore(tempDir, 7);
   await resultStore.initialize();
 
   const processManager = new ProcessManager();
-  const backtestService = new BacktestService('./core-engine');
+  const mockBinaryPath = path.resolve(process.cwd(), 'testdata', 'mock-core-engine.js');
+  const backtestService = new BacktestService(mockBinaryPath);
   const resultAggregator = new ResultAggregator();
   const idempotencyCache = new IdempotencyCache(7);
-  const coreEngineBinaryPath = './core-engine';
+  const coreEngineBinaryPath = mockBinaryPath;
   const healthMonitor = new HealthMonitor(processManager, coreEngineBinaryPath);
 
   // Create Express app
@@ -98,7 +108,7 @@ export function getTestServices() {
 export async function cleanupTestApp(): Promise<void> {
   if (tempDir) {
     try {
-      await fs.rm(tempDir, { recursive: true, force: true });
+      await fsPromises.rm(tempDir, { recursive: true, force: true });
     } catch {
       // Ignore cleanup errors
     }
@@ -127,6 +137,6 @@ export function createValidBacktestRequest() {
 export function createMultipleBacktestRequests(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     ...createValidBacktestRequest(),
-    entry_price: `${100.50 + i * 0.1}`.padEnd(12, '0'),
+    entry_price: (100.50 + i * 0.01).toFixed(8),
   }));
 }

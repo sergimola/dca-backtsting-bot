@@ -15,10 +15,10 @@
  */
 
 import request from 'supertest';
-import { setupTestApp, cleanupTestApp } from '../helpers/test-setup';
+import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '../helpers/test-setup';
 
-describe.skip('User Story 3: Structured Error Messages (T045)', () => {
-  // NOTE: Skipped when binary not available - requires Core Engine binary
+// Dynamically skip if Core Engine binary is not available
+(hasCoreEngineBinary() ? describe : describe.skip)('User Story 3: Structured Error Messages (T045)', () => {
   beforeAll(async () => {
     await setupTestApp();
   });
@@ -38,7 +38,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -63,7 +63,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -86,7 +86,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -101,7 +101,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
         sequences: [0],
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -161,7 +161,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
         sequences: [0],
       };
 
-      const postResponse = await request('http://localhost:3000')
+      const postResponse = await request(getTestApp())
         .post('/backtest')
         .send(invalidPostRequest);
 
@@ -198,7 +198,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
       ];
 
       for (const testCase of testCases) {
-        const response = await request('http://localhost:3000')
+        const response = await request(getTestApp())
           .post('/backtest')
           .send(testCase.request);
 
@@ -213,7 +213,7 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
     it('should return 404 for non-existent request_id', async () => {
       const fakeRequestId = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
 
-      const response = await request('http://localhost:3000').get(`/backtest/${fakeRequestId}`);
+      const response = await request(getTestApp()).get(`/backtest/${fakeRequestId}`);
 
       // Should be 404 Not Found
       expect([404, 400]).toContain(response.status);
@@ -225,3 +225,4 @@ describe.skip('User Story 3: Structured Error Messages (T045)', () => {
     });
   });
 });
+

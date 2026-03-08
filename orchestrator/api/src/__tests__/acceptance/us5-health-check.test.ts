@@ -14,10 +14,10 @@
  */
 
 import request from 'supertest';
-import { setupTestApp, cleanupTestApp } from '../helpers/test-setup';
+import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '../helpers/test-setup';
 
-describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
-  // NOTE: Skipped when binary not available - requires Core Engine binary
+// Dynamically skip if Core Engine binary is not available
+(hasCoreEngineBinary() ? describe : describe.skip)('User Story 5: Health Check & Diagnostics (T047)', () => {
   beforeAll(async () => {
     await setupTestApp();
   });
@@ -28,7 +28,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
 
   describe('Health endpoint accessibility', () => {
     it('should return HTTP 200 from GET /health', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect('Content-Type', /json/)
         .expect(200);
@@ -37,7 +37,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should not require authentication for health endpoint', async () => {
-      const response = await request('http://localhost:3000').get('/health');
+      const response = await request(getTestApp()).get('/health');
 
       // Should succeed without any auth headers
       expect([200, 401]).toContain(response.status);
@@ -47,7 +47,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
 
   describe('Health response structure', () => {
     it('should return health status with required fields', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -63,7 +63,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should include queue metrics in health response', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -76,7 +76,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should include dependency status information', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -87,7 +87,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should include uptime information', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -101,7 +101,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
 
   describe('Health status levels', () => {
     it('should report healthy status when all systems operational', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -110,7 +110,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should use correct HTTP status codes for health states', async () => {
-      const response = await request('http://localhost:3000').get('/health');
+      const response = await request(getTestApp()).get('/health');
 
       if (response.body.status === 'healthy') {
         // Healthy should be HTTP 200
@@ -128,9 +128,9 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
   describe('Health response consistency', () => {
     it('should provide consistent health information across multiple requests', async () => {
       const responses = await Promise.all([
-        request('http://localhost:3000').get('/health'),
-        request('http://localhost:3000').get('/health'),
-        request('http://localhost:3000').get('/health'),
+        request(getTestApp()).get('/health'),
+        request(getTestApp()).get('/health'),
+        request(getTestApp()).get('/health'),
       ]);
 
       // All should succeed
@@ -146,10 +146,10 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should report queue metrics that increase with requests', async () => {
-      const response1 = await request('http://localhost:3000').get('/health').expect(200);
+      const response1 = await request(getTestApp()).get('/health').expect(200);
 
       // Make a backtest request
-      const backtest = await request('http://localhost:3000')
+      const backtest = await request(getTestApp())
         .post('/backtest')
         .send({
           entry_price: '100.50000000',
@@ -161,7 +161,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
         });
 
       if (backtest.status >= 200 && backtest.status < 300) {
-        const response2 = await request('http://localhost:3000').get('/health').expect(200);
+        const response2 = await request(getTestApp()).get('/health').expect(200);
 
         // Queue metrics may have changed
         if (response1.body.queue && response2.body.queue) {
@@ -173,7 +173,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
 
   describe('Health diagnostics', () => {
     it('should provide health metrics in valid format', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -191,7 +191,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should not expose sensitive information in health response', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -205,7 +205,7 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
 
     it('should include error log or recent errors if unhealthy', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/health')
         .expect(200);
 
@@ -219,3 +219,4 @@ describe.skip('User Story 5: Health Check & Diagnostics (T047)', () => {
     });
   });
 });
+

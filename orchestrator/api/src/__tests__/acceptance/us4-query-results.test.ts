@@ -15,10 +15,10 @@
  */
 
 import request from 'supertest';
-import { setupTestApp, cleanupTestApp, createValidBacktestRequest } from '../helpers/test-setup';
+import { setupTestApp, cleanupTestApp, createValidBacktestRequest, getTestApp, hasCoreEngineBinary } from '../helpers/test-setup';
 
-describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
-  // NOTE: Skipped when binary not available - requires Core Engine binary
+// Dynamically skip if Core Engine binary is not available
+(hasCoreEngineBinary() ? describe : describe.skip)('User Story 4: Query Results by Date Range (T046)', () => {
   beforeAll(async () => {
     await setupTestApp();
   });
@@ -38,7 +38,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
 
       await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -49,7 +49,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
       const now = new Date();
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -88,7 +88,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
       // Request first page with limit 2
-      const page1Response = await request('http://localhost:3000')
+      const page1Response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -98,7 +98,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
         });
 
       // Request second page
-      const page2Response = await request('http://localhost:3000')
+      const page2Response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -128,7 +128,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
       // Query all results
-      const allResponse = await request('http://localhost:3000')
+      const allResponse = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -137,7 +137,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
         });
 
       // Query only successful results
-      const successResponse = await request('http://localhost:3000')
+      const successResponse = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -169,7 +169,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
       const now = new Date();
       const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -192,14 +192,14 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
 
   describe('Query validation', () => {
     it('should reject query without required from/to parameters', async () => {
-      const response = await request('http://localhost:3000').get('/backtest');
+      const response = await request(getTestApp()).get('/backtest');
 
       // Should either return 400 or require parameters
       expect([400, 422]).toContain(response.status);
     });
 
     it('should reject invalid date format', async () => {
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: 'not-a-date',
@@ -211,7 +211,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
 
     it('should handle date range with no results gracefully', async () => {
       // Query for very old dates
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: '1970-01-01T00:00:00Z',
@@ -238,7 +238,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
 
       const startTime = Date.now();
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .get('/backtest')
         .query({
           from: yesterday.toISOString(),
@@ -264,7 +264,7 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
       const limits = [5, 10, 25, 50];
 
       for (const limit of limits) {
-        const response = await request('http://localhost:3000')
+        const response = await request(getTestApp())
           .get('/backtest')
           .query({
             from: yesterday.toISOString(),
@@ -286,3 +286,4 @@ describe.skip('User Story 4: Query Results by Date Range (T046)', () => {
     });
   });
 });
+

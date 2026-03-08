@@ -20,10 +20,12 @@ import {
   cleanupTestApp,
   createMultipleBacktestRequests,
   getTestServices,
+  getTestApp,
+  hasCoreEngineBinary,
 } from '../helpers/test-setup';
 
-describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
-  // NOTE: Skipped when binary not available - requires Core Engine binary
+// Dynamically skip if Core Engine binary is not available
+(hasCoreEngineBinary() ? describe : describe.skip)('User Story 2: Concurrent Backtest Execution (T044)', () => {
   beforeAll(async () => {
     await setupTestApp();
   });
@@ -40,7 +42,7 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
       // Fire all requests simultaneously
       const responses = await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -73,7 +75,7 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
 
       const responses = await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -110,7 +112,7 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
 
       const responses = await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -145,7 +147,7 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
 
       const responses = await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -183,7 +185,7 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
 
       const responses = await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -221,7 +223,7 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
       // Fire concurrent requests
       const responses = await Promise.all(
         requests.map((req) =>
-          request('http://localhost:3000')
+          request(getTestApp())
             .post('/backtest')
             .send(req)
         )
@@ -236,3 +238,4 @@ describe.skip('User Story 2: Concurrent Backtest Execution (T044)', () => {
     });
   });
 });
+

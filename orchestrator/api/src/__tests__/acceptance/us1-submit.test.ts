@@ -15,10 +15,10 @@
  */
 
 import request from 'supertest';
-import { setupTestApp, cleanupTestApp, createValidBacktestRequest, getTestServices } from '../helpers/test-setup';
+import { setupTestApp, cleanupTestApp, createValidBacktestRequest, getTestServices, getTestApp, hasCoreEngineBinary } from '../helpers/test-setup';
 
-describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
-  // NOTE: Skipped when binary not available - requires Core Engine binary
+// Dynamically skip if Core Engine binary is not available
+(hasCoreEngineBinary() ? describe : describe.skip)('User Story 1: Submit & Execute Backtest (T043)', () => {
   beforeAll(async () => {
     await setupTestApp();
   });
@@ -31,7 +31,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
     it('should return HTTP 200 with complete result including request_id, events, final_position, pnl_summary', async () => {
       const validRequest = createValidBacktestRequest();
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(validRequest)
         .expect('Content-Type', /json/);
@@ -80,7 +80,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
       const validRequest = createValidBacktestRequest();
       const { resultStore } = getTestServices();
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(validRequest);
 
@@ -94,7 +94,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
     it('should populate execution_time_ms with actual execution duration', async () => {
       const validRequest = createValidBacktestRequest();
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(validRequest)
         .expect(200);
@@ -113,13 +113,13 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
       };
 
       // First request
-      const response1 = await request('http://localhost:3000')
+      const response1 = await request(getTestApp())
         .post('/backtest')
         .send(validRequest)
         .expect('Content-Type', /json/);
 
       // Second request with same idempotency_key
-      const response2 = await request('http://localhost:3000')
+      const response2 = await request(getTestApp())
         .post('/backtest')
         .send(validRequest)
         .expect('Content-Type', /json/);
@@ -146,7 +146,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -166,7 +166,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -184,7 +184,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -201,7 +201,7 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
         market_data_csv_path: '/data/BTCUSDT_1m.csv',
       };
 
-      const response = await request('http://localhost:3000')
+      const response = await request(getTestApp())
         .post('/backtest')
         .send(invalidRequest);
 
@@ -209,3 +209,4 @@ describe.skip('User Story 1: Submit & Execute Backtest (T043)', () => {
     });
   });
 });
+

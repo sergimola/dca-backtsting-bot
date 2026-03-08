@@ -52,9 +52,14 @@ export class BacktestService {
     this.logger = options?.logger;
     this.timeoutMs = options?.timeoutMs ?? 30000;
 
-    // Verify binary exists
-    if (!fs.existsSync(binaryPath)) {
-      throw new Error(`Core Engine binary not found: ${binaryPath}`);
+    // Verify binary exists (on Windows, also check for .exe extension)
+    if (!fs.existsSync(binaryPath) && !fs.existsSync(binaryPath + '.exe')) {
+      throw new Error(`Core Engine binary not found: ${binaryPath} or ${binaryPath}.exe`);
+    }
+
+    // Use .exe version if it exists on Windows
+    if (!fs.existsSync(binaryPath) && fs.existsSync(binaryPath + '.exe')) {
+      this.binaryPath = binaryPath + '.exe';
     }
   }
 
