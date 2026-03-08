@@ -19,28 +19,28 @@
 
 **Implementation Tasks**:
 
-- [ ] T001 Create new Vite + React + TypeScript project at `frontend/` directory with command `npm create vite@latest frontend -- --template react-ts`
-- [ ] T002 Navigate to `frontend/` directory and install core dependencies: `npm install react react-dom axios recharts`
-- [ ] T003 Install dev dependencies: `npm install -D @types/react @types/react-dom typescript @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint prettier jest @testing-library/react @testing-library/jest-dom ts-jest @types/jest`
-- [ ] T004 Install TailwindCSS: `npm install -D tailwindcss postcss autoprefixer`
-- [ ] T005 Configure TypeScript strict mode in `frontend/tsconfig.json`: enable `strict: true`, `esModuleInterop: true`, `module: es2020`, `target: es2020`, `lib: ["es2020", "dom", "dom.iterable"]`
-- [ ] T006 Create `frontend/tailwind.config.ts` with custom colors: `success: { 50: '#f0fdf4', 500: '#22c55e', 900: '#166534' }`, `danger: { 50: '#fef2f2', 500: '#ef4444', 900: '#7f1d1d' }`
-- [ ] T007 Create `frontend/postcss.config.js` with TailwindCSS and Autoprefixer plugins
-- [ ] T008 Create `frontend/src/index.css` with `@tailwind base; @tailwind components; @tailwind utilities;`
-- [ ] T009 Create `.eslintrc.json` in `frontend/` with rules for React, TypeScript, and code quality
-- [ ] T010 Create `frontend/jest.config.js` with Jest configuration for React + TypeScript (preset: `ts-jest`, testEnvironment: `jsdom`, setupFilesAfterEnv: `["@testing-library/jest-dom"]`)
-- [ ] T011 Update `frontend/package.json` scripts: `"dev": "vite"`, `"build": "tsc && vite build"`, `"test": "jest"`, `"test:watch": "jest --watch"`, `"test:coverage": "jest --coverage"`, `"lint": "eslint src --ext .ts,.tsx"`, `"lint:fix": "eslint src --ext .ts,.tsx --fix"`
-- [ ] T012 Create folder structure: `src/{components,hooks,services,pages,styles,__tests__/{components,hooks,services,integration}}`
-- [ ] T013 Create `frontend/src/main.tsx` entry point that renders App component into root div
-- [ ] T014 Create `frontend/src/App.tsx` stub with text "DCA Frontend Loading..." (placeholder)
-- [ ] T015 Update `frontend/index.html` entry point to load `main.tsx`
-- [ ] T016 Create `.gitignore` for `frontend/` with entries: `node_modules/`, `dist/`, `.env.local`, `coverage/`, `*.log`
-- [ ] T017 Create `frontend/.env.example` with sample API configuration: `VITE_API_BASE_URL=http://localhost:4000/api`
-- [ ] T018 Create `frontend/README.md` with setup instructions, npm scripts, and local development guide
+- [x] T001 Create new Vite + React + TypeScript project at `frontend/` directory with command `npm create vite@latest frontend -- --template react-ts`
+- [x] T002 Navigate to `frontend/` directory and install core dependencies: `npm install react react-dom axios recharts`
+- [x] T003 Install dev dependencies: `npm install -D @types/react @types/react-dom typescript @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint prettier jest @testing-library/react @testing-library/jest-dom ts-jest @types/jest`
+- [x] T004 Install TailwindCSS: `npm install -D tailwindcss postcss autoprefixer`
+- [x] T005 Configure TypeScript strict mode in `frontend/tsconfig.json`: enable `strict: true`, `esModuleInterop: true`, `module: es2020`, `target: es2020`, `lib: ["es2020", "dom", "dom.iterable"]`
+- [x] T006 Create `frontend/tailwind.config.ts` with custom colors: `success: { 50: '#f0fdf4', 500: '#22c55e', 900: '#166534' }`, `danger: { 50: '#fef2f2', 500: '#ef4444', 900: '#7f1d1d' }`
+- [x] T007 Create `frontend/postcss.config.js` with TailwindCSS and Autoprefixer plugins
+- [x] T008 Create `frontend/src/index.css` with `@tailwind base; @tailwind components; @tailwind utilities;`
+- [x] T009 Create `.eslintrc.json` in `frontend/` with rules for React, TypeScript, and code quality
+- [x] T010 Create `frontend/jest.config.js` with Jest configuration for React + TypeScript (preset: `ts-jest`, testEnvironment: `jsdom`, setupFilesAfterEnv: `["@testing-library/jest-dom"]`)
+- [x] T011 Update `frontend/package.json` scripts: `"dev": "vite"`, `"build": "tsc && vite build"`, `"test": "jest"`, `"test:watch": "jest --watch"`, `"test:coverage": "jest --coverage"`, `"lint": "eslint src --ext .ts,.tsx"`, `"lint:fix": "eslint src --ext .ts,.tsx --fix"`
+- [x] T012 Create folder structure: `src/{components,hooks,services,pages,styles,__tests__/{components,hooks,services,integration}}`
+- [x] T013 Create `frontend/src/main.tsx` entry point that renders App component into root div
+- [x] T014 Create `frontend/src/App.tsx` stub with text "DCA Frontend Loading..." (placeholder)
+- [x] T015 Update `frontend/index.html` entry point to load `main.tsx`
+- [x] T016 Create `.gitignore` for `frontend/` with entries: `node_modules/`, `dist/`, `.env.local`, `coverage/`, `*.log`
+- [x] T017 Create `frontend/.env.example` with sample API configuration: `VITE_API_BASE_URL=http://localhost:4000/api`
+- [x] T018 Create `frontend/README.md` with setup instructions, npm scripts, and local development guide
 
 **Visual Verification Task (End of Phase 1)**:
 
-- [ ] T019 [P] **VISUAL: Start Vite dev server and verify localhost:5173 loads**
+- [x] T019 [P] **VISUAL: Start Vite dev server and verify localhost:5173 loads**
   - Command: `cd frontend && npm run dev`
   - Verify in browser (localhost:5173):
     - Page loads without 404 errors
@@ -64,13 +64,13 @@
 
 **Implementation Tasks**:
 
-- [ ] T020 Create `frontend/src/services/types.ts` with TypeScript interfaces:
+- [x] T020 Create `frontend/src/services/types.ts` with TypeScript interfaces:
   - `BacktestConfiguration { entryPrice: number; amounts: number[]; sequences: number; leverage: number; marginRatio: number; }`
   - `BacktestResults { backtestId: string; pnlSummary: PnlSummary; safetyOrderUsage: SafetyOrderUsage[]; tradeEvents: TradeEvent[]; }`
   - `PnlSummary { roi: number; maxDrawdown: number; totalFees: number; }`
   - `SafetyOrderUsage { level: string; count: number; }`
   - `TradeEvent { timestamp: string; eventType: string; price: number; quantity: number; balance: number; }`
-- [ ] T021 Create `frontend/src/hooks/useFormValidation.ts` hook with validation logic:
+- [x] T021 Create `frontend/src/hooks/useFormValidation.ts` hook with validation logic:
   - Input parameters: `values: Partial<BacktestConfiguration>`, `touched: Record<string, boolean>`
   - Validation rules (must return errors within 100ms):
     - `entryPrice > 0` (decimal allowed, max 2 decimals)
@@ -79,7 +79,7 @@
     - `leverage > 0` (typically 1-10)
     - `marginRatio: 0 <= value < 100` (percentage)
   - Return: `{ isValid: boolean; errors: Record<string, string>; }`
-- [ ] T022 Create unit tests for `useFormValidation` in `frontend/src/__tests__/hooks/useFormValidation.test.ts`:
+- [x] T022 Create unit tests for `useFormValidation` in `frontend/src/__tests__/hooks/useFormValidation.test.ts`:
   - Test valid input (all fields correct) → `isValid: true`, `errors: {}`
   - Test invalid entry price (0 or negative) → error message "Entry Price must be greater than 0"
   - Test empty amounts array → error message "At least one amount is required"
@@ -87,15 +87,15 @@
   - Test invalid leverage (0 or negative) → error message
   - Test invalid margin ratio (-1 or > 100) → error messages
   - Test that validation completes in <100ms
-- [ ] T023 [P] Create `frontend/src/services/formatters.ts` with formatting utility functions:
+- [x] T023 [P] Create `frontend/src/services/formatters.ts` with formatting utility functions:
   - `formatCurrency(amount: number, decimals?: number): string` → e.g., "$1234.56"
   - `formatCryptoQuantity(amount: number, decimals?: number): string` → e.g., "0.12345678"
   - `formatPercentage(value: number, decimals?: number): string` → e.g., "12.34%"
-- [ ] T024 [P] Create unit tests for formatters in `frontend/src/__tests__/services/formatters.test.ts`:
+- [x] T024 [P] Create unit tests for formatters in `frontend/src/__tests__/services/formatters.test.ts`:
   - `formatCurrency(1234.5678) → "$1234.57"` (rounded to 2 decimals)
   - `formatCryptoQuantity(0.123456789) → "0.12345679"` (rounded to 8 decimals)
   - `formatPercentage(12.3456) → "12.35%"` (rounded to 2 decimals)
-- [ ] T025 [P] Run tests: `cd frontend && npm test` → verify all validation and formatter tests pass
+- [x] T025 [P] Run tests: `cd frontend && npm test` → verify all validation and formatter tests pass
 
 ---
 
