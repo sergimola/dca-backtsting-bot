@@ -36,7 +36,7 @@ export interface AppConfig {
  * Loads application configuration from environment variables
  * Falls back to sensible defaults
  */
-export function loadAppConfig(): AppConfig {
+export async function loadAppConfig(): Promise<AppConfig> {
   const os = await import('os');
 
   const port = parseInt(process.env.PORT || '3000', 10);

@@ -37,6 +37,40 @@ export class ParseError extends Error {
 }
 
 /**
+ * ValidationError - Error from request validation
+ * Includes field name and additional details
+ */
+export class ValidationError extends Error {
+  constructor(
+    message: string,
+    public code: ErrorCode,
+    public details?: {
+      field?: string;
+      [key: string]: any;
+    },
+  ) {
+    super(message);
+    this.name = 'ValidationError';
+  }
+}
+
+/**
+ * StorageError - Error from result storage/retrieval
+ * Includes operation type for debugging
+ */
+export class StorageError extends Error {
+  constructor(
+    message: string,
+    public code: ErrorCode,
+    public operation: 'save' | 'retrieve' | 'query' | 'cleanup',
+    public details?: { [key: string]: any },
+  ) {
+    super(message);
+    this.name = 'StorageError';
+  }
+}
+
+/**
  * ErrorCode - Machine-readable error classification
  * Used by ErrorMapper to determine HTTP status code and message
  */

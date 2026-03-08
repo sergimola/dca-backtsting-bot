@@ -6,7 +6,6 @@
  */
 
 import { BacktestRequest } from '../types';
-import * as os from 'os';
 
 /**
  * Status of a pending or executing backtest
@@ -62,13 +61,13 @@ export class ProcessManager {
     total_failed: 0,
     execution_times: [] as number[],
   };
-  private maxWorkers: number;
 
   /**
-   * @param maxWorkers - Max concurrent worker threads (default: CPU core count)
+   * @param _maxWorkers - Max concurrent worker threads (default: CPU core count)
+   *                      Stored for future use when implementing worker pool
    */
-  constructor(maxWorkers?: number) {
-    this.maxWorkers = maxWorkers ?? os.cpus().length;
+  constructor(_maxWorkers?: number) {
+    // Worker pool implementation deferred - currently using simple queue
   }
 
   /**
