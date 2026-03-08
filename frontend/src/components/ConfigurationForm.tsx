@@ -15,6 +15,7 @@ interface FormState {
   sequences: number | ''
   leverage: number | ''
   marginRatio: number | ''
+  market_data_csv_path: string
 }
 
 interface FormErrors {
@@ -45,6 +46,7 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
     sequences: initialValues?.sequences || '',
     leverage: initialValues?.leverage || '',
     marginRatio: initialValues?.marginRatio || '',
+    market_data_csv_path: initialValues?.market_data_csv_path || '/data/BTCUSDT_1m.csv',
   })
 
   const [touched, setTouched] = useState<FormTouched>({})
@@ -283,6 +285,7 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
       sequences: Number(values.sequences),
       leverage: Number(values.leverage),
       marginRatio: Number(values.marginRatio),
+      market_data_csv_path: values.market_data_csv_path,
     }
 
     await onSubmit(config)
@@ -296,6 +299,7 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
       sequences: initialValues?.sequences || '',
       leverage: initialValues?.leverage || '',
       marginRatio: initialValues?.marginRatio || '',
+      market_data_csv_path: initialValues?.market_data_csv_path || '/data/BTCUSDT_1m.csv',
     })
     setTouched({})
     setErrors({})
@@ -436,6 +440,16 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
         min="0"
         max="100"
         serverError={serverErrors.marginRatio}
+      />
+
+      {/* Market Data CSV Path */}
+      <FormInput
+        label="Market Data CSV Path"
+        type="text"
+        value={values.market_data_csv_path}
+        onChange={(val) => handleFieldChange('market_data_csv_path', val)}
+        placeholder="/data/BTCUSDT_1m.csv"
+        serverError={serverErrors.market_data_csv_path}
       />
 
       {/* Buttons */}

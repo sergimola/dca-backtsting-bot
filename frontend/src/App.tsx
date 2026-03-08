@@ -1,10 +1,92 @@
-import { ConfigurationForm } from './components/ConfigurationForm'
-import type { BacktestConfiguration } from './services/types'
+import React, { useState } from 'react'
+import type { BacktestConfiguration, BacktestResults } from './services/types'
+import { submitBacktest } from './services/backtest-api'
+import { ConfigurationPage } from './pages/ConfigurationPage'
+import { PollingPage } from './pages/PollingPage'
+import { ResultsPage } from './pages/ResultsPage'
+
+type ViewType = 'configuration' | 'polling' | 'results'
+
+interface AppState {
+  currentView: ViewType
+  backtestId: string | null
+  results: BacktestResults | null
+  submittedConfig: BacktestConfiguration | null
+  error: string | null
+  isSubmitting: boolean
+}
 
 export default function App() {
-  const handleSubmit = (config: BacktestConfiguration) => {
-    console.log('Form submitted with configuration:', config)
-    alert(`Configuration submitted!\n\nEntry Price: ${config.entryPrice}\nAmounts: ${config.amounts.join(', ')}\nSequences: ${config.sequences}\nLeverage: ${config.leverage}\nMargin Ratio: ${config.marginRatio}%`)
+  const [state, setState] = useState<AppState>({
+    currentView: 'configuration',
+    backtestId: null,
+    results: null,
+    submittedConfig: null,
+    error: null,
+    isSubmitting: false
+  })
+
+  const handleSubmitConfig = async (config: BacktestConfiguration) => {
+    setState(prev => ({ ...prev, isSubmitting: true, error: null }))
+    
+    try {
+      const response = await submitBacktest(config)
+      setState(prev => ({
+        ...prev,
+        currentView: 'polling',
+        backtestId: response.backtestId,
+        submittedConfig: config,
+        isSubmitting: false
+      }))
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to submit configuration'
+      setState(prev => ({
+        ...prev,
+        error: errorMessage,
+        isSubmitting: false
+      }))
+    }
+  }
+
+  const handlePollingComplete = (results: BacktestResults) => {
+    setState(prev => ({
+      ...prev,
+      currentView: 'results',
+      results
+    }))
+  }
+
+  const handlePollingError = (error: Error) => {
+    setState(prev => ({
+      ...prev,
+      error: error.message,
+      currentView: 'configuration'
+    }))
+  }
+
+  const handlePollingTimeout = () => {
+    setState(prev => ({
+      ...prev,
+      error: 'Polling timeout: Backtest took longer than 5 minutes'
+    }))
+  }
+
+  const handleResetForm = () => {
+    setState(prev => ({
+      ...prev,
+      currentView: 'configuration',
+      backtestId: null,
+      results: null,
+      submittedConfig: null,
+      error: null
+    }))
+  }
+
+  const handleModifyConfig = () => {
+    setState(prev => ({
+      ...prev,
+      currentView: 'configuration'
+    }))
   }
 
   return (
@@ -16,11 +98,35 @@ export default function App() {
         </header>
 
         <div className="bg-white rounded-xl shadow-lg p-8">
-          <ConfigurationForm onSubmit={handleSubmit} />
+          {state.currentView === 'configuration' && (
+            <ConfigurationPage
+              onSubmit={handleSubmitConfig}
+              initialValues={state.submittedConfig || undefined}
+              error={state.error || undefined}
+              isSubmitting={state.isSubmitting}
+            />
+          )}
+
+          {state.currentView === 'polling' && state.backtestId && (
+            <PollingPage
+              backtestId={state.backtestId}
+              onComplete={handlePollingComplete}
+              onError={handlePollingError}
+              onTimeout={handlePollingTimeout}
+            />
+          )}
+
+          {state.currentView === 'results' && state.results && (
+            <ResultsPage
+              results={state.results}
+              onReset={handleResetForm}
+              onModify={handleModifyConfig}
+            />
+          )}
         </div>
 
         <footer className="text-center mt-8 text-sm text-gray-600">
-          <p>Phase 4: ConfigurationForm Visual Verification</p>
+          <p>Phase 5-8: App State Machine & Polling Integration</p>
         </footer>
       </div>
     </div>

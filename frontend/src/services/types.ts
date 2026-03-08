@@ -11,6 +11,7 @@ export interface BacktestConfiguration {
   sequences: number
   leverage: number
   marginRatio: number
+  market_data_csv_path?: string
 }
 
 /**

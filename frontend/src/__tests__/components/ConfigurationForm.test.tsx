@@ -49,6 +49,7 @@ describe('ConfigurationForm', () => {
         sequences: 5,
         leverage: 2,
         marginRatio: 50,
+        market_data_csv_path: '/data/BTCUSDT_1m.csv',
       }
 
       render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
@@ -164,6 +165,7 @@ describe('ConfigurationForm', () => {
         sequences: 5,
         leverage: 2,
         marginRatio: 50,
+        market_data_csv_path: '/data/BTCUSDT_1m.csv',
       }
 
       render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
@@ -269,6 +271,7 @@ describe('ConfigurationForm', () => {
         sequences: 5,
         leverage: 2,
         marginRatio: 50,
+        market_data_csv_path: '/data/BTCUSDT_1m.csv',
       }
 
       render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
@@ -336,6 +339,7 @@ describe('ConfigurationForm', () => {
         sequences: 1,
         leverage: 1,
         marginRatio: 50,
+        market_data_csv_path: '/data/BTCUSDT_1m.csv',
       }
 
       render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
