@@ -13,7 +13,7 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain - 3 markers present (see below)
+- [x] No [NEEDS CLARIFICATION] markers remain - all 3 resolved
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable
 - [x] Success criteria are technology-agnostic (no implementation details)
@@ -31,27 +31,25 @@
 
 ## Notes
 
-### Outstanding Clarifications (3/3 NEEDS CLARIFICATION markers)
+### Clarifications Resolved
 
-The following clarifications are required before proceeding to `/speckit.clarify` or `/speckit.plan`:
+All 3 outstanding clarifications have been resolved:
 
-1. **[NEEDS CLARIFICATION]: FR-009 - Backtest Execution Timeout Duration**
-   - Location: FR-009 functional requirement
-   - Context: "API MUST return HTTP 200 with complete results for successful backtest execution within [NEEDS CLARIFICATION: timeout duration - e.g., 30s, 60s?]"
-   - Impact: Affects success criterion SC-001 and system resource planning. Must balance user patience vs. resource utilization.
+1. **FR-009 - Backtest Execution Timeout**: Set to **30 seconds**
+   - Balances rapid user feedback with reasonable Core Engine execution time
+   - Aligns with typical HTTP request timeout expectations
 
-2. **[NEEDS CLARIFICATION]: FR-015 - Result Persistence Retention Period**
-   - Location: FR-015 functional requirement
-   - Context: "API MUST persist completed backtest results with timestamp for at least [NEEDS CLARIFICATION: retention period - e.g., 7 days, 30 days?] days"
-   - Impact: Affects storage infrastructure sizing and cleanup scheduling. Different retention enables different use cases.
+2. **FR-015 - Result Persistence Retention Period**: Set to **7 days**
+   - Sufficient for most backtesting workflows and audit trails
+   - Manageable storage costs and cleanup scheduling
 
-3. **[NEEDS CLARIFICATION]: FR-010 - Maximum Concurrent Process Limit**
-   - Location: FR-010 functional requirement
-   - Context: "API MUST handle concurrent POST requests to `/backtest` independently using worker pool or queue pattern, executing up to N simultaneous Core Engine processes (N=TBD based on resource constraints)"
-   - Impact: Affects load balancing strategy and system capacity planning. Must be determined based on deployment environment specs.
+3. **FR-010 - Maximum Concurrent Process Limit**: Set to **auto-detect based on CPU cores**
+   - Uses `os.cpus().length` in Node.js for intelligent resource utilization
+   - Adapts automatically to deployment environment capacity
 
 ### Status
 
-- **Specification Content**: COMPLETE - All sections filled with relevant details
-- **Clarifications Required**: 3 outstanding (all marked with [NEEDS CLARIFICATION] in spec)
-- **Ready for Next Phase**: YES (can proceed to clarification phase to resolve markers, or proceed directly to planning with informed assumptions)
+- **Specification Content**: COMPLETE ✅
+- **Clarifications**: RESOLVED ✅ (All 3 markers addressed)
+- **Checklist Validation**: ALL ITEMS PASSING ✅
+- **Ready for Planning**: YES - Specification is complete and ready for `/speckit.plan`

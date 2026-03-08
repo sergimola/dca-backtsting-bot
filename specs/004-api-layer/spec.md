@@ -128,13 +128,13 @@ Operations teams monitor API availability, Core Engine binary connectivity, and 
 - **FR-006**: API MUST track all parsed events in execution order, preserving timestamps and calculated values (prices, quantities, position state deltas)
 - **FR-007**: API MUST calculate final position state, P&L, trade count, and execution timeline from parsed Event Bus sequence
 - **FR-008**: API MUST serialize backtest results as JSON with fields: `request_id`, `status`, `events[]`, `final_position`, `pnl_summary`, `execution_time_ms`, `timestamp`
-- **FR-009**: API MUST return HTTP 200 with complete results for successful backtest execution within [NEEDS CLARIFICATION: timeout duration - e.g., 30s, 60s?]
-- **FR-010**: API MUST handle concurrent POST requests to `/backtest` independently using worker pool or queue pattern, executing up to N simultaneous Core Engine processes (N=TBD based on resource constraints)
+- **FR-009**: API MUST return HTTP 200 with complete results for successful backtest execution within 30 seconds
+- **FR-010**: API MUST handle concurrent POST requests to `/backtest` independently using worker pool or queue pattern, executing simultaneous Core Engine processes auto-detected based on available CPU cores (e.g., `os.cpus().length` in Node.js)
 - **FR-011**: API MUST prevent memory exhaustion by implementing process resource limits (max heap, timeout) for Core Engine subprocesses
 - **FR-012**: API MUST map Core Engine error codes and stderr messages to standardized HTTP error responses with user-friendly descriptions (e.g., "Invalid configuration" → 400, "Backtest timeout" → 504)
 - **FR-013**: API MUST assign unique `request_id` to each backtest request for traceability and retrieval
 - **FR-014**: API MUST provide `GET /backtest/{request_id}` endpoint to retrieve previously completed backtest results from storage
-- **FR-015**: API MUST persist completed backtest results with timestamp for at least [NEEDS CLARIFICATION: retention period - e.g., 7 days, 30 days?] days
+- **FR-015**: API MUST persist completed backtest results with timestamp for 7 days
 - **FR-016**: API MUST provide `GET /health` endpoint returning JSON with status (healthy/degraded/unhealthy), Core Engine binary availability, and backtest queue metrics
 - **FR-017**: API MUST log all backtest requests (configuration summary, timing, results) for audit and debugging purposes
 - **FR-018**: API MUST handle graceful shutdown: complete in-flight backtests, reject new requests with HTTP 503, terminate Core Engine subprocesses
@@ -174,11 +174,11 @@ Operations teams monitor API availability, Core Engine binary connectivity, and 
 - Core Engine binary outputs Event Bus results in JSON or line-delimited JSON (ndjson) format, parseable into typed event structs
 - Core Engine binary can accept configuration via stdin JSON or command-line arguments (implementation detail to be confirmed)
 - Core Engine binary respects timeout signals (SIGTERM) for graceful subprocess termination
-- API deployment environment has sufficient disk space for result persistence (7-30 days retention)
+- API deployment environment has sufficient disk space for 7-day result retention on typical usage patterns
 - Market data CSV files (referenced in configurations) are pre-positioned on Core Engine host filesystem
 - Initial launch does not require authentication/authorization (open REST API); security gates added in future sprint if needed
 - Idempotency is optional for MVP; can be added in post-launch optimization sprint
-- Default concurrency limit is system dependent; implementation will auto-detect based on available CPU cores and memory
+- Concurrency auto-detection uses CPU core count; system has adequate memory per Core Engine process to avoid resource exhaustion at calculated concurrency level
 
 ---
 
