@@ -570,7 +570,7 @@
 
 **Implementation Tasks**:
 
-- [ ] T071 Complete `frontend/src/App.tsx` implementation:
+- [X] T071 Complete `frontend/src/App.tsx` implementation:
   - State: `{ currentView: 'configuration' | 'polling' | 'results'; backtestId: string | null; results: BacktestResults | null; submittedConfig: BacktestConfiguration | null; error: string | null; }`
   - Action handlers:
     - `handleSubmitConfig(config)`: POST to API → if success, setState(backtestId, polling view) → if error, setState(error, show message)
@@ -582,12 +582,12 @@
   - Render:
     - Conditional routes: if currentView === 'configuration' → ConfigurationPage, elif 'polling' → PollingPage, elif 'results' → ResultsPage
     - Error overlay: if error state → show error message with actions (dismiss, retry)
-- [ ] T072 Create integration test for full app flow in `frontend/src/__tests__/integration/full-app-flow.test.tsx`:
+- [X] T072 Create integration test for full app flow in `frontend/src/__tests__/integration/full-app-flow.test.tsx`:
   - Test complete user journey: load app → fill form → submit → poll → view results → reset → run new backtest
   - Test modify flow: results → modify → form pre-populated → submit → poll → results
   - Test error handling: form validation error, API error, polling error, timeout
   - Use mock API and mock routing
-- [ ] T073 [P] Run full test suite: `cd frontend && npm test` → verify all tests pass (>80% coverage)
+- [X] T073 [P] Run full test suite: `cd frontend && npm test` → verify all tests pass (>80% coverage)
 
 ---
 
@@ -603,27 +603,27 @@
 
 **Implementation Tasks**:
 
-- [ ] T074 Create `frontend/src/components/ErrorBoundary.tsx`:
+- [X] T074 Create `frontend/src/components/ErrorBoundary.tsx`:
   - Implement React error boundary using componentDidCatch
   - Render error UI: error message + stack trace (dev mode only) + [Retry] button
   - Retry action: reset error state, re-render component
-- [ ] T075 Create component tests for ErrorBoundary in `frontend/src/__tests__/components/ErrorBoundary.test.tsx`:
+- [X] T075 Create component tests for ErrorBoundary in `frontend/src/__tests__/components/ErrorBoundary.test.tsx`:
   - Test catch error: component throws error → ErrorBoundary catches and displays
   - Test retry button: click retry → error state cleared, component re-renders
   - Test stack trace visibility: dev mode shows stack, prod mode hides
-- [ ] T076 Update error handling in backtest-api service:
+- [X] T076 Update error handling in backtest-api service:
   - Network timeout (>10s): throw descriptive error → caught in App.tsx
   - 400 validation error: extract field errors from response → display field-level errors
   - 500 server error: show generic message → allow user to retry or go back
   - Malformed API response: show data error message → allow user to go back
-- [ ] T077 Create integration tests for error scenarios in `frontend/src/__tests__/integration/error-handling.test.tsx`:
+- [X] T077 Create integration tests for error scenarios in `frontend/src/__tests__/integration/error-handling.test.tsx`:
   - Test network timeout: submit form → no response within 10s → show timeout message + [Retry]
   - Test validation error: submit form → 400 response → show field errors
   - Test server error: submit form → 500 response → show error message
   - Test polling network error: polling → network error → retry + backoff → fail → show error
   - Test timeout error: polling → 5 minutes elapsed → show timeout message + [Retry]
   - Mock API to simulate all error scenarios
-- [ ] T078 [P] Run tests: `cd frontend && npm test -- integration/error-handling` → verify all error tests pass
+- [X] T078 [P] Run tests: `cd frontend && npm test -- integration/error-handling` → verify all error tests pass
 
 ---
 
