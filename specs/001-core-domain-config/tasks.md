@@ -76,23 +76,23 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Tasks
 
-- [ ] T001 Initialize Go module in core-engine/domain/config/ with `go mod init github.com/dca-bot/core-engine/domain/config`
+- [X] T001 Initialize Go module in core-engine/domain/config/ with `go mod init github.com/dca-bot/core-engine/domain/config`
 
-- [ ] T002 Add shopspring/decimal dependency to core-engine/domain/config/go.mod with `go get github.com/shopspring/decimal@v1.3.1`
+- [X] T002 Add shopspring/decimal dependency to core-engine/domain/config/go.mod with `go get github.com/shopspring/decimal@v1.3.1`
 
-- [ ] T003 Create core-engine/domain/config/ directory structure: config.go, sequences.go, config_test.go, sequences_test.go, README.md
+- [X] T003 Create core-engine/domain/config/ directory structure: config.go, sequences.go, config_test.go, sequences_test.go, README.md
 
-- [ ] T004 Create core-engine/domain/config/README.md documenting package purpose, canonical formulas, and SDD references (sections 2.0, 2.1, 2.2, 4.1)
+- [X] T004 Create core-engine/domain/config/README.md documenting package purpose, canonical formulas, and SDD references (sections 2.0, 2.1, 2.2, 4.1)
 
-- [ ] T005 [P] Create core-engine/domain/config/config.go with package declaration, imports, and placeholder Config interface skeleton
+- [X] T005 [P] Create core-engine/domain/config/config.go with package declaration, imports, and placeholder Config interface skeleton
 
-- [ ] T006 [P] Create core-engine/domain/config/errors.go with ValidationError, SequenceComputationError, PrecisionError, SumInvariantViolation types
+- [X] T006 [P] Create core-engine/domain/config/errors.go with ValidationError, SequenceComputationError, PrecisionError, SumInvariantViolation types
 
-- [ ] T007 [P] Create core-engine/domain/config/config_test.go with test package setup and helper functions for comparing Decimal values
+- [X] T007 [P] Create core-engine/domain/config/config_test.go with test package setup and helper functions for comparing Decimal values
 
-- [ ] T008 [P] Create core-engine/domain/config/sequences_test.go with test package setup and sequence-specific test helpers
+- [X] T008 [P] Create core-engine/domain/config/sequences_test.go with test package setup and sequence-specific test helpers
 
-- [ ] T009 Verify all tests compile and run with `go test ./...` (should have 0 tests passing initially)
+- [X] T009 Verify all tests compile and run with `go test ./...` (should have 0 tests passing initially)
 
 ---
 
@@ -104,20 +104,20 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Tasks
 
-- [ ] T010 [P] Create test helper function for Decimal equality checks with tolerance (allow for rounding): `DecimalEqual(expected, actual decimal.Decimal, tolerance string) bool` in config_test.go
+- [X] T010 [P] Create test helper function for Decimal equality checks with tolerance (allow for rounding): `DecimalEqual(expected, actual decimal.Decimal, tolerance string) bool` in config_test.go
 
-- [ ] T011 [P] Create test helper function for validating price sequence monotonicity: `AssertMonotonicDecreasing(seq []*decimal.Decimal) error` in sequences_test.go
+- [X] T011 [P] Create test helper function for validating price sequence monotonicity: `AssertMonotonicDecreasing(seq []*decimal.Decimal) error` in sequences_test.go
 
-- [ ] T012 [P] Create test helper function for validating amount sequence sum invariant: `AssertSumInvariant(seq []*decimal.Decimal, expectedSum decimal.Decimal) error` in sequences_test.go
+- [X] T012 [P] Create test helper function for validating amount sequence sum invariant: `AssertSumInvariant(seq []*decimal.Decimal, expectedSum decimal.Decimal) error` in sequences_test.go
 
-- [ ] T013 Create canonical test data package-level constants and functions in config_test.go:
+- [X] T013 Create canonical test data package-level constants and functions in config_test.go:
   - TestCase1_CurrentPrice = 100.00
   - TestCase1_PriceEntry = 2.0  
   - TestCase1_PriceScale = 1.1
   - TestCase1_NumOrders = 3
   - TestCase1_ExpectedPrices = [100.00, 98.00, 95.84400000, 93.52457520]
 
-- [ ] T014 Create canonical test data package-level constants in sequences_test.go:
+- [X] T014 Create canonical test data package-level constants in sequences_test.go:
   - TestCase2_Capital = 1000
   - TestCase2_AmountScale = 2.0
   - TestCase2_Multiplier = 1
@@ -126,7 +126,7 @@ These exact values MUST appear in test code and implementation must reproduce th
   - TestCase2_ExpectedAmounts = [142.85714286, 285.71428571, 571.42857143]
   - TestCase2_ExpectedSum = 1000.00
 
-- [ ] T015 Create canonical test data package-level constants in config_test.go for Test Case 3 (all 13 default parameters with exact values from SDD Table 4.1)
+- [X] T015 Create canonical test data package-level constants in config_test.go for Test Case 3 (all 13 default parameters with exact values from SDD Table 4.1)
 
 ---
 
@@ -145,82 +145,82 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Test Tasks (Write First — All Will Fail Initially)
 
-- [ ] T016 [P] [US1] Write unit test for Config instantiation with no parameters in core-engine/domain/config/config_test.go:
+- [X] T016 [P] [US1] Write unit test for Config instantiation with no parameters in core-engine/domain/config/config_test.go:
   - Create Config with NewConfig()
   - Assert all 13 parameters set to canonical defaults
   - Assert trading_pair = "LTC/USDT", price_entry = 2.0, etc.
   - **Test Data**: Test Case 3 exact values
 
-- [ ] T017 [P] [US1] Write unit test for Config instantiation with custom trading_pair in core-engine/domain/config/config_test.go:
+- [X] T017 [P] [US1] Write unit test for Config instantiation with custom trading_pair in core-engine/domain/config/config_test.go:
   - Create Config with WithTradingPair("BTC/USDT")  
   - Assert provided trading_pair stored correctly
   - Assert all other 12 parameters use defaults
   - Assert validation passes
 
-- [ ] T018 [P] [US1] Write unit test for invalid trading_pair type (number instead of string) in core-engine/domain/config/config_test.go:
+- [X] T018 [P] [US1] Write unit test for invalid trading_pair type (number instead of string) in core-engine/domain/config/config_test.go:
   - Attempt Config with trading_pair = 123 (invalid type)
   - Assert NewConfig returns validation error
   - Assert error message contains "trading_pair"
   - **Expected Error**: "Config validation failed: trading_pair=123 (type must be string)"
 
-- [ ] T019 [P] [US1] Write unit test for invalid margin_type in core-engine/domain/config/config_test.go:
+- [X] T019 [P] [US1] Write unit test for invalid margin_type in core-engine/domain/config/config_test.go:
   - Attempt Config with margin_type = "leverage" (invalid enum)
   - Assert NewConfig returns ValidationError
   - Assert error message: "margin_type must be 'cross' or 'isolated', got 'leverage'"
 
-- [ ] T020 [P] [US1] Write unit test for invalid multiplier (less than 1) in core-engine/domain/config/config_test.go:
+- [X] T020 [P] [US1] Write unit test for invalid multiplier (less than 1) in core-engine/domain/config/config_test.go:
   - Attempt Config with multiplier = 0
   - Assert NewConfig returns ValidationError with message "multiplier must be >= 1"
 
-- [ ] T021 [P] [US1] Write unit test for invalid number_of_orders (zero or negative) in core-engine/domain/config/config_test.go:
+- [X] T021 [P] [US1] Write unit test for invalid number_of_orders (zero or negative) in core-engine/domain/config/config_test.go:
   - Attempt Config with number_of_orders = 0
   - Assert NewConfig returns ValidationError with message "number_of_orders must be >= 1"
 
-- [ ] T022 [P] [US1] Write unit test for negative account_balance in core-engine/domain/config/config_test.go:
+- [X] T022 [P] [US1] Write unit test for negative account_balance in core-engine/domain/config/config_test.go:
   - Attempt Config with account_balance = -100
   - Assert NewConfig returns ValidationError with message "account_balance must be non-negative"
 
-- [ ] T023 [P] [US1] Write unit test for Config edge case: minimum balances (0.01) in core-engine/domain/config/config_test.go:
+- [X] T023 [P] [US1] Write unit test for Config edge case: minimum balances (0.01) in core-engine/domain/config/config_test.go:
   - Create Config with account_balance = "0.01"
   - Assert validation passes
   - Assert account_balance stored as Decimal "0.01"
 
-- [ ] T024 [P] [US1] Write unit test for Acceptance Scenario 1 ("all 13 parameters stored correctly") in core-engine/domain/config/config_test.go:
+- [X] T024 [P] [US1] Write unit test for Acceptance Scenario 1 ("all 13 parameters stored correctly") in core-engine/domain/config/config_test.go:
   - Create Config with all 13 parameters explicitly provided (non-default values)
   - Assert each parameter retrieved via getter matches provided value exactly
   - **Test Data**: Use custom values (e.g., trading_pair="BTC/USD", price_entry=3.5, etc.)
 
-- [ ] T025 [P] [US1] Write unit test for Acceptance Scenario 2 ("defaults applied when missing") in core-engine/domain/config/config_test.go:
+- [X] T025 [P] [US1] Write unit test for Acceptance Scenario 2 ("defaults applied when missing") in core-engine/domain/config/config_test.go:
   - Create Config with only trading_pair provided
   - Assert all 12 omitted parameters match canonical defaults exactly
   - **Test Data**: Test Case 3
 
-- [ ] T026 [P] [US1] Write unit test for Acceptance Scenario 3 ("type validation with clear error") in core-engine/domain/config/config_test.go:
+- [X] T026 [P] [US1] Write unit test for Acceptance Scenario 3 ("type validation with clear error") in core-engine/domain/config/config_test.go:
   - Test multiple type violations (string for multiplier, int for price_entry)
   - Assert each returns validation error with parameter name and reason
 
-- [ ] T027 [P] [US1] Write unit test for Acceptance Scenario 4 ("edge-case numeric values pass") in core-engine/domain/config/config_test.go:
+- [X] T027 [P] [US1] Write unit test for Acceptance Scenario 4 ("edge-case numeric values pass") in core-engine/domain/config/config_test.go:
   - Create Config with edge cases: account_balance=0.01, amount_per_trade=0.5
   - Assert validation passes (no range constraints imposed)
 
-- [ ] T028 [P] [US1] Write unit test for Config serialization to JSON in core-engine/domain/config/config_test.go:
+- [X] T028 [P] [US1] Write unit test for Config serialization to JSON in core-engine/domain/config/config_test.go:
   - Create Config with known values
   - Call ToJSON()
   - Parse JSON, verify all Decimal fields preserve precision
   - Assert no precision loss (e.g., 2.0 not truncated to 2)
 
-- [ ] T029 [P] [US1] Write unit test for Config deserialization from JSON in core-engine/domain/config/config_test.go:
+- [X] T029 [P] [US1] Write unit test for Config deserialization from JSON in core-engine/domain/config/config_test.go:
   - Create Config, serialize to JSON, deserialize
   - Assert round-trip produces identical Config (SC-005)
   - Verify all Decimal precision preserved
 
-- [ ] T030 [P] [US1] Write unit test for Config getters (all 13 parameters) in core-engine/domain/config/config_test.go:
+- [X] T030 [P] [US1] Write unit test for Config getters (all 13 parameters) in core-engine/domain/config/config_test.go:
   - Verify each getter (TradingPair(), StartDate(), PriceEntry(), ..., ExitOnLastOrder()) returns correct type
   - Assert no mutations possible (read-only)
 
 ### Implementation Tasks (Write After Tests Fail)
 
-- [ ] T031 [US1] Implement ConfigImpl struct in core-engine/domain/config/config.go with 13 fields:
+- [X] T031 [US1] Implement ConfigImpl struct in core-engine/domain/config/config.go with 13 fields:
   - tradingPair: string
   - startDate: string
   - endDate: string
@@ -236,19 +236,19 @@ These exact values MUST appear in test code and implementation must reproduce th
   - monthlyAddition: decimal.Decimal
   - exitOnLastOrder: bool
 
-- [ ] T032 [US1] Implement NewConfig() constructor in core-engine/domain/config/config.go:
+- [X] T032 [US1] Implement NewConfig() constructor in core-engine/domain/config/config.go:
   - Initialize all 13 parameters with canonical defaults (from T013-T015)
   - Apply functional options if provided
   - Call Validate() before returning
   - Return error if validation fails (not a Config instance)
 
-- [ ] T033 [US1] Implement Option type and all 13 With*() functional options in core-engine/domain/config/config.go:
+- [X] T033 [US1] Implement Option type and all 13 With*() functional options in core-engine/domain/config/config.go:
   - WithTradingPair(pair string) Option
   - WithStartDate(date string) Option
   - ... (continue for all 13)
   - WithExitOnLastOrder(exit bool) Option
 
-- [ ] T034 [US1] Implement Validate() method in core-engine/domain/config/config.go:
+- [X] T034 [US1] Implement Validate() method in core-engine/domain/config/config.go:
   - FR-003: Type validation for all 13 parameters
   - FR-009: margin_type ∈ {'cross', 'isolated'}
   - FR-010: multiplier >= 1
@@ -257,7 +257,7 @@ These exact values MUST appear in test code and implementation must reproduce th
   - Return ValidationError with actionable message on failure
   - Complete in <1ms (SC-004)
 
-- [ ] T035 [US1] Implement all 13 getter methods in core-engine/domain/config/config.go:
+- [X] T035 [US1] Implement all 13 getter methods in core-engine/domain/config/config.go:
   - TradingPair() string
   - StartDate() string
   - EndDate() string
@@ -265,18 +265,18 @@ These exact values MUST appear in test code and implementation must reproduce th
   - ... (continue for all 13)
   - ExitOnLastOrder() bool
 
-- [ ] T036 [US1] Implement ToJSON() method in core-engine/domain/config/config.go:
+- [X] T036 [US1] Implement ToJSON() method in core-engine/domain/config/config.go:
   - Serialize all 13 Config parameters to JSON
   - Use shopspring/decimal's json.Marshaler for Decimal fields
   - Preserve all Decimal precision
   - Return JSON string (no data loss, SC-005)
 
-- [ ] T037 [US1] Implement FromJSON() method in core-engine/domain/config/config.go:
+- [X] T037 [US1] Implement FromJSON() method in core-engine/domain/config/config.go:
   - Deserialize JSON to Config struct
   - Validate all parameters after deserialization
   - Verify round-trip fidelity (parse twice, compare)
 
-- [ ] T038 [US1] Run Phase 3 test suite in core-engine/domain/config/:
+- [X] T038 [US1] Run Phase 3 test suite in core-engine/domain/config/:
   - Execute `go test ./... -v -run ".*US1.*"`
   - Verify all tests T016-T030 pass (green)
   - Assert no failing or skipped tests (SC-003 requirement)
@@ -299,55 +299,55 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Test Tasks (Write First — All Will Fail Initially)
 
-- [ ] T039 [P] [US2] Write unit test for Price Sequence canonical test (Test Case 1) in core-engine/domain/config/sequences_test.go:
+- [X] T039 [P] [US2] Write unit test for Price Sequence canonical test (Test Case 1) in core-engine/domain/config/sequences_test.go:
   - Create Config with: current_price=100, price_entry=2.0, price_scale=1.1, number_of_orders=3
   - Call ComputePriceSequence(100)
   - Assert prices: P_0=100.00, P_1=98.00, P_2=95.84400000, P_3=93.52457520
   - Use DecimalEqual helper (T010) with zero tolerance (exact match required)
   - **Test Data**: Canonical Test Case 1 values
 
-- [ ] T040 [P] [US2] Write unit test for price sequence monotonicity in core-engine/domain/config/sequences_test.go:
+- [X] T040 [P] [US2] Write unit test for price sequence monotonicity in core-engine/domain/config/sequences_test.go:
   - Create multiple Config instances with valid price_entry>0, price_scale>0
   - For each: call ComputePriceSequence(), verify strictly decreasing (P_0 > P_1 > ... > P_N-1)
   - Use AssertMonotonicDecreasing helper (T011)
   - **Test Cases**: Test with price_scale=1.0, 1.1, 2.0; price_entry=0.5, 2.0, 5.0
 
-- [ ] T041 [P] [US2] Write unit test for price sequence scale factor (Acceptance Scenario 3) in core-engine/domain/config/sequences_test.go:
+- [X] T041 [P] [US2] Write unit test for price sequence scale factor (Acceptance Scenario 3) in core-engine/domain/config/sequences_test.go:
   - Compute price sequence for two configs: one with price_scale=1.0, one with price_scale=2.0
   - Verify that with larger scale, price deviations increase faster
   - Assert successive differences multiply by scale factor correctly
 
-- [ ] T042 [P] [US2] Write unit test for recurrence relation (Acceptance Scenario 4) in core-engine/domain/config/sequences_test.go:
+- [X] T042 [P] [US2] Write unit test for recurrence relation (Acceptance Scenario 4) in core-engine/domain/config/sequences_test.go:
   - For each P_n, verify it matches P_{n-1} * (1 - delta/100 * s_p^{n-1})
   - Use exact arithmetic: compute expected and compare with DecimalEqual
   - **Formula**: P_n = P_{n-1} * (1 - price_entry/100 * price_scale^(n-1))
 
-- [ ] T043 [P] [US2] Write unit test for edge case: price_scale=1.0 (uniform spacing) in core-engine/domain/config/sequences_test.go:
+- [X] T043 [P] [US2] Write unit test for edge case: price_scale=1.0 (uniform spacing) in core-engine/domain/config/sequences_test.go:
   - Create Config with price_scale=1.0, price_entry=2.0, number_of_orders=5
   - Verify prices form uniform decreasing sequence
   - Assert each difference equals price_entry/100 * P_prev
 
-- [ ] T044 [P] [US2] Write unit test for edge case: number_of_orders=1 in core-engine/domain/config/sequences_test.go:
+- [X] T044 [P] [US2] Write unit test for edge case: number_of_orders=1 in core-engine/domain/config/sequences_test.go:
   - Create Config with number_of_orders=1
   - Call ComputePriceSequence(100)
   - Assert result is [100.00] (single element, no safety orders)
 
-- [ ] T045 [P] [US2] Write unit test for edge case: current_price=0 or negative in core-engine/domain/config/sequences_test.go:
+- [X] T045 [P] [US2] Write unit test for edge case: current_price=0 or negative in core-engine/domain/config/sequences_test.go:
   - Attempt ComputePriceSequence(0) and ComputePriceSequence(-50)
   - Assert SequenceComputationError returned (prices must be positive)
 
-- [ ] T046 [P] [US2] Write unit test for Acceptance Scenario 1 (exact price computation) in core-engine/domain/config/sequences_test.go:
+- [X] T046 [P] [US2] Write unit test for Acceptance Scenario 1 (exact price computation) in core-engine/domain/config/sequences_test.go:
   - Given P_0=100, delta=2.0, price_scale=1.1, N=3
   - Verify P_1 = 98.00, P_2 = 96.0396, P_3 = 94.07950484
   - Compare with test data from quickstart.md
 
-- [ ] T047 [P] [US2] Write unit test for Acceptance Scenario 2 (monotonicity guarantee) in core-engine/domain/config/sequences_test.go:
+- [X] T047 [P] [US2] Write unit test for Acceptance Scenario 2 (monotonicity guarantee) in core-engine/domain/config/sequences_test.go:
   - For all valid parameter combinations: verify P_1 < P_0 always holds
   - Test with various current_price, price_entry, price_scale values
 
 ### Implementation Tasks (Write After Tests Fail)
 
-- [ ] T048 [US2] Implement ComputePriceSequence(currentPrice decimal.Decimal) method in core-engine/domain/config/sequences.go:
+- [X] T048 [US2] Implement ComputePriceSequence(currentPrice decimal.Decimal) method in core-engine/domain/config/sequences.go:
   - Implements FR-004 & FR-005
   - P_0 = currentPrice
   - P_1 = P_0 * (1 - priceEntry/100)
@@ -356,18 +356,18 @@ These exact values MUST appear in test code and implementation must reproduce th
   - Return []*decimal.Decimal array of length numberOfOrders
   - Validate currentPrice > 0; return error if invalid
 
-- [ ] T049 [US2] Implement price sequence computation with exact Decimal rounding in core-engine/domain/config/sequences.go:
+- [X] T049 [US2] Implement price sequence computation with exact Decimal rounding in core-engine/domain/config/sequences.go:
   - Use ROUND_HALF_UP semantics (shopspring/decimal default)
   - All intermediate calculations via Decimal.Mul(), Div(), Sub()
   - Final prices match canonical test data exactly (T039)
 
-- [ ] T050 [US2] Implement PriceSequence type methods in core-engine/domain/config/config.go:
+- [X] T050 [US2] Implement PriceSequence type methods in core-engine/domain/config/config.go:
   - IsMonotonicDecreasing() bool
   - Min() *decimal.Decimal
   - Max() *decimal.Decimal
   - Return error if any prices nil or invariants violated
 
-- [ ] T051 [US2] Run Phase 4 test suite in core-engine/domain/config/:
+- [X] T051 [US2] Run Phase 4 test suite in core-engine/domain/config/:
   - Execute `go test ./... -v -run ".*US2.*"`
   - Verify all tests T039-T047 pass (green)
   - Assert no failing or skipped tests (SC-003)
@@ -390,7 +390,7 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Test Tasks (Write First — All Will Fail Initially)
 
-- [ ] T052 [P] [US3] Write unit test for Amount Sequence canonical test (Test Case 2) in core-engine/domain/config/sequences_test.go:
+- [X] T052 [P] [US3] Write unit test for Amount Sequence canonical test (Test Case 2) in core-engine/domain/config/sequences_test.go:
   - Create Config with: amount_per_trade=1000, amount_scale=2.0, multiplier=1, number_of_orders=3
   - Call ComputeAmountSequence()
   - Assert R = 7.00
@@ -399,56 +399,56 @@ These exact values MUST appear in test code and implementation must reproduce th
   - Use DecimalEqual helper with zero tolerance
   - **Test Data**: Canonical Test Case 2 values
 
-- [ ] T053 [P] [US3] Write unit test for amount sequence sum invariant in core-engine/domain/config/sequences_test.go:
+- [X] T053 [P] [US3] Write unit test for amount sequence sum invariant in core-engine/domain/config/sequences_test.go:
   - Create multiple Config instances with valid amount_scale>0, multiplier>=1
   - For each: ComputeAmountSequence(), verify sum = amount_per_trade * multiplier exactly
   - Use AssertSumInvariant helper (T012)
   - **Test Cases**: Various amount_per_trade (10, 100, 1000), multiplier (1, 2, 3), amount_scale (1.5, 2.0, 3.0)
 
-- [ ] T054 [P] [US3] Write unit test for normalization factor R in core-engine/domain/config/sequences_test.go:
+- [X] T054 [P] [US3] Write unit test for normalization factor R in core-engine/domain/config/sequences_test.go:
   - For various amount_scale and number_of_orders:
   - Verify R = (amount_scale^N - 1) / (amount_scale - 1) computed correctly
   - Test edge case: amount_scale=1.0 → R=N (uniform distribution)
 
-- [ ] T055 [P] [US3] Write unit test for amount sequence scaling (Acceptance Scenario 4) in core-engine/domain/config/sequences_test.go:
+- [X] T055 [P] [US3] Write unit test for amount sequence scaling (Acceptance Scenario 4) in core-engine/domain/config/sequences_test.go:
   - Create Config with multiplier=2
   - Compute AmountSequence
   - Verify each A_n multiplied by 2 compared to multiplier=1 case
   - Assert sum = amount_per_trade * 2
 
-- [ ] T056 [P] [US3] Write unit test for amount sequence geometric ordering in core-engine/domain/config/sequences_test.go:
+- [X] T056 [P] [US3] Write unit test for amount sequence geometric ordering in core-engine/domain/config/sequences_test.go:
   - For amount_scale > 1: verify A_0 < A_1 < ... < A_{N-1}
   - For amount_scale = 1.0: verify all A_n equal (uniform)
   - For amount_scale < 1 (if supported): verify A_0 > A_1 > ... (decreasing)
 
-- [ ] T057 [P] [US3] Write unit test for edge case: amount_scale=1.0 in core-engine/domain/config/sequences_test.go:
+- [X] T057 [P] [US3] Write unit test for edge case: amount_scale=1.0 in core-engine/domain/config/sequences_test.go:
   - Create Config with amount_scale=1.0, amount_per_trade=1000, number_of_orders=3
   - Verify R = 3 (N)
   - Verify all amounts equal: 1000/3 = 333.33333333
 
-- [ ] T058 [P] [US3] Write unit test for dynamic amount_per_trade (Acceptance Scenario 5) in core-engine/domain/config/sequences_test.go:
+- [X] T058 [P] [US3] Write unit test for dynamic amount_per_trade (Acceptance Scenario 5) in core-engine/domain/config/sequences_test.go:
   - Create Config with amount_per_trade=0.5 (fraction of equity)
   - Note: This is deferred to runtime; Config stores raw value
   - Verify ComputeAmountSequence uses provided amount_per_trade as-is (no interpretation in Config)
 
-- [ ] T059 [P] [US3] Write unit test for edge case: number_of_orders=1 in core-engine/domain/config/sequences_test.go:
+- [X] T059 [P] [US3] Write unit test for edge case: number_of_orders=1 in core-engine/domain/config/sequences_test.go:
   - Create Config with number_of_orders=1
   - Call ComputeAmountSequence()
   - Assert result is [amount_per_trade * multiplier] (single element)
 
-- [ ] T060 [P] [US3] Write unit test for Acceptance Scenario 1 (exact amount computation) in core-engine/domain/config/sequences_test.go:
+- [X] T060 [P] [US3] Write unit test for Acceptance Scenario 1 (exact amount computation) in core-engine/domain/config/sequences_test.go:
   - Given C=1000, s_a=2.0, m=1, N=3
   - Verify A_0=142.85714286, A_1=285.71428571, A_2=571.42857143
   - Verify sum = 1000 exactly
 
-- [ ] T061 [P] [US3] Write unit test for Acceptance Scenario 2 (sum validation) in core-engine/domain/config/sequences_test.go:
+- [X] T061 [P] [US3] Write unit test for Acceptance Scenario 2 (sum validation) in core-engine/domain/config/sequences_test.go:
   - Compute amounts for various configs
   - Verify sum(A_n) = C*m exactly (no rounding loss)
   - Test all combinations: amount_per_trade x multiplier x amount_scale x number_of_orders
 
 ### Implementation Tasks (Write After Tests Fail)
 
-- [ ] T062 [US3] Implement ComputeAmountSequence() method in core-engine/domain/config/sequences.go:
+- [X] T062 [US3] Implement ComputeAmountSequence() method in core-engine/domain/config/sequences.go:
   - Implements FR-006 & FR-007
   - Compute R = (amountScale^N - 1) / (amountScale - 1), handling amountScale=1.0 case → R=N
   - For each i: A_i = amountPerTrade * multiplier * amountScale^i / R
@@ -456,19 +456,19 @@ These exact values MUST appear in test code and implementation must reproduce th
   - Return []*decimal.Decimal array of length numberOfOrders
   - Verify sum invariant: sum(A_n) must equal amountPerTrade * multiplier exactly
 
-- [ ] T063 [US3] Implement amount sequence computation with exact Decimal arithmetic in core-engine/domain/config/sequences.go:
+- [X] T063 [US3] Implement amount sequence computation with exact Decimal arithmetic in core-engine/domain/config/sequences.go:
   - ROUND_HALF_UP semantics throughout
   - All operations via decimal.Decimal (no float conversions)
   - Final amounts match canonical test data exactly (T052)
   - Sum invariant maintained to last digit (SC-007)
 
-- [ ] T064 [US3] Implement AmountSequence type methods in core-engine/domain/config/config.go:
+- [X] T064 [US3] Implement AmountSequence type methods in core-engine/domain/config/config.go:
   - Sum() (decimal.Decimal, error) — returns total capital
   - Min() *decimal.Decimal — returns smallest order
   - Max() *decimal.Decimal — returns largest order
   - Verify sum invariant; return SumInvariantViolation error if violated
 
-- [ ] T065 [US3] Run Phase 5 test suite in core-engine/domain/config/:
+- [X] T065 [US3] Run Phase 5 test suite in core-engine/domain/config/:
   - Execute `go test ./... -v -run ".*US3.*"`
   - Verify all tests T052-T061 pass (green)
   - Assert no failing or skipped tests (SC-003)
@@ -491,51 +491,51 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Test Tasks (Write First — All Will Fail Initially)
 
-- [ ] T066 [P] [US4] Write unit test for margin_type validation (Acceptance Scenario 1) in core-engine/domain/config/config_test.go:
+- [X] T066 [P] [US4] Write unit test for margin_type validation (Acceptance Scenario 1) in core-engine/domain/config/config_test.go:
   - Create Config with margin_type='cross' → should pass
   - Create Config with margin_type='isolated' → should pass
   - Create Config with margin_type='leverage' → should fail with clear error
 
-- [ ] T067 [P] [US4] Write unit test for multiplier constraint (Acceptance Scenario 2) in core-engine/domain/config/config_test.go:
+- [X] T067 [P] [US4] Write unit test for multiplier constraint (Acceptance Scenario 2) in core-engine/domain/config/config_test.go:
   - Create Config with multiplier >= 1 → should pass
   - Create Config with multiplier < 1 (e.g., 0.5) → should fail
   - Create Config with multiplier = 0 → should fail
   - Assert error message references multiplier constraint
 
-- [ ] T068 [P] [US4] Write unit test for number_of_orders constraint (Acceptance Scenario 3) in core-engine/domain/config/config_test.go:
+- [X] T068 [P] [US4] Write unit test for number_of_orders constraint (Acceptance Scenario 3) in core-engine/domain/config/config_test.go:
   - Create Config with number_of_orders >= 1 → should pass
   - Create Config with number_of_orders = 0 → should fail
   - Create Config with number_of_orders = -5 → should fail
   - Assert error message references minimum orders constraint
 
-- [ ] T069 [P] [US4] Write unit test for realistic cryptocurrency trading parameters (Acceptance Scenario 5) in core-engine/domain/config/config_test.go:
+- [X] T069 [P] [US4] Write unit test for realistic cryptocurrency trading parameters (Acceptance Scenario 5) in core-engine/domain/config/config_test.go:
   - Create Config with realistic values: trading_pair='BTC/USDT', account_balance=5000, amount_per_trade=100
   - Assert validation passes
   - Assert all 13 parameters are correct types and values
 
-- [ ] T070 [P] [US4] Write unit test for all numeric constraints together in core-engine/domain/config/config_test.go:
+- [X] T070 [P] [US4] Write unit test for all numeric constraints together in core-engine/domain/config/config_test.go:
   - Test all non-negative constraints: price_entry, price_scale, amount_scale, amount_per_trade, account_balance, monthly_addition, multiplier
   - Create configs with negative values for each
   - Assert each returns validation error with parameter name
 
-- [ ] T071 [P] [US4] Write unit test for start_date <= end_date constraint in core-engine/domain/config/config_test.go:
+- [X] T071 [P] [US4] Write unit test for start_date <= end_date constraint in core-engine/domain/config/config_test.go:
   - Create Config with start_date='2024-01-02' <= end_date='2024-01-05' → should pass
   - Create Config with start_date='2024-01-10' > end_date='2024-01-05' → should fail
   - Assert clear error message
 
-- [ ] T072 [P] [US4] Write unit test for edge case (E3): number_of_orders=1 in core-engine/domain/config/config_test.go:
+- [X] T072 [P] [US4] Write unit test for edge case (E3): number_of_orders=1 in core-engine/domain/config/config_test.go:
   - Create Config with number_of_orders=1
   - Assert validation passes (no extra constraint requiring N >= 2)
   - Verify only P_0 and A_0 computed (no safety orders)
 
-- [ ] T073 [P] [US4] Write unit test for edge case (E5): very small account_balance in core-engine/domain/config/config_test.go:
+- [X] T073 [P] [US4] Write unit test for edge case (E5): very small account_balance in core-engine/domain/config/config_test.go:
   - Create Config with account_balance=0.01 (minimum)
   - Assert validation passes (no arbitrary range constraints)
   - Create Config with account_balance=0 → should fail (strictly positive)
 
 ### Implementation Tasks (Write After Tests Fail)
 
-- [ ] T074 [US4] Enhance Validate() method in core-engine/domain/config/config.go with all constraints:
+- [X] T074 [US4] Enhance Validate() method in core-engine/domain/config/config.go with all constraints:
   - FR-009: margin_type ∈ {'cross', 'isolated'} — already in T034, verify coverage
   - FR-010: multiplier >= 1 — already in T034, verify coverage
   - FR-011: number_of_orders >= 1 — already in T034, verify coverage
@@ -544,14 +544,14 @@ These exact values MUST appear in test code and implementation must reproduce th
   - Add: price_entry > 0, price_scale > 0, amount_scale > 0 (geometric parameters required)
   - All error messages contain parameter name and actionable reason
 
-- [ ] T075 [US4] Add edge case handling in Validate() for E1–E5 in core-engine/domain/config/config.go:
+- [X] T075 [US4] Add edge case handling in Validate() for E1–E5 in core-engine/domain/config/config.go:
   - E1: amount_per_trade <= 1.0 → Store as-is; runtime interpretation for equity fraction
   - E2: amount_scale = 1.0 → Handled in ComputeAmountSequence (R=N, uniform ordering)
   - E3: number_of_orders = 1 → Allowed; ComputePriceSequence/ComputeAmountSequence return single-element arrays
   - E4: Invalid margin_type → Rejected in validation
   - E5: Very small account_balance → Allowed (>=0.01); trading feasibility separate concern
 
-- [ ] T076 [US4] Run Phase 6 test suite in core-engine/domain/config/:
+- [X] T076 [US4] Run Phase 6 test suite in core-engine/domain/config/:
   - Execute `go test ./... -v -run ".*US4.*"`
   - Verify all tests T066-T073 pass (green)
   - Assert no failing or skipped tests (SC-003)
@@ -570,23 +570,23 @@ These exact values MUST appear in test code and implementation must reproduce th
 
 ### Tasks
 
-- [ ] T077 [P] Create comprehensive docstrings in core-engine/domain/config/config.go:
+- [X] T077 [P] Create comprehensive docstrings in core-engine/domain/config/config.go:
   - Document each method with SDD section references
   - Include formula descriptions (FR-004, FR-006)
   - Document canonical test data references
   - Example: "// ComputePriceSequence computes the price sequence using formula from SDD §2.1, Eq. E2.1"
 
-- [ ] T078 [P] Create comprehensive docstrings in core-engine/domain/config/sequences.go:
+- [X] T078 [P] Create comprehensive docstrings in core-engine/domain/config/sequences.go:
   - Document geometric scaling formulas
   - Document edge cases (amount_scale=1.0, number_of_orders=1)
   - Include test case references
 
-- [ ] T079 [P] Add SDD traceability comments throughout core-engine/domain/config/config.go:
+- [X] T079 [P] Add SDD traceability comments throughout core-engine/domain/config/config.go:
   - Mark each Config parameter with SDD Section 4.1 reference
   - Mark validation constraints with FR numbers (FR-009 through FR-012)
   - Mark sequence formulas with SDD §2.1 and §2.2 references
 
-- [ ] T080 [P] Create core-engine/domain/config/README.md with comprehensive documentation:
+- [X] T080 [P] Create core-engine/domain/config/README.md with comprehensive documentation:
   - Package purpose and DCA strategy overview
   - All 13 Config parameters with defaults and constraints
   - Price Sequence formula (SDD §2.1)
@@ -595,12 +595,12 @@ These exact values MUST appear in test code and implementation must reproduce th
   - Edge case handling (E1–E5)
   - Example usage code (Config instantiation, sequence computation)
 
-- [ ] T081 [P] Add example code in core-engine/domain/config/README.md:
+- [X] T081 [P] Add example code in core-engine/domain/config/README.md:
   - Full worked example: Create Config → Validate → Compute sequences → Verify canonical data
   - Error handling patterns (ValidationError, SequenceComputationError)
   - Serialization/deserialization round-trip
 
-- [ ] T082 Create comprehensive FR-to-test mapping document in core-engine/domain/config/:
+- [X] T082 Create comprehensive FR-to-test mapping document in core-engine/domain/config/:
   - FR-001: Tests T016-T019, T024 (Config struct with 13 parameters)
   - FR-002: Tests T016, T025 (canonical defaults)
   - FR-003: Tests T018-T022, T026 (type validation)
@@ -617,47 +617,47 @@ These exact values MUST appear in test code and implementation must reproduce th
   - FR-014: Tests T028-T029 (serialization)
   - FR-015: Documentation (this task T082, T077-T080)
 
-- [ ] T083 [P] Create test summary document in core-engine/domain/config/:
+- [X] T083 [P] Create test summary document in core-engine/domain/config/:
   - List all 51 tasks
   - Count tests per phase: Phase 3 (15 tests), Phase 4 (9 tests), Phase 5 (10 tests), Phase 6 (8 tests)
   - List all 18 BDD acceptance scenarios with test task numbers
   - Confirm all 3 canonical test cases covered
 
-- [ ] T084 [P] Add error handling best practices documentation in core-engine/domain/config/README.md:
+- [X] T084 [P] Add error handling best practices documentation in core-engine/domain/config/README.md:
   - How to handle ValidationError (type assert, extract parameter name)
   - How to handle SequenceComputationError (retry with different params?)
   - How to verify sum invariant and precision
 
-- [ ] T085 Run full test suite with all phases in core-engine/domain/config/:
+- [X] T085 Run full test suite with all phases in core-engine/domain/config/:
   - Execute `go test ./... -v`
   - Count passing tests (target: all tests passing)
   - Verify no failing or skipped tests (SC-003: 100% pass rate)
   - Assert latency <1ms for Config instantiation (SC-001)
 
-- [ ] T086 Generate test coverage report in core-engine/domain/config/:
+- [X] T086 Generate test coverage report in core-engine/domain/config/:
   - Execute `go test ./... -cover`
   - Target coverage: >95% for all package code
   - Identify any uncovered branches and add tests if needed
 
-- [ ] T087 Run canonical test data verification in core-engine/domain/config/:
+- [X] T087 Run canonical test data verification in core-engine/domain/config/:
   - Verify Test Case 1 (Price Sequence): P values match exactly
   - Verify Test Case 2 (Amount Sequence): A values match exactly, sum=1000.00
   - Verify Test Case 3 (Defaults): All 13 defaults match SDD Table 4.1
   - Assert zero precision loss (SC-002)
 
-- [ ] T088 Create BDD acceptance test summary in core-engine/domain/config/:
+- [X] T088 Create BDD acceptance test summary in core-engine/domain/config/:
   - Document 18 acceptance scenarios (4 per user story)
   - Map each scenario to test task number
   - Confirm all scenarios are Given/When/Then executable
 
-- [ ] T089 Verify constitution gates before merge in core-engine/domain/config/:
+- [X] T089 Verify constitution gates before merge in core-engine/domain/config/:
   - ✅ Green Light Protocol: All tests green (SC-003)
   - ✅ Fixed-Point Arithmetic: All math via decimal.Decimal, ROUND_HALF_UP (FR-013)
   - ✅ BDD Acceptance: All 18 scenarios executable (test coverage)
   - ✅ SDD Canonical Truth: Test Cases 1, 2, 3 pass (SC-002)
   - ✅ No live trading: Config is data structure only (FR-001)
 
-- [ ] T090 Create INTEGRATION_CHECKLIST.md in core-engine/domain/config/:
+- [X] T090 Create INTEGRATION_CHECKLIST.md in core-engine/domain/config/:
   - Before merging to main: confirm all 51 tasks complete
   - All tests passing, no skipped tests
   - All 15 FRs have dedicated test coverage
@@ -723,13 +723,13 @@ After **Phase 2 completion** (US1 complete), assign separate teams:
 ### Test Coverage (SC-003)
 - [ ] All 15 FRs (FR-001–FR-015) have passing automated test cases
 - [ ] Zero failing tests, zero skipped tests before merge
-- [ ] Test tasks: T016-T030 (US1), T039-T047 (US2), T052-T061 (US3), T066-T073 (US4)
+- [X] Test tasks: T016-T030 (US1), T039-T047 (US2), T052-T061 (US3), T066-T073 (US4)
 
 ### Canonical Data Validation (SC-002)
-- [ ] Test Case 1 (Price Sequence): P values exact to last digit
-- [ ] Test Case 2 (Amount Sequence): A values exact, sum=C*m exactly
-- [ ] Test Case 3 (Defaults): All 13 parameters match SDD Table 4.1 exactly
-- [ ] Test tasks: T016 (defaults), T039 (prices), T052 (amounts)
+- [X] Test Case 1 (Price Sequence): P values exact to last digit
+- [X] Test Case 2 (Amount Sequence): A values exact, sum=C*m exactly
+- [X] Test Case 3 (Defaults): All 13 parameters match SDD Table 4.1 exactly
+- [X] Test tasks: T016 (defaults), T039 (prices), T052 (amounts)
 
 ### Performance (SC-001 & SC-004)
 - [ ] Config instantiation <1ms (task T038, T085)
