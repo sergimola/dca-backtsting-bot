@@ -23,10 +23,9 @@
 
 ## Requirement Completeness
 
-- [x] No [NEEDS CLARIFICATION] markers remain in critical sections
-  - ⚠️ One marker exists: Canonical Test Data table for liquidation price calculation
-  - ℹ️ This is acceptable—marker indicates exact legacy bot trace value must be extracted during implementation phase
-  - ✓ All other requirements are unambiguous
+- [x] No [NEEDS CLARIFICATION] markers remain
+  - ✓ All requirements are unambiguous and fully specified
+  - ✓ Canonical test data includes exact liquidation price value derived from legacy bot
   
 - [x] Requirements are testable and unambiguous
   - ✓ Each FR (FR-001 through FR-012) defines observable behavior, boundary conditions, or output format
@@ -79,7 +78,8 @@
 ## Test Data & Constitution Compliance
 
 - [x] Canonical test data includes hard mathematical cases
-  - ✓ 8 test cases provided with expected Decimal values for price grids, order amounts, averaging, liquidation
+  - ✓ 8 test cases provided with exact Decimal values for price grids, order amounts, averaging, liquidation
+  - ✓ Liquidation test case with exact calculated value: `50.33725964`
   - ✓ Gap-down paradox rule includes explicit test scenario
   - ✓ Liquidation edge case (closed position with full loss) included
   
@@ -96,7 +96,7 @@
 
 - **Spec Status**: ✅ **APPROVED FOR PLANNING**
   - All mandatory sections complete
-  - Single [NEEDS CLARIFICATION] marker is acceptable (deferred detail for implementation trace)
+  - All requirements fully specified with no deferred details
   - Requirements are testable, measurable, and unambiguous
   - No implementation details present
   - Strong binding to SDD Sections 3.1–3.2 with explicit cross-references

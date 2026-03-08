@@ -124,12 +124,12 @@ This section provides hard test cases derived from the canonical Python bot to e
 | Input State | Action | Expected Exact Value (Decimal) | Legacy Bot Reference |
 |---|---|---|---|
 | `P0=100.00`, `entry=2.0%`, `scale=1.1` | Calculate `P1` | `98.00000000` | SDD § 2.1, price grid formula |
-| `P0=100.00`, `P1=98.00`, `entry=2.0%`, `scale=1.1` | Calculate `P2` | `95.96000000` | SDD § 2.1, apply $s_p^1 = 1.1$ |
-| `amount_per_trade=100.0`, `amount_scale=2.0`, `n=3` orders | Calculate `A[0]`, `A[1]`, `A[2]` at indices 0,1,2 | `A[0]=14.285714...`, `A[1]=28.571428...`, `A[2]=57.142857...` (sum = 100.0) | SDD § 2.2, geometric weighting |
-| Position: `Q1=1.0` @ `P1=98.00`, `Q2=1.0` @ `P2=95.96` | Calculate average entry `Pbar` | `96.98000000` | SDD § 2.3, size-weighted average |
-| `Pbar=96.98`, `take_profit_distance=0.5%` | Calculate take-profit target | `97.48490000` | SDD § 2.4, $P_{tp} = \bar{P} \times 1.005$ |
-| `account_balance=1000.0`, `position_size=10.0`, `Pbar=95.00`, `mmr=0.0067` | Calculate liquidation price | [NEEDS CLARIFICATION: must extract exact value from legacy bot trace] | SDD § 2.5, liquidation formula |
-| Candle: `open=97.00`, `low=95.00`, trigger `P[2]=95.96` | Gap-down fill scenario | Fill at exactly `P[2]=95.96`, not at `open=97.00` | SDD § 3.2, Gap-Down Paradox Rule |
+| `P0=100.00`, `P1=98.00`, `entry=2.0%`, `scale=1.1` | Calculate `P2` | `95.84400000` | SDD § 2.1, apply $s_p^1 = 1.1$ |
+| `amount_per_trade=100.0`, `amount_scale=2.0`, `n=3` orders | Calculate `A[0]`, `A[1]`, `A[2]` | `A[0]=14.28571428`, `A[1]=28.57142857`, `A[2]=57.14285715` | SDD § 2.2, geometric weighting |
+| Position: `Q1=1.0` @ `P1=98.00`, `Q2=1.0` @ `P2=95.844` | Calculate average entry `Pbar` | `96.92200000` | SDD § 2.3, size-weighted average |
+| `Pbar=96.922`, `take_profit_distance=0.5%` | Calculate take-profit target | `97.40661000` | SDD § 2.4, $P_{tp} = \bar{P} \times 1.005$ |
+| `account_balance=1000.0`, `position_size=20.0`, `Pbar=100.00`, `mmr=0.0067` | Calculate liquidation price | `50.33725964` | SDD § 2.5, liquidation formula |
+| Candle: `open=97.00`, `low=95.00`, trigger `P[2]=95.844` | Gap-down fill scenario | Fill at exactly `P[2]=95.844`, not at `open=97.00` | SDD § 3.2, Gap-Down Paradox Rule |
 | Position open, `liquidation_price=90.00`, candle `low=89.50` | Liquidation trigger | Position closed, `profit = -account_balance` | SDD § 3.1 step 5 |
 
 ### Edge Cases
