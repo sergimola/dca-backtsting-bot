@@ -671,7 +671,7 @@
 
 **CRITICAL MANUAL VERIFICATION TASK**:
 
-- [ ] T080 **VISUAL: Verify Results Dashboard components render correctly at localhost:5173**
+- [X] T080 **VISUAL: Verify Results Dashboard components render correctly at localhost:5173**
   - Ensure dev server is still running or restart: `cd frontend && npm run dev`
   - Manually navigate to Results view (or mock API to return completed status immediately)
   - **PnlSummary Verification**:

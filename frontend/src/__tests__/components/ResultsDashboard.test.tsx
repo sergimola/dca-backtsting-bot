@@ -56,40 +56,34 @@ describe('ResultsDashboard Component Tests', () => {
   test('T066.2: Component renders Results Dashboard header', () => {
     render(<ResultsDashboard results={mockResults} {...mockHandlers} />)
 
-    // Should show backtest ID in header or title
-    expect(screen.getByText(/Results|Backtest/i)).toBeInTheDocument()
+    // Should show the main dashboard heading
+    expect(screen.getByText('Backtest Results')).toBeInTheDocument()
+    // Should show the backtest ID
+    expect(screen.getByText('Backtest ID: test-123')).toBeInTheDocument()
   })
 
   test('T066.3: Component renders action buttons', () => {
     render(<ResultsDashboard results={mockResults} {...mockHandlers} />)
 
-    // Should have buttons for actions
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThanOrEqual(2)
+    // Should have the specific action buttons
+    expect(screen.getByText('Run New Backtest')).toBeInTheDocument()
+    expect(screen.getByText('Modify & Re-run')).toBeInTheDocument()
   })
 
   test('T066.4: Run New Backtest button triggers onReset callback', () => {
-    render(<ResultsDashboard results={mockResults} {...mockHandlers} />)
+    const handlers = { onReset: jest.fn(), onModify: jest.fn() }
+    render(<ResultsDashboard results={mockResults} {...handlers} />)
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThan(0)
-
-    // Click first button and verify onReset might be called
-    if (buttons[0]) {
-      fireEvent.click(buttons[0])
-    }
+    fireEvent.click(screen.getByText('Run New Backtest'))
+    expect(handlers.onReset).toHaveBeenCalledTimes(1)
   })
 
   test('T066.5: Modify & Re-run button triggers onModify callback', () => {
-    render(<ResultsDashboard results={mockResults} {...mockHandlers} />)
+    const handlers = { onReset: jest.fn(), onModify: jest.fn() }
+    render(<ResultsDashboard results={mockResults} {...handlers} />)
 
-    const buttons = screen.getAllByRole('button')
-    expect(buttons.length).toBeGreaterThan(1)
-
-    // Click second button and verify
-    if (buttons[1]) {
-      fireEvent.click(buttons[1])
-    }
+    fireEvent.click(screen.getByText('Modify & Re-run'))
+    expect(handlers.onModify).toHaveBeenCalledTimes(1)
   })
 
   test('T066.6: PnlSummary receives correct props', () => {
@@ -102,7 +96,8 @@ describe('ResultsDashboard Component Tests', () => {
   test('T066.7: SafetyOrderChart receives correct props', () => {
     render(<ResultsDashboard results={mockResults} {...mockHandlers} />)
 
-    // Should display safety order data
+    // Switch to list view so data labels are visible in DOM
+    fireEvent.click(screen.getByText(/Switch to List View/i))
     expect(screen.getByText('SO1')).toBeInTheDocument()
   })
 
@@ -129,7 +124,8 @@ describe('ResultsDashboard Component Tests', () => {
 
     render(<ResultsDashboard results={resultsWithNoSO} {...mockHandlers} />)
 
-    // Should still render without crashing
-    expect(screen.getByText(/Results|Backtest|metrics/i)).toBeInTheDocument()
+    // Header and metrics should still render
+    expect(screen.getByText('Backtest Results')).toBeInTheDocument()
+    expect(screen.getByText('Performance Metrics')).toBeInTheDocument()
   })
 })

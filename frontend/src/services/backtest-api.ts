@@ -6,7 +6,7 @@ import type { BacktestConfiguration, BacktestResults } from './types'
  * Handles submission, status polling, and results retrieval
  */
 
-const API_BASE_URL = process.env.VITE_API_BASE_URL || 'http://localhost:4000/api'
+const API_BASE_URL = (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || 'http://localhost:4000/api'
 
 /**
  * Get headers for API requests

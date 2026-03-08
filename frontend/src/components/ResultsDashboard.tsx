@@ -45,9 +45,8 @@ export function ResultsDashboard({ results, onReset, onModify }: ResultsDashboar
 
       {/* Charts and Table - 2 Column Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* SafetyOrderChart - Left */}
+        {/* SafetyOrderChart - Left (SafetyOrderChart renders its own title) */}
         <section>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Safety Order Usage</h2>
           <div className="bg-white rounded-lg shadow p-6">
             <SafetyOrderChart soUsageData={results.safetyOrderUsage} />
           </div>

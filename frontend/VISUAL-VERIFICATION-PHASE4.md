@@ -208,3 +208,75 @@ Generated: 2026-03-08
 Verification Tool: Playwright MCP  
 Browser: Chromium-based  
 Test Environment: http://localhost:5173
+
+---
+
+# VISUAL VERIFICATION - Phase 17: Results Dashboard Components
+
+**Date**: 2026-03-08  
+**Task**: T080  
+**Status**: ✅ VERIFIED & PASSING  
+**Dev Server**: http://localhost:5173  
+**Test Suite Prior**: 212/212 passing
+
+## Console Status
+- **Errors**: 0 ✅  
+- **Warnings**: 0 ✅  
+- Only Info: React DevTools suggestion (expected, not an error)
+
+## PnlSummary Verification
+
+| Element | Expected | Actual | Status |
+|---------|----------|--------|--------|
+| Section heading | "Performance Metrics" | "Performance Metrics" | ✅ |
+| Card title | "Profit & Loss Summary" | "Profit & Loss Summary" | ✅ |
+| ROI value | `15.50%` | `15.50%` | ✅ |
+| ROI tooltip | "Total profit as percentage..." | Present | ✅ |
+| Max Drawdown | `8.30%` | `8.30%` | ✅ |
+| Max Drawdown tooltip | "Largest peak-to-trough..." | Present | ✅ |
+| Total Fees | `125.50$` | `125.50$` | ✅ |
+| Total Fees tooltip | "Total trading fees paid..." | Present | ✅ |
+
+## SafetyOrderChart Verification
+
+| Element | Expected | Actual | Status |
+|---------|----------|--------|--------|
+| Section heading | "Safety Order Usage" | "Safety Order Usage" (h3) | ✅ |
+| Default view | Bar chart | BarChart with axes rendered | ✅ |
+| X-axis | SO level labels | SO2, SO4 visible in SVG | ✅ |
+| Y-axis | Count values | 0, 2, 4, 6, 8 | ✅ |
+| Legend | "Orders Triggered" | "Orders Triggered" | ✅ |
+| Toggle button | "Switch to List View" | "Switch to List View" | ✅ |
+| List view | SO table with counts | Rows with SO1–SO4 on click | ✅ |
+
+## TradeEventsTable Verification
+
+| Element | Expected | Actual | Status |
+|---------|----------|--------|--------|
+| Section heading | "Trade Events" | "Trade Events" | ✅ |
+| Columns | Timestamp, Event Type, Price, Quantity, Balance | All 5 columns present | ✅ |
+| Default sort | Timestamp ascending (↑) | "Timestamp ↑" header | ✅ |
+| Price format | 8 decimal places | `42000.00000000` | ✅ |
+| Quantity format | 8 decimal places | `0.50000000` | ✅ |
+| Balance format | `$` + 2 decimals | `$21000.00` | ✅ |
+| Pagination | Showing X-Y of Z | "Showing 1-4 of 4 items" | ✅ |
+| Page info | "Page 1 of 1" | "Page 1 of 1" | ✅ |
+
+## Results Dashboard Layout
+
+| Element | Expected | Actual | Status |
+|---------|----------|--------|--------|
+| Main heading | "Backtest Results" (h1) | "Backtest Results" | ✅ |
+| Backtest ID line | "Backtest ID: visual-test-001" | "Backtest ID: visual-test-001" | ✅ |
+| Action: Run New Backtest | Button visible | Button present | ✅ |
+| Action: Modify & Re-run | Button visible | Button present | ✅ |
+| Layout | Full-width metrics + 2-col grid | Grid layout rendered | ✅ |
+
+## Final Test Results
+
+```
+Test Suites: 15 passed, 15 total
+Tests:       212 passed, 212 total
+```
+
+Verified: 2026-03-08 · Playwright MCP · Chromium · http://localhost:5173
