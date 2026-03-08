@@ -120,12 +120,12 @@ This task list implements Feature 004 - API Layer as a **Test-Driven Development
   - Throws ProcessError on non-zero exit code with stderr content
   - File: ~350 lines with comments
 
-- [ ] T017 [P] Implement ndjson event parser `orchestrator/api/src/utils/EventBusParser.ts` with function parseEventLine(line: string): TradeEvent:
+- [x] T017 [P] Implement ndjson event parser `orchestrator/api/src/utils/EventBusParser.ts` with function parseEventLine(line: string): TradeEvent: ✅
   - Parses JSON line into typed TradeEvent (PositionOpenedEvent | OrderFilledEvent | PositionClosedEvent | LiquidationEvent | GapDownEvent)
   - Validates event structure matches contract /contracts/trade-event.ts
   - Throws ParseError with line number if JSON invalid or schema mismatch
   - Recursively validates nested PositionState objects
-  - File: ~200 lines with examples
+  - File: ~200 lines with examples ✅
 
 - [ ] T018 [P] Create error mapper `orchestrator/api/src/services/ErrorMapper.ts` with function mapSubprocessError(stderr: string, exitCode: number): ErrorDetails:
   - Maps Core Engine stderr patterns to error codes:
@@ -167,7 +167,7 @@ This task list implements Feature 004 - API Layer as a **Test-Driven Development
 
 ### TDD: PnlSummary Calculation Tests → Implementation
 
-- [ ] T020 [P] Write test file `orchestrator/api/src/services/ResultAggregator.test.ts` with 25+ test cases covering:
+- [x] T020 [P] Write test file `orchestrator/api/src/services/ResultAggregator.test.ts` with 25+ test cases covering:
   - ✅ Simple single-entry scenario: 1 PositionOpenedEvent → PositionClosedEvent → PnlSummary with no fills, total_pnl = -entry_fee
   - ✅ Multi-fill DCA scenario: PositionOpened → 3x OrderFilled at prices [100, 95, 90] → PositionClosed → PnlSummary.total_fills = 3, safety_order_usage_counts = { "0": 1, "1": 1, "2": 1 }
   - ✅ Liquidation scenario: PositionOpened → 2x OrderFilled → LiquidationEvent → PnlSummary includes liquidation_fee, status = LIQUIDATED
@@ -182,7 +182,7 @@ This task list implements Feature 004 - API Layer as a **Test-Driven Development
   - Edge case: safety order index mapping (sequences[i] indices)
   - File: ~500 lines
 
-- [ ] T021 Implement `orchestrator/api/src/services/ResultAggregator.ts` with class ResultAggregator:
+- [x] T021 Implement `orchestrator/api/src/services/ResultAggregator.ts` with class ResultAggregator:
   - **Constructor**: takes Decimal helper for arithmetic
   - **Method**: async aggregateEvents(events: TradeEvent[]): Promise<PnlSummary>
   - Validates events in timestamp order
@@ -198,7 +198,7 @@ This task list implements Feature 004 - API Layer as a **Test-Driven Development
   - Returns complete PnlSummary object with all fields including safety_order_usage_counts: Record<number, number>
   - File: ~400 lines
 
-- [ ] T022 [P] Implement `orchestrator/api/src/utils/PrecisionFormatter.ts` with formatters:
+- [x] T022 [P] Implement `orchestrator/api/src/utils/PrecisionFormatter.ts` with formatters:
   - function formatPrice(value: Decimal): string → 8 decimal places (e.g., "100.50000000")
   - function formatAmount(value: Decimal): string → 8 decimal places (e.g., "10.25000000")
   - function formatPercentage(value: Decimal): string → 2 decimal places (e.g., "5.50")
@@ -206,7 +206,7 @@ This task list implements Feature 004 - API Layer as a **Test-Driven Development
   - All formatters use Decimal.toFixed() with explicit precision
   - File: ~150 lines
 
-- [ ] T023 [P] Write test coverage `orchestrator/api/src/services/EventBusParser.test.ts` with 12+ test cases:
+- [x] T023 [P] Write test coverage `orchestrator/api/src/services/EventBusParser.test.ts` with 12+ test cases:
   - ✅ Parse complete Event Bus sequence (5+ different event types in order)
   - ✅ Validate nested PositionState in each event
   - ✅ Handle gap-down events with fill array
@@ -215,7 +215,7 @@ This task list implements Feature 004 - API Layer as a **Test-Driven Development
   - ❌ Reject events with missing required fields
   - ❌ Reject events with wrong event type strings
 
-- [ ] T024 Create integration test `orchestrator/api/src/integration/event-aggregation.integration.test.ts`:
+- [x] T024 Create integration test `orchestrator/api/src/integration/event-aggregation.integration.test.ts`:
   - ✅ End-to-end: Mock binary output → BacktestService.execute() → raw TradeEvent[]
   - ✅ Then: ResultAggregator.aggregateEvents() → complete PnlSummary
   - ✅ Verify: PnlSummary matches canonical test data (see spec.md canonical test data table)
