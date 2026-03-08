@@ -18,6 +18,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -107,6 +108,28 @@ func (c *Config) Validate() error {
 			Message: fmt.Sprintf("must be 'cross' or 'isolated', got '%s'", c.marginType),
 		}
 	}
+	
+	// Date Validation
+	layout := time.DateTime // "2006-01-02 15:04:05"
+	start, errStart := time.Parse(layout, c.startDate)
+	end, errEnd := time.Parse(layout, c.endDate)
+
+	if errStart == nil && errEnd == nil {
+		if end.Before(start) {
+			return &ValidationError{
+				Field:   "end_date",
+				Value:   c.endDate,
+				Message: "end_date must be greater than or equal to start_date",
+			}
+		}
+	} else {
+		return &ValidationError{
+			Field:   "start_date/end_date",
+			Value:   fmt.Sprintf("%s / %s", c.startDate, c.endDate),
+			Message: "dates must be in 'YYYY-MM-DD HH:MM:SS' format",
+		}
+	}
+
 	one := decimal.NewFromInt(1)
 	if c.multiplier.LessThan(one) {
 		return &ValidationError{Field: "multiplier", Value: c.multiplier.String(), Message: "must be >= 1"}
