@@ -157,7 +157,7 @@
 
 **Implementation Tasks**:
 
-- [ ] T030 Create `frontend/src/components/ConfigurationForm.tsx` React component:
+- [X] T030 Create `frontend/src/components/ConfigurationForm.tsx` React component:
   - Props: `{ onSubmit: (config: BacktestConfiguration) => void; initialValues?: BacktestConfiguration; isSubmitting?: boolean; serverErrors?: Record<string, string>; }`
   - State: `{ values: BacktestConfiguration, touched: Record<string, boolean>, errors: Record<string, string>, isValid: boolean }`
   - Render form with 5 input fields:
@@ -170,15 +170,15 @@
   - Submit button: `disabled={!isValid || isSubmitting}`
   - Clear button: reset form to initial values
   - Use TailwindCSS classes for styling: `m-4`, `p-4`, `border`, `rounded`, `bg-red-50` (for errors)
-- [ ] T031 Implement form validation integration: call `useFormValidation` on every field change
-- [ ] T032 [P] Implement Amounts array handling: allow users to add/remove amounts dynamically:
+- [X] T031 Implement form validation integration: call `useFormValidation` on every field change
+- [X] T032 [P] Implement Amounts array handling: allow users to add/remove amounts dynamically:
   - [+Add] button creates new input field
   - [- Remove] button for each amount (can't remove if only 1 amount)
   - Show validation errors if any amount is invalid
-- [ ] T033 [P] Create `frontend/src/components/FormInput.tsx` reusable input sub-component:
+- [X] T033 [P] Create `frontend/src/components/FormInput.tsx` reusable input sub-component:
   - Props: `{ label: string; type: string; value: any; onChange: (value: any) => void; error?: string; touched?: boolean; placeholder?: string; ...inputProps }`
   - Render: label, input field, error message (in red if error & touched)
-- [ ] T034 Create component tests for ConfigurationForm in `frontend/src/__tests__/components/ConfigurationForm.test.tsx`:
+- [X] T034 Create component tests for ConfigurationForm in `frontend/src/__tests__/components/ConfigurationForm.test.tsx`:
   - Test render: form displays all 5 fields with labels
   - Test input change: typing in field updates value and triggers validation
   - Test validation error display: invalid field shows error message in red
@@ -188,7 +188,7 @@
   - Test clear button: click clear → all fields reset to defaults
   - Test initialValues: form pre-populates when initialValues prop provided
   - Test isSubmitting: submit button shows spinner when isSubmitting=true
-- [ ] T035 [P] Run tests: `cd frontend && npm test -- components/ConfigurationForm` → verify all form tests pass
+- [X] T035 [P] Run tests: `cd frontend && npm test -- components/ConfigurationForm` → verify all form tests pass
 
 ---
 
