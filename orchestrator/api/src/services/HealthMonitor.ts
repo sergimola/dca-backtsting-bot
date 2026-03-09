@@ -33,6 +33,7 @@ export interface HealthResponse {
     depth: number;
     active_count: number;
     max_workers: number;
+    processed: number;
   };
   performance: {
     error_rate_percent: number;
@@ -97,6 +98,7 @@ export class HealthMonitor {
         depth: queueMetrics.queue_depth,
         active_count: queueMetrics.active_count,
         max_workers: queueMetrics.queue_depth + queueMetrics.active_count, // Simplified for MVP
+        processed: queueMetrics.total_completed,
       },
       performance: {
         error_rate_percent: Math.round(errorRatePercent * 100) / 100,

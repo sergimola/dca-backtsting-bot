@@ -109,7 +109,7 @@ import { setupTestApp, cleanupTestApp, createValidBacktestRequest, getTestServic
     it('should return same result when idempotency_key is reused', async () => {
       const validRequest = {
         ...createValidBacktestRequest(),
-        idempotency_key: `test-idempotency-${Date.now()}`,
+        idempotency_key: require('crypto').randomUUID(),
       };
 
       // First request

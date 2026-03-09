@@ -28,7 +28,7 @@ import { ResultCleanupJob } from './jobs/ResultCleanupJob';
 async function main(): Promise<void> {
   try {
     // Read configuration from environment
-    const port = parseInt(process.env.PORT || '3000', 10);
+    const port = parseInt(process.env.PORT || '4000', 10);
     const coreEngineBinaryPath = process.env.CORE_ENGINE_BINARY_PATH || './core-engine';
     const storagePath = process.env.STORAGE_PATH || './storage';
     const resultsTtlDays = parseInt(process.env.RESULTS_TTL_DAYS || '7', 10);

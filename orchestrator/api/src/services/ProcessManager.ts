@@ -5,7 +5,7 @@
  * to execute them concurrently up to maxWorkers limit.
  */
 
-import { BacktestRequest } from '../types';
+
 
 /**
  * Status of a pending or executing backtest
@@ -17,7 +17,7 @@ export type BacktestStatus = 'pending' | 'running' | 'complete' | 'failed';
  */
 interface PendingBacktest {
   requestId: string;
-  request: BacktestRequest;
+  executeFn: () => Promise<void>;
   status: BacktestStatus;
   createdAtMs: number;
   startedAtMs?: number;
@@ -56,6 +56,7 @@ export interface ProcessMetrics {
 export class ProcessManager {
   private queue: PendingBacktest[] = [];
   private work: Map<string, PendingBacktest> = new Map();
+  private _isRunning = false;
   private metrics = {
     total_completed: 0,
     total_failed: 0,
@@ -73,25 +74,61 @@ export class ProcessManager {
   /**
    * Enqueue a backtest for execution
    *
-   * @param requestId - Unique identifier for this backtest
-   * @param request - BacktestRequest configuration
-   * @returns requestId (for tracking)
+   * @param jobId - Unique identifier for this backtest
+   * @param executeFn - Async callback that performs the actual execution
+   * @returns jobId (for tracking)
    *
    * @example
-   * const requestId = await manager.enqueue('req-123', backtestRequest);
+   * const jobId = await manager.enqueue('req-123', () => service.execute(req));
    */
-  async enqueue(requestId: string, request: BacktestRequest): Promise<string> {
+  async enqueue(jobId: string, executeFn: () => Promise<void>): Promise<string> {
     const pending: PendingBacktest = {
-      requestId,
-      request,
+      requestId: jobId,
+      executeFn,
       status: 'pending',
       createdAtMs: Date.now(),
     };
 
     this.queue.push(pending);
-    this.work.set(requestId, pending);
+    this.work.set(jobId, pending);
 
-    return requestId;
+    // Fire-and-forget: start processing if idle
+    this._processNext();
+
+    return jobId;
+  }
+
+  /**
+   * Internal FIFO processor — runs one job at a time.
+   * If a job is already running, returns immediately.
+   * After a job finishes (success or failure), calls itself again.
+   */
+  private async _processNext(): Promise<void> {
+    if (this._isRunning) return;
+
+    const job = this.queue.shift();
+    if (!job) return;
+
+    this._isRunning = true;
+    job.status = 'running';
+    job.startedAtMs = Date.now();
+
+    try {
+      await job.executeFn();
+      job.status = 'complete';
+      job.completedAtMs = Date.now();
+      const executionMs = job.completedAtMs - job.startedAtMs!;
+      this.metrics.execution_times.push(executionMs);
+      this.metrics.total_completed++;
+    } catch (err) {
+      job.status = 'failed';
+      job.completedAtMs = Date.now();
+      job.error = err as Error;
+      this.metrics.total_failed++;
+    } finally {
+      this._isRunning = false;
+      this._processNext();
+    }
   }
 
   /**
@@ -181,10 +218,5 @@ export class ProcessManager {
     return this.queue.shift();
   }
 
-  /**
-   * Get request details for a given requestId
-   */
-  getRequest(requestId: string): BacktestRequest | undefined {
-    return this.work.get(requestId)?.request;
-  }
+
 }

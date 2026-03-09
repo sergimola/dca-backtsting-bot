@@ -11,12 +11,13 @@ import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
 import { ResultStore } from '../services/ResultStore';
 import { ProcessManager } from '../services/ProcessManager';
-import { BacktestService } from '../services/BacktestService';
+import { BacktestService, BacktestExecutionResult } from '../services/BacktestService';
 import { ResultAggregator } from '../services/ResultAggregator';
 import { IdempotencyCache } from '../services/IdempotencyCache';
-import { getValidatedBacktestRequest } from '../middleware/validation.middleware';
+import { getValidatedBacktestRequest, validationMiddleware } from '../middleware/validation.middleware';
 import { validateIdempotencyKey, isValidUuid } from '../utils/RequestIdGenerator';
 import { BacktestResult } from '../types';
+import { StorageError } from '../types/errors';
 
 /**
  * Create backtest router with wired services
@@ -42,7 +43,7 @@ export function createBacktestRouter(
    * 5. On completion: BacktestService executes, ResultAggregator computes PnL, ResultStore saves
    * 6. Return HTTP 200 with BacktestResult
    */
-  router.post('/backtest', async (req: Request, res: Response, next: NextFunction) => {
+  router.post('/backtest', validationMiddleware, async (req: Request, res: Response, next: NextFunction) => {
     try {
       const requestId = (req as any).requestId;
       const backtestReq = getValidatedBacktestRequest(req);
@@ -61,9 +62,14 @@ export function createBacktestRouter(
       // Generate unique request ID for backtest
       const backtestRequestId = crypto.randomUUID();
 
-      // Queue backtest
+      // Capture execution result via closure so the poll loop can access it
+      let execResult: BacktestExecutionResult | null = null;
+
+      // Queue backtest — the callback runs the Go binary
       console.log(`[${requestId}] Enqueuing backtest with ID ${backtestRequestId}`);
-      await processManager.enqueue(backtestRequestId, backtestReq);
+      await processManager.enqueue(backtestRequestId, async () => {
+        execResult = await backtestService.execute(backtestReq);
+      });
 
       // Poll for completion (max 35 seconds)
       const maxPollTime = 35000;
@@ -75,20 +81,23 @@ export function createBacktestRouter(
         const statusValue = statusResult || 'pending';
 
         if (statusValue === 'complete') {
-          // Retrieve events from BacktestService
-          const execResult = await backtestService.execute(backtestReq);
+          // Use execution result captured by the enqueue callback.
+          // TypeScript CFA narrows execResult to 'never' here (fire-and-forget closure),
+          // so we use a double cast; runtime safety is guaranteed since this branch is
+          // only reached after _processNext() has set the status to 'complete'.
+          const completedResult = execResult as unknown as BacktestExecutionResult;
 
           // Aggregate events into PnlSummary
-          const pnlSummary = await resultAggregator.aggregateEvents(execResult.events);
+          const pnlSummary = await resultAggregator.aggregateEvents(completedResult.events);
 
           // Build BacktestResult
           result = {
             request_id: backtestRequestId,
             status: 'success',
-            events: execResult.events,
-            final_position: execResult.events[execResult.events.length - 1].position_state,
+            events: completedResult.events,
+            final_position: completedResult.events[completedResult.events.length - 1].position_state,
             pnl_summary: pnlSummary,
-            execution_time_ms: execResult.executionTimeMs,
+            execution_time_ms: completedResult.executionTimeMs,
             timestamp: new Date().toISOString(),
           };
 
@@ -210,7 +219,18 @@ export function createBacktestRouter(
       const result = await resultStore.retrieve(requestIdStr);
       res.status(200).json(result);
     } catch (error: any) {
-      next(error);
+      // Return 404 for not-found / expired results instead of generic 500
+      if (error instanceof StorageError && (error.message.includes('not found') || error.message.includes('expired'))) {
+        return res.status(404).json({
+          error: {
+            code: 'RESULT_NOT_FOUND',
+            http_status: 404,
+            message: 'Backtest result not found',
+            timestamp: new Date().toISOString(),
+          },
+        });
+      }
+      return next(error);
     }
   });
 
@@ -231,7 +251,7 @@ export function createBacktestRouter(
 
       // Validate required params
       if (!from || !to) {
-        res.status(400).json({
+        return res.status(400).json({
           error: {
             code: 'VALIDATION_MISSING_FIELD',
             http_status: 400,
@@ -241,11 +261,8 @@ export function createBacktestRouter(
         });
       }
 
-      // Validate date format
-      try {
-        new Date(from as string);
-        new Date(to as string);
-      } catch {
+      // Validate date format (new Date("invalid") does not throw — use isNaN)
+      if (isNaN(new Date(from as string).getTime()) || isNaN(new Date(to as string).getTime())) {
         return res.status(400).json({
           error: {
             code: 'VALIDATION_TYPE_ERROR',
@@ -273,7 +290,7 @@ export function createBacktestRouter(
       const pageSize = Math.min(200, Math.max(1, parseInt(limit as string) || 50));
 
       // Query
-      const result = await resultStore.queryByDateRange(
+      const queryResult = await resultStore.queryByDateRange(
         from as string,
         to as string,
         (status === 'all' || status === 'success' || status === 'failed' ? status : 'all') as any,
@@ -281,7 +298,17 @@ export function createBacktestRouter(
         pageSize,
       );
 
-      return res.status(200).json(result);
+      // Transform pagination to match API contract
+      const pageCount = Math.ceil(queryResult.pagination.total_count / pageSize);
+      return res.status(200).json({
+        results: queryResult.results,
+        pagination: {
+          page: pageNum,
+          limit: pageSize,
+          total: queryResult.pagination.total_count,
+          page_count: pageCount,
+        },
+      });
     } catch (error: any) {
       return next(error);
     }

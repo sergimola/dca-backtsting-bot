@@ -14,7 +14,6 @@ import { ResultAggregator } from './services/ResultAggregator';
 import { IdempotencyCache } from './services/IdempotencyCache';
 import { HealthMonitor } from './services/HealthMonitor';
 import { requestLoggerMiddleware } from './middleware/request-logger.middleware';
-import { validationMiddleware } from './middleware/validation.middleware';
 import { errorHandlerMiddleware } from './middleware/error-handler.middleware';
 import { createBacktestRouter } from './routes/backtest.routes';
 import { createHealthRouter } from './routes/health.routes';
@@ -46,8 +45,7 @@ export function createApp(services: AppServices): Express {
   // 2. Request logger (attaches request_id)
   app.use(requestLoggerMiddleware);
 
-  // 3. Request validation (uses validateBacktestRequest from Phase 1)
-  app.use(validationMiddleware);
+  // Note: validationMiddleware is applied per-route in backtest.routes.ts
 
   // 4. Mount routes
   app.use('/', createBacktestRouter(

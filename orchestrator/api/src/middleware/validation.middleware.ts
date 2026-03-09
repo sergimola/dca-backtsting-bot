@@ -31,10 +31,22 @@ export function validationMiddleware(req: Request, _res: Response, next: NextFun
 
     next();
   } catch (error: any) {
-    // Convert validation errors to structured ValidationError
+    // Map constraint name (from configuration.ValidationError) to the proper ErrorCode
+    const CONSTRAINT_TO_CODE: Record<string, ErrorCode> = {
+      out_of_bounds: ErrorCode.VALIDATION_OUT_OF_BOUNDS,
+      type_error: ErrorCode.VALIDATION_TYPE_ERROR,
+      required_field: ErrorCode.VALIDATION_MISSING_FIELD,
+      decimal_error: ErrorCode.VALIDATION_FLOAT_PRECISION,
+      empty_value: ErrorCode.VALIDATION_MISSING_FIELD,
+    };
+    // Preserve an explicit code if already set (e.g. errors.ValidationError),
+    // otherwise derive from the constraint string, falling back to REQUEST_VALIDATION_FAILED
+    const finalCode: ErrorCode =
+      error.code || CONSTRAINT_TO_CODE[error.constraint] || ErrorCode.REQUEST_VALIDATION_FAILED;
+
     const validationError = new ValidationError(
       error.message || 'Invalid backtest configuration',
-      ErrorCode.REQUEST_VALIDATION_FAILED,
+      finalCode,
       {
         field: error.field,
         details: error.details,

@@ -39,6 +39,7 @@ export class ResultStore {
   private ttlDays: number;
   private index: Map<string, ResultMetadata> = new Map();
   private indexFilePath: string;
+  private _writeQueue: Promise<void> = Promise.resolve();
 
   /**
    * Constructor
@@ -287,8 +288,13 @@ export class ResultStore {
    * Persist in-memory index to disk
    * Called after save() and cleanup()
    */
-  private async persistIndex(): Promise<void> {
-    const indexData = Array.from(this.index.entries());
-    await fs.writeFile(this.indexFilePath, JSON.stringify(indexData, null, 2), 'utf-8');
+  private persistIndex(): Promise<void> {
+    // Chain writes to avoid concurrent EBUSY errors on Windows.
+    // Each write reads the latest index state at execution time.
+    this._writeQueue = this._writeQueue.catch(() => {}).then(async () => {
+      const indexData = Array.from(this.index.entries());
+      await fs.writeFile(this.indexFilePath, JSON.stringify(indexData, null, 2), 'utf-8');
+    });
+    return this._writeQueue;
   }
 }
