@@ -8,7 +8,7 @@
  * TTL: Same as result TTL (7 days)
  */
 
-import { BacktestResult } from '../types';
+import { BacktestResult } from '../types/index.js';
 
 /**
  * Cached entry structure

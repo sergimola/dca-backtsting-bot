@@ -7,9 +7,9 @@
 
 import { spawn } from 'child_process';
 import split from 'split2';
-import { BacktestRequest, TradeEvent } from '../types';
-import { ProcessError } from '../types/errors';
-import { parseEventLine } from '../utils/EventBusParser';
+import { BacktestRequest, TradeEvent } from '../types/index.js';
+import { ProcessError } from '../types/errors.js';
+import { parseEventLine } from '../utils/EventBusParser.js';
 import * as fs from 'fs';
 
 /**
@@ -171,7 +171,10 @@ export class BacktestService {
       // Capture stderr for error mapping
       if (child.stderr) {
         child.stderr.on('data', (data) => {
-          stderr += data.toString();
+          const stderrOutput = data.toString();
+          stderr += stderrOutput;
+          // Log Go engine errors to console immediately for visibility
+          console.error('[Go Engine Error]:', stderrOutput);
         });
       }
 
@@ -216,7 +219,9 @@ export class BacktestService {
         }
 
         // Failure: non-zero exit code or signal
-        const error = new ProcessError(exitCode, signal, stderr, `Core Engine exited with code ${exitCode}${signal ? ` and signal ${signal}` : ''}`);
+        // Include stderr in error message for API logs
+        const errorMessage = `Core Engine exited with code ${exitCode}${signal ? ` and signal ${signal}` : ''}${stderr ? `\n[stderr]: ${stderr}` : ''}`;
+        const error = new ProcessError(exitCode, signal, stderr, errorMessage);
         reject(error);
       });
 

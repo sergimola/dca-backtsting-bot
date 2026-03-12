@@ -16,7 +16,7 @@ import {
   ParseError,
   ERROR_CODE_MAP,
   ErrorCode,
-} from '../types/errors';
+} from '../types/errors.js';
 
 /**
  * Error response structure

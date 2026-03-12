@@ -9,15 +9,15 @@
 
 import { Router, Request, Response, NextFunction } from 'express';
 import crypto from 'crypto';
-import { ResultStore } from '../services/ResultStore';
-import { ProcessManager } from '../services/ProcessManager';
-import { BacktestService, BacktestExecutionResult } from '../services/BacktestService';
-import { ResultAggregator } from '../services/ResultAggregator';
-import { IdempotencyCache } from '../services/IdempotencyCache';
-import { getValidatedBacktestRequest, validationMiddleware } from '../middleware/validation.middleware';
-import { validateIdempotencyKey, isValidUuid } from '../utils/RequestIdGenerator';
-import { BacktestResult } from '../types';
-import { StorageError } from '../types/errors';
+import { ResultStore } from '../services/ResultStore.js';
+import { ProcessManager } from '../services/ProcessManager.js';
+import { BacktestService, BacktestExecutionResult } from '../services/BacktestService.js';
+import { ResultAggregator } from '../services/ResultAggregator.js';
+import { IdempotencyCache } from '../services/IdempotencyCache.js';
+import { getValidatedBacktestRequest, validationMiddleware } from '../middleware/validation.middleware.js';
+import { validateIdempotencyKey, isValidUuid } from '../utils/RequestIdGenerator.js';
+import { BacktestResult } from '../types/index.js';
+import { StorageError } from '../types/errors.js';
 
 /**
  * Create backtest router with wired services
@@ -95,7 +95,14 @@ export function createBacktestRouter(
             request_id: backtestRequestId,
             status: 'success',
             events: completedResult.events,
-            final_position: completedResult.events[completedResult.events.length - 1].position_state,
+            final_position: completedResult.events[completedResult.events.length - 1]?.position_state || {
+              quantity: '0.00000000',
+              average_cost: '0.00000000',
+              total_invested: '0.00000000',
+              leverage_level: '0.00000000',
+              status: 'CLOSED',
+              last_update_timestamp: 0,
+            },
             pnl_summary: pnlSummary,
             execution_time_ms: completedResult.executionTimeMs,
             timestamp: new Date().toISOString(),

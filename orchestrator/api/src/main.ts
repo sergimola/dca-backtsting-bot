@@ -13,14 +13,14 @@
  */
 
 import http from 'http';
-import { createApp } from './app';
-import { ResultStore } from './services/ResultStore';
-import { ProcessManager } from './services/ProcessManager';
-import { BacktestService } from './services/BacktestService';
-import { ResultAggregator } from './services/ResultAggregator';
-import { IdempotencyCache } from './services/IdempotencyCache';
-import { HealthMonitor } from './services/HealthMonitor';
-import { ResultCleanupJob } from './jobs/ResultCleanupJob';
+import { createApp } from './app.js';
+import { ResultStore } from './services/ResultStore.js';
+import { ProcessManager } from './services/ProcessManager.js';
+import { BacktestService } from './services/BacktestService.js';
+import { ResultAggregator } from './services/ResultAggregator.js';
+import { IdempotencyCache } from './services/IdempotencyCache.js';
+import { HealthMonitor } from './services/HealthMonitor.js';
+import { ResultCleanupJob } from './jobs/ResultCleanupJob.js';
 
 /**
  * Main server initialization and startup

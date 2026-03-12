@@ -6,7 +6,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { HealthMonitor } from '../services/HealthMonitor';
+import { HealthMonitor } from '../services/HealthMonitor.js';
 
 /**
  * Create health router

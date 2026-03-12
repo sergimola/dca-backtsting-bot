@@ -5,8 +5,8 @@
  * Validates event structure and nested PositionState objects.
  */
 
-import { TradeEvent, PositionState } from '../types/index';
-import { ParseError } from '../types/errors';
+import { TradeEvent, PositionState } from '../types/index.js';
+import { ParseError } from '../types/errors.js';
 
 /**
  * Validates and parses a single ndjson event line into a TypeScript TradeEvent

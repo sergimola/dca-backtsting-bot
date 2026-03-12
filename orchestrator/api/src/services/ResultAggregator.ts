@@ -14,8 +14,8 @@ import {
   LiquidationEvent,
   GapDownEvent,
   PnlSummary,
-} from '../types';
-import * as PrecisionFormatter from '../utils/PrecisionFormatter';
+} from '../types/index.js';
+import * as PrecisionFormatter from '../utils/PrecisionFormatter.js';
 
 /**
  * ResultAggregator - Computes aggregated position metrics from events
@@ -57,8 +57,18 @@ export class ResultAggregator {
    * 8. Count fills per safety_order_index in safety_order_usage_counts
    */
   async aggregateEvents(events: TradeEvent[]): Promise<PnlSummary> {
+    // Handle empty events: return zeroed-out summary (valid business scenario - no trades)
     if (events.length === 0) {
-      throw new Error('Cannot aggregate empty event list');
+      return {
+        total_pnl: '0.00000000',
+        entry_fee: '0.00000000',
+        trading_fees: '0.00000000',
+        total_fees: '0.00000000',
+        roi_percent: '0.00000000',
+        total_fills: 0,
+        realized_pnl: '0.00000000',
+        safety_order_usage_counts: {},
+      };
     }
 
     // Validate chronological order

@@ -382,11 +382,20 @@ describe('ResultAggregator', () => {
     });
   });
 
-  describe('❌ Error handling', () => {
-    it('should throw error on empty event list', async () => {
-      await expect(aggregator.aggregateEvents([])).rejects.toThrow(
-        'Cannot aggregate empty event list'
-      );
+  describe('✅ Edge cases', () => {
+    it('should return zeroed summary for empty event list', async () => {
+      const summary = await aggregator.aggregateEvents([]);
+
+      expect(summary.total_pnl).toBe('0.00000000');
+      expect(summary.entry_fee).toBe('0.00000000');
+      expect(summary.trading_fees).toBe('0.00000000');
+      expect(summary.total_fees).toBe('0.00000000');
+      expect(summary.roi_percent).toBe('0.00000000');
+      expect(summary.total_fills).toBe(0);
+      expect(summary.realized_pnl).toBe('0.00000000');
+      expect(summary.safety_order_usage_counts).toEqual({});
+      expect(summary.max_drawdown_percent).toBeUndefined();
+      expect(summary.unrealized_pnl).toBeUndefined();
     });
 
     it('should throw error when events not in chronological order', async () => {

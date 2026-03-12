@@ -11,8 +11,8 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { validateBacktestRequest } from '../types/configuration';
-import { ValidationError, ErrorCode } from '../types/errors';
+import { validateBacktestRequest } from '../types/configuration.js';
+import { ValidationError, ErrorCode } from '../types/errors.js';
 
 /**
  * Express middleware for validating BacktestRequest

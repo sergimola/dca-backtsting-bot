@@ -10,7 +10,7 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import { generateRequestId } from '../utils/RequestIdGenerator';
+import { generateRequestId } from '../utils/RequestIdGenerator.js';
 
 /**
  * Express middleware for logging requests

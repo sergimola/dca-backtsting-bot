@@ -10,7 +10,7 @@
  */
 
 import fs from 'fs';
-import { ProcessManager } from './ProcessManager';
+import { ProcessManager } from './ProcessManager.js';
 
 /**
  * Health status levels

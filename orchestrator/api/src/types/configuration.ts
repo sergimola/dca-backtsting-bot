@@ -5,7 +5,7 @@
  * Must validate decimal precision, bounds, and consistency before subprocess execution.
  */
 
-import { validateDecimal, validateDecimalArray } from '../utils/DecimalValidator';
+import { validateDecimal, validateDecimalArray } from '../utils/DecimalValidator.js';
 
 /**
  * BacktestRequest - User-submitted configuration for a single backtest
@@ -22,7 +22,7 @@ export interface BacktestRequest {
   /** Safety order indices (0-99) corresponding to each amount */
   sequences: number[];
 
-  /** Leverage multiplier (decimal string, > 1.0) */
+  /** Leverage multiplier (decimal string, >= 1.0 where 1.0 = spot, > 1.0 = margin) */
   leverage: string;
 
   /** Margin ratio (decimal string, 0 <= mmr < 1) */
@@ -56,7 +56,7 @@ export class ValidationError extends Error {
  * - All monetary values must be decimals (not floats): "100.50" ✅, 100.5 ❌
  * - entry_price > 0, max 8 decimal places
  * - amounts all > 0, max 8 decimal places each
- * - leverage > 1.0
+ * - leverage >= 1.0 (1.0 = spot trading, > 1.0 = margin trading)
  * - margin_ratio in [0, 1)
  * - sequences.length === amounts.length
  * - Each sequence in [0, 100)
@@ -222,12 +222,12 @@ export function validateBacktestRequest(request: any): BacktestRequest {
     );
   }
 
-  // Validate leverage > 1.0
-  if (parseFloat(validatedLeverage) <= 1.0) {
+  // Validate leverage >= 1.0
+  if (parseFloat(validatedLeverage) < 1.0) {
     throw new ValidationError(
       'leverage',
       'out_of_bounds',
-      `leverage must be > 1.0, got ${validatedLeverage}`
+      `leverage must be >= 1.0, got ${validatedLeverage}`
     );
   }
 

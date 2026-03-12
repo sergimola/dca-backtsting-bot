@@ -7,16 +7,17 @@
  */
 
 import express, { Express } from 'express';
-import { ResultStore } from './services/ResultStore';
-import { ProcessManager } from './services/ProcessManager';
-import { BacktestService } from './services/BacktestService';
-import { ResultAggregator } from './services/ResultAggregator';
-import { IdempotencyCache } from './services/IdempotencyCache';
-import { HealthMonitor } from './services/HealthMonitor';
-import { requestLoggerMiddleware } from './middleware/request-logger.middleware';
-import { errorHandlerMiddleware } from './middleware/error-handler.middleware';
-import { createBacktestRouter } from './routes/backtest.routes';
-import { createHealthRouter } from './routes/health.routes';
+import cors from 'cors';
+import { ResultStore } from './services/ResultStore.js';
+import { ProcessManager } from './services/ProcessManager.js';
+import { BacktestService } from './services/BacktestService.js';
+import { ResultAggregator } from './services/ResultAggregator.js';
+import { IdempotencyCache } from './services/IdempotencyCache.js';
+import { HealthMonitor } from './services/HealthMonitor.js';
+import { requestLoggerMiddleware } from './middleware/request-logger.middleware.js';
+import { errorHandlerMiddleware } from './middleware/error-handler.middleware.js';
+import { createBacktestRouter } from './routes/backtest.routes.js';
+import { createHealthRouter } from './routes/health.routes.js';
 
 /**
  * Create and configure Express app
@@ -39,7 +40,10 @@ export function createApp(services: AppServices): Express {
 
   // Middleware stack (in order)
 
-  // 1. Body parser
+  // 1. CORS
+  app.use(cors());
+
+  // 2. Body parser
   app.use(express.json({ limit: '10mb' }));
 
   // 2. Request logger (attaches request_id)

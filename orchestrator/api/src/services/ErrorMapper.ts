@@ -5,7 +5,7 @@
  * machine-readable ErrorCode values with user-friendly messages.
  */
 
-import { ErrorCode, ERROR_CODE_MAP, ProcessError } from '../types/errors';
+import { ErrorCode, ERROR_CODE_MAP, ProcessError } from '../types/errors.js';
 
 /**
  * ErrorDetails - Structured error information for API responses

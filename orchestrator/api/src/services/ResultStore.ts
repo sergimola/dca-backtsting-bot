@@ -16,9 +16,9 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { BacktestResult, BacktestResultPage } from '../types';
-import { StorageError } from '../types/errors';
-import { ErrorCode } from '../types/errors';
+import { BacktestResult, BacktestResultPage } from '../types/index.js';
+import { StorageError } from '../types/errors.js';
+import { ErrorCode } from '../types/errors.js';
 
 /**
  * In-memory index for MVP (SQLite integration can be added in Phase 5)

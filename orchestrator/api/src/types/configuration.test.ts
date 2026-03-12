@@ -30,7 +30,15 @@ describe('BacktestRequest Validation', () => {
       expect(result.idempotency_key).toBe('550e8400-e29b-41d4-a716-446655440000');
     });
 
-    it('should accept minimal leverage (just above 1.0)', () => {
+    it('should accept minimal leverage (1.0 = spot trading)', () => {
+      const result = validateBacktestRequest({
+        ...validRequest,
+        leverage: '1.00',
+      });
+      expect(result.leverage).toBe('1.00');
+    });
+
+    it('should accept leverage above 1.0 (margin trading)', () => {
       const result = validateBacktestRequest({
         ...validRequest,
         leverage: '1.01',
@@ -217,11 +225,11 @@ describe('BacktestRequest Validation', () => {
       ).toThrow(ValidationError);
     });
 
-    it('should reject leverage <= 1.0', () => {
+    it('should reject leverage < 1.0', () => {
       expect(() =>
         validateBacktestRequest({
           ...validRequest,
-          leverage: '1.00',
+          leverage: '0.99',
         })
       ).toThrow(ValidationError);
     });

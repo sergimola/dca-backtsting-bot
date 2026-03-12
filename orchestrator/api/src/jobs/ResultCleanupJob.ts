@@ -11,7 +11,7 @@
  * job.stop();
  */
 
-import { ResultStore } from '../services/ResultStore';
+import { ResultStore } from '../services/ResultStore.js';
 
 /**
  * ResultCleanupJob - Scheduled cleanup of expired results
