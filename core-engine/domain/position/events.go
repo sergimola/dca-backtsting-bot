@@ -9,6 +9,7 @@ type TradeOpenedEvent struct {
 	Timestamp        time.Time `json:"timestamp"`
 	TradingPair      string    `json:"trading_pair"`
 	ConfiguredOrders []OrderGrid `json:"configured_orders"`
+	EntryFee         string    `json:"entry_fee"` // Fee paid on the initial market buy
 }
 
 type OrderGrid struct {

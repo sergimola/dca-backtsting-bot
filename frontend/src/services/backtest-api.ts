@@ -119,6 +119,7 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
       let price    = 0;
       let quantity = 0;
       let balance  = 0;  // quote currency amount relevant to the fill
+      let fee      = 0;
 
       switch (e.type as string) {
         case 'PositionOpened': {
@@ -131,6 +132,7 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
           quantity = tradeCost / price || 0;
           // balance = notional USDT value of the entry order
           balance  = tradeCost;
+          fee      = parseFloat(d.entry_fee ?? '0');
           break;
         }
 
@@ -144,6 +146,7 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
           quantity = btcQty;
           // balance = USDT deployed = fill_price × BTC_qty
           balance  = price * quantity;
+          fee      = parseFloat(d.fee ?? '0');
           break;
         }
 
@@ -155,6 +158,7 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
           price    = parseFloat(d.closing_price ?? '0');
           quantity = parseFloat(d.size          ?? '0');
           balance  = parseFloat(d.profit        ?? '0');
+          fee      = 0; // sell fee is captured via SellOrderExecuted (not in FILL_EVENT_TYPES)
           break;
         }
       }
@@ -166,6 +170,8 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
         price,
         quantity,
         balance,
+        trade_id: (d.trade_id as string) ?? '',
+        fee,
       };
     });
 

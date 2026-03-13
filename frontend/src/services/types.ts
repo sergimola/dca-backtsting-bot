@@ -66,6 +66,8 @@ export interface TradeEvent {
   price: number
   quantity: number
   balance: number
+  trade_id: string
+  fee: number
 }
 
 /**

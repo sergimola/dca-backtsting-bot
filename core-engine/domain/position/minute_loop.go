@@ -153,6 +153,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			TradeID:     pos.TradeID,
 			Timestamp:   candle.Timestamp,
 			TradingPair: "BTC/USDT", // TODO: would come from config
+			EntryFee:    marketBuyFill.Fee.String(),
 		}
 
 		// Populate configured orders grid
@@ -337,6 +338,11 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			}
 
 			totalSize := CalculatePositionQuantity(pos.Orders)
+
+			// Calculate sell fee and include it before computing profit so profit nets all fees
+			sellFee := CalculateFee(closingPrice, totalSize, OrderTypeMarket, 1)
+			pos.FeesAccumulated = pos.FeesAccumulated.Add(sellFee)
+
 			profit := CalculateProfit(closingPrice, totalSize, pos.Orders, pos.FeesAccumulated)
 			pos.Profit = profit
 			pos.State = StateClosed
@@ -365,7 +371,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 				Size:        closingPrice.Mul(totalSize).String(), // quote amount
 				BaseSize:    totalSize.String(),
 				Profit:      profit.String(),
-				Fee:         decimal.NewFromInt(0).String(), // No fee for synthetic sell
+				Fee:         sellFee.String(),
 			}
 			events = append(events, sellEvent)
 

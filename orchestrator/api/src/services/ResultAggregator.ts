@@ -249,41 +249,47 @@ export class ResultAggregator {
     // accountBalance is the configured capital size (denominator for ROI)
     const accBalance = new Decimal(accountBalance || '0');
 
-    let entryFee = new Decimal(0);    // fee on order_number=1 (entry buy)
-    let tradingFees = new Decimal(0); // cumulative fees on all buys
-    let realizedPnl = new Decimal(0); // authoritative: from PositionClosed only
+    let entryFee = new Decimal(0);    // cumulative entry-buy fees (from PositionOpened)
+    let tradingFees = new Decimal(0); // cumulative safety-order + sell fees (from BuyOrderExecuted / SellOrderExecuted)
+    let realizedPnl = new Decimal(0); // authoritative: accumulated from all PositionClosed events
     let totalFills = 0;
     const safetyOrderUsageCounts: Record<number, number> = {};
-    let entryFeeSet = false;
 
     for (const event of rawGoEvents) {
       const type = event.type as string;
       const d: any = event.data ?? {};
 
-      if (type === 'BuyOrderExecuted') {
-        // fee is in quote currency (USDT)
+      if (type === 'PositionOpened') {
+        // Entry buy fee is now emitted in the TradeOpenedEvent as entry_fee
+        const fee = new Decimal(d.entry_fee ?? '0');
+        entryFee = entryFee.plus(fee);
+
+        totalFills++;
+        // Entry = order index 0
+        safetyOrderUsageCounts[0] = (safetyOrderUsageCounts[0] ?? 0) + 1;
+
+      } else if (type === 'BuyOrderExecuted') {
+        // Safety order fees (order_number >= 2)
         const fee      = new Decimal(d.fee  ?? '0');
-        const orderNum = (d.order_number as number) ?? 1;
+        const orderNum = (d.order_number as number) ?? 2;
 
         tradingFees = tradingFees.plus(fee);
 
-        if (!entryFeeSet && orderNum === 1) {
-          entryFee    = fee;
-          entryFeeSet = true;
-        }
-
         totalFills++;
-        // soIndex = orderNum - 1: entry (order 1) = index 0, SO#1 (order 2) = index 1, …
+        // soIndex = orderNum - 1: SO#1 (order 2) = index 1, …
         const soIndex = orderNum - 1;
         safetyOrderUsageCounts[soIndex] = (safetyOrderUsageCounts[soIndex] ?? 0) + 1;
 
+      } else if (type === 'SellOrderExecuted') {
+        // Exit sell fee — accumulate into tradingFees for total_fees display
+        tradingFees = tradingFees.plus(new Decimal(d.fee ?? '0'));
+
       } else if (type === 'PositionClosed') {
-        // PositionClosed.profit is the authoritative realized P&L for the whole trade.
-        // SellOrderExecuted also emits a profit field but it duplicates this value.
-        // We read ONLY from PositionClosed to avoid double-counting.
-        realizedPnl = new Decimal(d.profit ?? '0');
+        // PositionClosed.profit is the authoritative realized P&L per trade.
+        // Use += to accumulate across multiple trades in a multi-trade backtest.
+        realizedPnl = realizedPnl.plus(new Decimal(d.profit ?? '0'));
       }
-      // SellOrderExecuted, LiquidationPriceUpdated, price.changed → ignored
+      // LiquidationPriceUpdated, price.changed → ignored
     }
 
     const totalPnl  = realizedPnl;

@@ -1,8 +1,6 @@
-import React from 'react'
-import { PnlSummary } from './PnlSummary'
+import React, { useState, useMemo } from 'react'
 import { SafetyOrderChart } from './SafetyOrderChart'
-import { TradeEventsTable } from './TradeEventsTable'
-import type { BacktestResults } from '../services/types'
+import type { BacktestResults, TradeEvent } from '../services/types'
 
 export interface ResultsDashboardProps {
   results: BacktestResults
@@ -10,56 +8,193 @@ export interface ResultsDashboardProps {
   onModify: () => void
 }
 
-export function ResultsDashboard({ results, onReset, onModify }: ResultsDashboardProps) {
+// --- Event type pill styles ---
+const EVENT_PILL: Record<string, string> = {
+  ENTRY:        'bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full text-xs font-bold',
+  SAFETY_ORDER: 'bg-slate-500/20 text-slate-400 px-2 py-1 rounded-full text-xs font-bold',
+  EXIT:         'bg-rose-500/20 text-rose-400 px-2 py-1 rounded-full text-xs font-bold',
+}
+
+// --- Group trade events by trade_id ---
+function groupByTradeId(events: TradeEvent[]): [string, TradeEvent[]][] {
+  const map = new Map<string, TradeEvent[]>()
+  for (const e of events) {
+    const key = e.trade_id || 'unknown'
+    if (!map.has(key)) map.set(key, [])
+    map.get(key)!.push(e)
+  }
+  return Array.from(map.entries())
+}
+
+// --- Single trade accordion card ---
+function TradeAccordion({ tradeId, events }: { tradeId: string; events: TradeEvent[] }) {
+  const [open, setOpen] = useState(false)
+
+  const exitEvent = events.find(e => e.eventType === 'EXIT')
+  const netProfit = exitEvent ? exitEvent.balance : null
+  const feesPaid  = events.reduce((sum, e) => sum + (e.fee ?? 0), 0)
+  const status    = exitEvent ? 'CLOSED' : 'OPEN'
+
+  // Short trade ID: last 8 chars
+  const shortId = tradeId.length > 12 ? `${tradeId.slice(0, 6)}…${tradeId.slice(-6)}` : tradeId
+
+  const profitPositive = netProfit !== null && netProfit >= 0
+  const profitColor    = netProfit === null ? 'text-gray-400' : profitPositive ? 'text-emerald-400' : 'text-rose-400'
+
   return (
-    <div className="space-y-6 p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Backtest Results</h1>
-          <p className="text-gray-600 mt-1">Backtest ID: {results.backtestId}</p>
+    <div className="border border-gray-700 rounded-lg overflow-hidden">
+      {/* Collapsed header */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-gray-800 hover:bg-gray-750 transition-colors text-left"
+      >
+        <div className="flex items-center gap-6 min-w-0">
+          <span className="font-mono text-gray-500 text-xs truncate max-w-[160px]" title={tradeId}>{shortId}</span>
+          <span className={`text-sm font-semibold tabular-nums ${profitColor}`}>
+            {netProfit !== null
+              ? `${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(4)}`
+              : '—'}
+          </span>
+          <span className="text-xs text-red-400 tabular-nums">
+            {feesPaid > 0 ? `-$${feesPaid.toFixed(4)} fees` : ''}
+          </span>
         </div>
-        <div className="flex gap-4">
+        <div className="flex items-center gap-3 shrink-0">
+          <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${
+            status === 'CLOSED'
+              ? 'bg-emerald-500/20 text-emerald-400'
+              : 'bg-amber-500/20 text-amber-400'
+          }`}>
+            {status}
+          </span>
+          <span className="text-gray-500 text-xs select-none">{open ? '▲' : '▼'}</span>
+        </div>
+      </button>
+
+      {/* Expanded event rows */}
+      {open && (
+        <div className="divide-y divide-gray-700/50">
+          {/* Column headers */}
+          <div className="px-5 py-2 flex items-center gap-4 bg-gray-900/50">
+            <span className="w-28 text-gray-600 text-xs uppercase tracking-wide">Type</span>
+            <span className="flex-1 text-gray-600 text-xs uppercase tracking-wide">Timestamp</span>
+            <span className="w-32 text-right text-gray-600 text-xs uppercase tracking-wide">Price</span>
+            <span className="w-28 text-right text-gray-600 text-xs uppercase tracking-wide">Quantity</span>
+            <span className="w-32 text-right text-gray-600 text-xs uppercase tracking-wide">Amount / P&L</span>
+          </div>
+
+          {events.map((event, idx) => {
+            const isExit   = event.eventType === 'EXIT'
+            const valueColor = isExit
+              ? (event.balance >= 0 ? 'text-emerald-400' : 'text-rose-400')
+              : 'text-gray-300'
+
+            return (
+              <div key={idx} className="px-5 py-2.5 flex items-center gap-4 bg-gray-800/60 hover:bg-gray-800 transition-colors">
+                <div className="w-28 shrink-0">
+                  <span className={EVENT_PILL[event.eventType] ?? 'bg-gray-600/20 text-gray-400 px-2 py-1 rounded-full text-xs font-bold'}>
+                    {event.eventType}
+                  </span>
+                </div>
+                <span className="flex-1 text-gray-500 text-xs truncate">{event.timestamp}</span>
+                <span className="w-32 text-right font-mono text-gray-300 text-sm">
+                  ${event.price.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="w-28 text-right font-mono text-gray-400 text-sm">
+                  {event.quantity.toFixed(6)}
+                </span>
+                <span className={`w-32 text-right font-mono text-sm font-semibold tabular-nums ${valueColor}`}>
+                  {isExit
+                    ? `${event.balance >= 0 ? '+' : ''}$${event.balance.toFixed(4)}`
+                    : `$${event.balance.toFixed(4)}`}
+                </span>
+              </div>
+            )
+          })}
+        </div>
+      )}
+    </div>
+  )
+}
+
+// --- Main Dashboard ---
+export function ResultsDashboard({ results, onReset, onModify }: ResultsDashboardProps) {
+  const { pnlSummary } = results
+
+  const tradeGroups = useMemo(() => groupByTradeId(results.tradeEvents), [results.tradeEvents])
+
+  const roiPositive = pnlSummary.roi >= 0
+
+  return (
+    <div className="space-y-6 text-gray-200">
+      {/* Header */}
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-100">Backtest Results</h1>
+          <p className="text-gray-500 text-sm mt-0.5">ID: {results.backtestId}</p>
+        </div>
+        <div className="flex gap-3">
           <button
             onClick={onReset}
-            className="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+            className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg font-medium text-sm transition-colors"
           >
-            Run New Backtest
+            New Backtest
           </button>
           <button
             onClick={onModify}
-            className="px-6 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 font-medium transition-colors"
+            className="px-5 py-2 bg-gray-700 hover:bg-gray-600 text-gray-200 rounded-lg font-medium text-sm transition-colors border border-gray-600"
           >
             Modify &amp; Re-run
           </button>
         </div>
       </div>
 
-      {/* PnlSummary - Full Width */}
-      <section>
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Performance Metrics</h2>
-        <div className="bg-white rounded-lg shadow p-6">
-          <PnlSummary pnlData={results.pnlSummary} />
+      {/* Metrics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
+          <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Return on Investment</p>
+          <p className={`text-2xl font-bold tabular-nums ${roiPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {roiPositive ? '+' : ''}{pnlSummary.roi.toFixed(4)}%
+          </p>
         </div>
-      </section>
+        <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
+          <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Max Drawdown</p>
+          <p className="text-2xl font-bold tabular-nums text-rose-400">
+            {pnlSummary.maxDrawdown.toFixed(4)}%
+          </p>
+        </div>
+        <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
+          <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Total Fees</p>
+          <p className="text-2xl font-bold tabular-nums text-red-400">
+            ${pnlSummary.totalFees.toFixed(4)}
+          </p>
+        </div>
+      </div>
 
-      {/* Charts and Table - 2 Column Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* SafetyOrderChart - Left (SafetyOrderChart renders its own title) */}
-        <section>
-          <div className="bg-white rounded-lg shadow p-6">
-            <SafetyOrderChart soUsageData={results.safetyOrderUsage} />
-          </div>
-        </section>
+      {/* Chart */}
+      <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
+        <SafetyOrderChart soUsageData={results.safetyOrderUsage} />
+      </div>
 
-        {/* TradeEventsTable - Right */}
-        <section>
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Trade Events</h2>
-          <div className="bg-white rounded-lg shadow p-6">
-            <TradeEventsTable events={results.tradeEvents} />
+      {/* Trade Accordions */}
+      <div>
+        <h2 className="text-lg font-semibold text-gray-300 mb-3">
+          Trade History
+          <span className="ml-2 text-sm font-normal text-gray-500">({tradeGroups.length} trade{tradeGroups.length !== 1 ? 's' : ''})</span>
+        </h2>
+        {tradeGroups.length === 0 ? (
+          <div className="bg-gray-800 rounded-lg p-8 text-center text-gray-500 border border-gray-700">
+            No trade events recorded
           </div>
-        </section>
+        ) : (
+          <div className="space-y-2">
+            {tradeGroups.map(([tradeId, events]) => (
+              <TradeAccordion key={tradeId} tradeId={tradeId} events={events} />
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 }
+

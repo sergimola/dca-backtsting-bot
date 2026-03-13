@@ -92,24 +92,24 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-2xl mx-auto">
-          <header className="text-center mb-12">
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">DCA Backtesting Bot</h1>
-            <p className="text-lg text-gray-600">Configure your Dollar-Cost Averaging strategy</p>
+      <div className="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
+        <div className={state.currentView === 'results' ? 'max-w-6xl mx-auto' : 'max-w-2xl mx-auto'}>
+          <header className="text-center mb-8">
+            <h1 className="text-4xl font-bold text-gray-100 mb-2">DCA Backtesting Bot</h1>
+            <p className="text-lg text-gray-400">Configure your Dollar-Cost Averaging strategy</p>
           </header>
 
           {/* Error Alert - App-level error display */}
           {state.error && (
-            <div className="bg-red-50 border-l-4 border-red-500 p-4 mb-6 rounded">
+            <div className="bg-red-900/50 border-l-4 border-red-500 p-4 mb-6 rounded">
               <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-red-800 font-semibold">Error</p>
-                  <p className="text-red-700 mt-1">{state.error}</p>
+                  <p className="text-red-300 font-semibold">Error</p>
+                  <p className="text-red-400 mt-1">{state.error}</p>
                 </div>
                 <button
                   onClick={() => setState(prev => ({ ...prev, error: null }))}
-                  className="text-red-600 hover:text-red-800 font-bold text-xl"
+                  className="text-red-400 hover:text-red-200 font-bold text-xl"
                   aria-label="Dismiss error"
                 >
                   ×
@@ -118,36 +118,38 @@ export default function App() {
             </div>
           )}
 
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            {state.currentView === 'configuration' && (
-              <ConfigurationPage
-                onSubmit={handleSubmitConfig}
-                initialValues={state.submittedConfig || undefined}
-                error={state.error || undefined}
-                isSubmitting={state.isSubmitting}
-              />
-            )}
+          {state.currentView !== 'results' ? (
+            <div className="bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-700">
+              {state.currentView === 'configuration' && (
+                <ConfigurationPage
+                  onSubmit={handleSubmitConfig}
+                  initialValues={state.submittedConfig || undefined}
+                  error={state.error || undefined}
+                  isSubmitting={state.isSubmitting}
+                />
+              )}
 
-            {state.currentView === 'polling' && state.backtestId && (
-              <PollingPage
-                backtestId={state.backtestId}
-                onComplete={handlePollingComplete}
-                onError={handlePollingError}
-                onTimeout={handlePollingTimeout}
-              />
-            )}
-
-            {state.currentView === 'results' && state.results && (
+              {state.currentView === 'polling' && state.backtestId && (
+                <PollingPage
+                  backtestId={state.backtestId}
+                  onComplete={handlePollingComplete}
+                  onError={handlePollingError}
+                  onTimeout={handlePollingTimeout}
+                />
+              )}
+            </div>
+          ) : (
+            state.results && (
               <ResultsPage
                 results={state.results}
                 onReset={handleResetForm}
                 onModify={handleModifyConfig}
               />
-            )}
-          </div>
+            )
+          )}
 
-          <footer className="text-center mt-8 text-sm text-gray-600">
-            <p>Phase 5-8: App State Machine & Polling Integration</p>
+          <footer className="text-center mt-8 text-sm text-gray-500">
+            <p>DCA Backtesting Engine</p>
           </footer>
         </div>
       </div>
