@@ -61,8 +61,12 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
 
     const backtestId = response.data.request_id;
     
-    // Store the full result in memory so our faked polling endpoints can grab it
-    resultCache.set(backtestId, response.data);
+    // Store the full result in memory along with original config for padding
+    // Number of orders is needed for padding safety order usage array
+    resultCache.set(backtestId, {
+      ...response.data,
+      _original_number_of_orders: apiPayload.number_of_orders,
+    });
 
     return { backtestId };
   } catch (error: any) {
@@ -102,12 +106,16 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
     throw new Error('Results not found in local cache');
   }
 
+  // Extract number of orders for padding safety order usage
+  const numberOfOrders = data._original_number_of_orders ?? 0;
+
   // Filter to fill-only events and map Go types → frontend labels.
   // All field access goes through e.data (the nested PSM payload).
   const tradeEvents = (data.events as any[])
     .filter((e) => FILL_EVENT_TYPES.has(e.type))
     .map((e) => {
       const d: any = e.data ?? {};
+      const rawIsoTimestamp = e.timestamp ?? '';
       let price    = 0;
       let quantity = 0;
       let balance  = 0;  // quote currency amount relevant to the fill
@@ -117,10 +125,12 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
           // PositionOpened carries the pre-calculated order grid.
           // configured_orders[0] is always the entry market-buy order.
           const entryOrder = d.configured_orders?.[0] ?? {};
+          const tradeCost = parseFloat(entryOrder.amount ?? '0');
           price    = parseFloat(entryOrder.price  ?? '0');
-          quantity = parseFloat(entryOrder.amount ?? '0');
+          // quantity = Trade Cost / Price (e.g., $32.25 / $50000 = 0.000645 BTC)
+          quantity = tradeCost / price || 0;
           // balance = notional USDT value of the entry order
-          balance  = price * quantity;
+          balance  = tradeCost;
           break;
         }
 
@@ -150,13 +160,27 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
       }
 
       return {
-        timestamp: new Date(e.timestamp).toLocaleString(),
+        timestamp: new Date(rawIsoTimestamp).toLocaleString(),
+        rawTimestamp: rawIsoTimestamp,
         eventType: EVENT_TYPE_LABEL[e.type as string] ?? e.type,
         price,
         quantity,
         balance,
       };
     });
+
+  // Pad safety order usage with unused orders
+  const countsByLevel = data.pnl_summary?.safety_order_usage_counts ?? {};
+  const safetyOrderUsage: Array<{ level: string; count: number }> = [];
+  
+  // Include all levels from 0 to numberOfOrders (entry is 0, SO#1 is 1, etc.)
+  for (let i = 0; i < numberOfOrders; i++) {
+    const count = (countsByLevel[i] ?? 0) as number;
+    safetyOrderUsage.push({
+      level: String(i),
+      count,
+    });
+  }
 
   return {
     backtestId: data.request_id,
@@ -165,9 +189,7 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
       maxDrawdown: 0,  // Not yet computed by the Go engine
       totalFees:   parseFloat(data.pnl_summary?.total_fees  ?? '0'),
     },
-    safetyOrderUsage: Object.entries(data.pnl_summary?.safety_order_usage_counts ?? {}).map(
-      ([level, count]) => ({ level, count: count as number })
-    ),
+    safetyOrderUsage,
     tradeEvents,
   };
 }

@@ -31,22 +31,32 @@ export function TradeEventsTable({ events }: TradeEventsTableProps) {
   const sortedAndPaginatedEvents = useMemo(() => {
     // Sort events
     const sorted = [...events].sort((a, b) => {
-      let aVal: any = a[sortField]
-      let bVal: any = b[sortField]
+      let comparison = 0;
 
-      if (typeof aVal === 'string') {
-        aVal = aVal.toLowerCase()
-        bVal = (bVal as string).toLowerCase()
+      // Special case: timestamp should sort chronologically using raw ISO timestamp
+      if (sortField === 'timestamp') {
+        const aTime = new Date(a.rawTimestamp).getTime();
+        const bTime = new Date(b.rawTimestamp).getTime();
+        comparison = aTime - bTime;
+      } else {
+        let aVal: any = a[sortField];
+        let bVal: any = b[sortField];
+
+        if (typeof aVal === 'string') {
+          aVal = aVal.toLowerCase();
+          bVal = (bVal as string).toLowerCase();
+        }
+
+        comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0;
       }
 
-      const comparison = aVal < bVal ? -1 : aVal > bVal ? 1 : 0
-      return sortOrder === 'asc' ? comparison : -comparison
-    })
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
     // Paginate
-    const start = pageIndex * pageSize
-    const end = start + pageSize
-    return sorted.slice(start, end)
+    const start = pageIndex * pageSize;
+    const end = start + pageSize;
+    return sorted.slice(start, end);
   }, [events, sortField, sortOrder, pageIndex])
 
   const renderSortIndicator = (field: SortField) => {

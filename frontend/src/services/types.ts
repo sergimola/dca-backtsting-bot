@@ -61,6 +61,7 @@ export interface SafetyOrderUsage {
  */
 export interface TradeEvent {
   timestamp: string
+  rawTimestamp: string
   eventType: string
   price: number
   quantity: number
