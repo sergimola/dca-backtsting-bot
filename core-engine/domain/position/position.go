@@ -54,6 +54,9 @@ type Position struct {
 	// Exit strategy (US6: Early Exit on Last Order Fill)
 	ExitOnLastOrder   bool            // If true, close position immediately when last order fills (SDD § 3.3 US6)
 
+	// Take-profit configuration (set from domain config; applies to all recalculations)
+	TakeProfitDistance decimal.Decimal // Percentage above average entry to set TP target (SDD § 2.4)
+
 	// Metadata
 	OpenPrice      decimal.Decimal // Market buy execution price
 	NextOrderIndex int             // Which order (by index) fills next

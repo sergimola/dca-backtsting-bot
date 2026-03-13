@@ -9,7 +9,7 @@
  */
 
 import { BacktestService } from './BacktestService';
-import { BacktestRequest } from '../types';
+import { ApiBacktestRequest } from '../types';
 import * as path from 'path';
 
 // Path to testdata directory
@@ -21,12 +21,20 @@ const MOCK_BINARY_PATH = path.join(testdataDir, 'mock-core-engine.js');
 describe('BacktestService', () => {
   let service: BacktestService;
 
-  const validRequest: BacktestRequest = {
-    entry_price: '100.50',
-    amounts: ['10.25', '10.25', '10.25'],
-    sequences: [0, 1, 2],
-    leverage: '2.00',
-    margin_ratio: '0.50',
+  const validRequest: ApiBacktestRequest & { market_data_csv_path: string } = {
+    trading_pair: 'BTC/USDT',
+    start_date: '2025-01-01T00:00:00Z',
+    end_date: '2025-01-31T23:59:59Z',
+    price_entry: '2.0',
+    price_scale: '1.1',
+    amount_scale: '2.0',
+    number_of_orders: 3,
+    amount_per_trade: '0.5',
+    margin_type: 'cross',
+    multiplier: 1,
+    take_profit_distance_percent: '1.0',
+    account_balance: '1000',
+    exit_on_last_order: false,
     market_data_csv_path: '/data/BTCUSDT_1m.csv',
   };
 

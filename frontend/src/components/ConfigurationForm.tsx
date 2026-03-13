@@ -103,7 +103,7 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
         case 'amountPerTrade': {
           const n = parseFloat(value as string)
           if (!value) return 'Amount per trade is required'
-          if (isNaN(n) || n <= 0 || n > 1) return 'Amount per trade must be between 0 and 1'
+          if (isNaN(n) || n == 0 || n > 1) return 'Amount per trade must be greater than 0 and less than or equal to 1'
           return undefined
         }
 

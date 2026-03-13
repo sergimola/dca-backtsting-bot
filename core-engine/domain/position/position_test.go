@@ -60,10 +60,11 @@ func TestUS1_T047_FullPositionLifecycle(t *testing.T) {
 	}
 	
 	// Candle 2: Safety order at 98.00 (gap down triggers fill)
+	// Note: keep High below the take-profit target (~99.15) so TP fires on candle 3
 	candle2 := &Candle{
 		Timestamp: startTime.Add(1 * time.Minute),
 		Open:      mustDecimal("99.50"),
-		High:      mustDecimal("99.50"),
+		High:      mustDecimal("98.90"),  // Below TP target ~99.15
 		Low:       mustDecimal("97.00"),  // Below P[1]=98.00, triggers fill
 		Close:     mustDecimal("98.50"),
 		Volume:    mustDecimal("900000"),
@@ -90,19 +91,21 @@ func TestUS1_T047_FullPositionLifecycle(t *testing.T) {
 		t.Logf("candle 2: state is %v (acceptable)", pos.State)
 	}
 	
-	// Verify position quantity increased (2 orders filled)
-	expectedQty := mustDecimal("2.0") // 1.0 from P[0] + 1.0 from P[1]
-	if !pos.PositionQuantity.Equal(expectedQty) {
-		t.Logf("candle 2: position quantity=%v (expected ~2.0 after 2 fills)", pos.PositionQuantity)
-	}
+	// Verify position quantity after 2 fills.
+	// pos.Amounts[] are USDT dollar amounts; qty = USDT / fill_price.
+	// qty0 = amounts[0] / prices[0] = 14.28571428 / 100.00 = 0.1428571428 BTC
+	// qty1 = amounts[1] / prices[1] = 28.57142857 / 98.00  = 0.2915451... BTC
+	qty0 := mustDecimal("14.28571428").Div(mustDecimal("100.00"))
+	qty1 := mustDecimal("28.57142857").Div(mustDecimal("98.00"))
+	expectedQty := qty0.Add(qty1)
+	assertDecimalEqualWithPrecision(t, expectedQty, pos.PositionQuantity, 8, "position quantity after 2 fills")
 	
 	// Candle 3: Take-profit close (high hits P_tp)
-	// Average entry: (100*1 + 98*1) / 2 = 99.00
-	// Take-profit: 99.00 * 1.005 = 99.495
+	// With quote-based sizing: avg ≈ 98.66, TP ≈ 98.66 * 1.005 ≈ 99.15
 	candle3 := &Candle{
 		Timestamp: startTime.Add(2 * time.Minute),
 		Open:      mustDecimal("98.80"),
-		High:      mustDecimal("99.50"),  // Hits take-profit
+		High:      mustDecimal("99.50"),  // Hits take-profit (~99.15)
 		Low:       mustDecimal("98.00"),
 		Close:     mustDecimal("99.40"),
 		Volume:    mustDecimal("800000"),

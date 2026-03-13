@@ -79,30 +79,95 @@ export async function getStatus(backtestId: string): Promise<{ status: 'pending'
   return { status: 'pending' };
 }
 
+// Go engine EventType values that represent actual fills to show in the trade table.
+// SellOrderExecuted is EXCLUDED — it is always paired with PositionClosed and carries
+// the same price/profit, creating a duplicate EXIT row.
+// LiquidationPriceUpdated, MarginWarning, price.changed → noise, excluded.
+const FILL_EVENT_TYPES = new Set([
+  'PositionOpened',
+  'BuyOrderExecuted',
+  'PositionClosed',
+]);
+
+// Maps Go engine EventType strings to the frontend's display labels.
+const EVENT_TYPE_LABEL: Record<string, string> = {
+  PositionOpened:   'ENTRY',
+  BuyOrderExecuted: 'SAFETY_ORDER',
+  PositionClosed:   'EXIT',
+};
+
 export async function getResults(backtestId: string): Promise<BacktestResults> {
   const data = resultCache.get(backtestId);
   if (!data) {
     throw new Error('Results not found in local cache');
   }
 
-  // 2. Translate Backend snake_case response back to Frontend camelCase
+  // Filter to fill-only events and map Go types → frontend labels.
+  // All field access goes through e.data (the nested PSM payload).
+  const tradeEvents = (data.events as any[])
+    .filter((e) => FILL_EVENT_TYPES.has(e.type))
+    .map((e) => {
+      const d: any = e.data ?? {};
+      let price    = 0;
+      let quantity = 0;
+      let balance  = 0;  // quote currency amount relevant to the fill
+
+      switch (e.type as string) {
+        case 'PositionOpened': {
+          // PositionOpened carries the pre-calculated order grid.
+          // configured_orders[0] is always the entry market-buy order.
+          const entryOrder = d.configured_orders?.[0] ?? {};
+          price    = parseFloat(entryOrder.price  ?? '0');
+          quantity = parseFloat(entryOrder.amount ?? '0');
+          // balance = notional USDT value of the entry order
+          balance  = price * quantity;
+          break;
+        }
+
+        case 'BuyOrderExecuted': {
+          // BuyOrderExecutedEvent:
+          //   price     = fill price (USDT/BTC)
+          //   base_size = BTC quantity purchased
+          //   size      = fractional amount from ComputeAmountSequence (NOT USDT — do not use)
+          const btcQty  = parseFloat(d.base_size ?? '0');
+          price    = parseFloat(d.price ?? '0');
+          quantity = btcQty;
+          // balance = USDT deployed = fill_price × BTC_qty
+          balance  = price * quantity;
+          break;
+        }
+
+        case 'PositionClosed': {
+          // TradeClosedEvent:
+          //   closing_price = exit price (USDT/BTC)
+          //   size          = total BTC in position at close
+          //   profit        = realized P&L (USDT)
+          price    = parseFloat(d.closing_price ?? '0');
+          quantity = parseFloat(d.size          ?? '0');
+          balance  = parseFloat(d.profit        ?? '0');
+          break;
+        }
+      }
+
+      return {
+        timestamp: new Date(e.timestamp).toLocaleString(),
+        eventType: EVENT_TYPE_LABEL[e.type as string] ?? e.type,
+        price,
+        quantity,
+        balance,
+      };
+    });
+
   return {
     backtestId: data.request_id,
     pnlSummary: {
-      roi: parseFloat(data.pnl_summary.roi_percent),
-      maxDrawdown: 0, // Note: Max drawdown isn't calculated by the Go engine yet
-      totalFees: parseFloat(data.pnl_summary.total_fees)
+      roi:         parseFloat(data.pnl_summary?.roi_percent ?? '0'),
+      maxDrawdown: 0,  // Not yet computed by the Go engine
+      totalFees:   parseFloat(data.pnl_summary?.total_fees  ?? '0'),
     },
-    safetyOrderUsage: Object.entries(data.pnl_summary.safety_order_usage_counts || {}).map(([level, count]) => ({
-      level: level,
-      count: count as number
-    })),
-    tradeEvents: data.events.map((e: any) => ({
-      timestamp: new Date(e.timestamp).toLocaleString(),
-      eventType: e.action,
-      price: parseFloat(e.fill_price),
-      quantity: parseFloat(e.fill_quantity),
-      balance: parseFloat(e.position_state.total_invested)
-    }))
+    safetyOrderUsage: Object.entries(data.pnl_summary?.safety_order_usage_counts ?? {}).map(
+      ([level, count]) => ({ level, count: count as number })
+    ),
+    tradeEvents,
   };
 }

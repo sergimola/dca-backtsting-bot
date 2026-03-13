@@ -119,7 +119,7 @@ export interface ErrorDetails {
 export interface BacktestResult {
   request_id: string;
   status: 'success' | 'failed';
-  events: TradeEvent[];
+  events: any[];
   final_position: PositionState;
   pnl_summary: PnlSummary;
   execution_time_ms: number;

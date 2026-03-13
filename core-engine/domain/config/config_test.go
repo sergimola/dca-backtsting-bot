@@ -1,5 +1,6 @@
 // config_test.go — Unit tests for Config entity, validation, JSON serialization, and
-//                  US1 (Config Contract) + US4 (Constraint Validation) acceptance scenarios.
+//
+//	US1 (Config Contract) + US4 (Constraint Validation) acceptance scenarios.
 //
 // TDD: All tests in this file were written before the implementation in config.go.
 // SDD References: Section 2.0, 4.1 — Test Case 3 (canonical defaults).
@@ -7,8 +8,8 @@
 // Canonical Test Data — Test Case 3 (all 13 defaults, SDD Table 4.1):
 //
 //	trading_pair                 = "LTC/USDT"
-//	start_date                   = "2024-01-02 14:00:00"
-//	end_date                     = "2024-01-05 14:00:00"
+//	start_date                   = "2024-01-02T14:00:00Z"
+//	end_date                     = "2024-01-05T14:00:00Z"
 //	price_entry                  = 2.0
 //	price_scale                  = 1.1
 //	amount_scale                 = 2.0
@@ -55,8 +56,8 @@ func mustDecimal(s string) decimal.Decimal {
 
 const (
 	TC3TradingPair  = "BTC/USDC"
-	TC3StartDate    = "2024-01-02 14:00:00"
-	TC3EndDate      = "2024-01-05 14:00:00"
+	TC3StartDate    = "2024-01-02T14:00:00Z"
+	TC3EndDate      = "2024-01-05T14:00:00Z"
 	TC3MarginType   = "cross"
 	TC3NumOrders    = 10
 	TC3ExitOnLast   = false
@@ -216,8 +217,8 @@ func TestUS1_MinimalAccountBalancePasses(t *testing.T) {
 func TestUS1_AcceptanceScenario1_AllParamsStored(t *testing.T) {
 	cfg, err := NewConfig(
 		WithTradingPair("BTC/USDT"),
-		WithStartDate("2025-01-01 00:00:00"),
-		WithEndDate("2025-06-01 00:00:00"),
+		WithStartDate("2025-01-01T00:00:00Z"),
+		WithEndDate("2025-06-01T00:00:00Z"),
 		WithPriceEntry(mustDecimal("3.5")),
 		WithPriceScale(mustDecimal("1.2")),
 		WithAmountScale(mustDecimal("1.5")),

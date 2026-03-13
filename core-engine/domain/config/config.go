@@ -26,8 +26,8 @@ import (
 // Canonical default values — SDD Table 4.1
 const (
 	DefaultTradingPair                = "BTC/USDC"
-	DefaultStartDate                  = "2024-01-02 14:00:00"
-	DefaultEndDate                    = "2024-01-05 14:00:00"
+	DefaultStartDate                  = "2024-01-02T14:00:00Z"
+	DefaultEndDate                    = "2024-01-05T14:00:00Z"
 	DefaultMarginType                 = "cross"
 	DefaultNumberOfOrders             = 10
 	DefaultExitOnLastOrder            = false

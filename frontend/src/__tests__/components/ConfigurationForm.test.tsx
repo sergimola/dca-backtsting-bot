@@ -180,7 +180,7 @@ describe('ConfigurationForm', () => {
       fireEvent.blur(input)
 
       await waitFor(() => {
-        expect(screen.getByText(/amount per trade must be between 0 and 1/i)).toBeInTheDocument()
+        expect(screen.getByText(/amount per trade must be greater than 0 and less than or equal to 1/i)).toBeInTheDocument()
       })
     })
 
@@ -383,7 +383,7 @@ describe('ConfigurationForm', () => {
       fireEvent.blur(input)
 
       await waitFor(() => {
-        expect(screen.queryByText(/amount per trade must be between 0 and 1/i)).not.toBeInTheDocument()
+        expect(screen.queryByText(/amount per trade must be greater than 0 and less than or equal to 1/i)).not.toBeInTheDocument()
       })
     })
 

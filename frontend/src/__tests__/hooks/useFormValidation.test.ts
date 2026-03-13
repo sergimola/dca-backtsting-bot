@@ -118,14 +118,14 @@ describe('useFormValidation', () => {
       const values = { ...validValues, amountPerTrade: '1.5' }
       const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.amountPerTrade).toBe('Amount per trade must be between 0 and 1')
+      expect(result.current.errors.amountPerTrade).toBe('Amount per trade must be greater than 0 and less than or equal to 1')
     })
 
     it('should return error for amountPerTrade <= 0', () => {
       const values = { ...validValues, amountPerTrade: '0' }
       const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.amountPerTrade).toBeTruthy()
+      expect(result.current.errors.amountPerTrade).toBe('Amount per trade must be greater than 0 and less than or equal to 1')
     })
 
     it('should return error for multiplier < 1', () => {
@@ -139,14 +139,14 @@ describe('useFormValidation', () => {
       const values = { ...validValues, takeProfitDistancePercent: '-5' }
       const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.takeProfitDistancePercent).toBeTruthy()
+      expect(result.current.errors.takeProfitDistancePercent).toBe('Take profit distance must be greater than 0')
     })
 
     it('should return error for accountBalance <= 0', () => {
       const values = { ...validValues, accountBalance: '0' }
       const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.accountBalance).toBeTruthy()
+      expect(result.current.errors.accountBalance).toBe('Account balance must be greater than 0')
     })
   })
 
@@ -184,9 +184,9 @@ describe('useFormValidation', () => {
       }
       const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.priceEntry).toBeTruthy()
-      expect(result.current.errors.amountPerTrade).toBeTruthy()
-      expect(result.current.errors.multiplier).toBeTruthy()
+      expect(result.current.errors.priceEntry).toBe('Price entry must be greater than 0')
+      expect(result.current.errors.amountPerTrade).toBe('Amount per trade must be greater than 0 and less than or equal to 1')
+      expect(result.current.errors.multiplier).toBe('Multiplier must be >= 1')
     })
   })
 })

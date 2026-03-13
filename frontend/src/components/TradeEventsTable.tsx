@@ -88,7 +88,7 @@ export function TradeEventsTable({ events }: TradeEventsTableProps) {
                 onClick={() => handleSort('balance')}
                 className="border border-gray-300 px-4 py-2 text-right cursor-pointer hover:bg-gray-200 font-semibold"
               >
-                Balance{renderSortIndicator('balance')}
+                Trade Cost{renderSortIndicator('balance')}
               </th>
             </tr>
           </thead>

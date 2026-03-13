@@ -6,17 +6,24 @@
  */
 
 import { spawn } from 'child_process';
-import split from 'split2';
-import { ApiBacktestRequest, TradeEvent } from '../types/index.js';
+import { ApiBacktestRequest } from '../types/index.js';
 import { ProcessError } from '../types/errors.js';
 import { parseEventLine } from '../utils/EventBusParser.js';
 import * as fs from 'fs';
 
 /**
  * Execution result from BacktestService.execute()
+ *
+ * events:        Raw events from the engine.
+ *                - New Go engine format: { timestamp, type, data } objects
+ *                - Old ndjson/mock format: flat TradeEvent objects (legacy fallback)
+ * finalPosition: The final_position object from the Go engine, or null for
+ *                old-format sources (mock). Used by the route handler to detect
+ *                which aggregation path to use.
  */
 export interface BacktestExecutionResult {
-  events: TradeEvent[];
+  events: any[];
+  finalPosition: any | null;
   executionTimeMs: number;
 }
 
@@ -121,9 +128,7 @@ export class BacktestService {
   ): Promise<BacktestExecutionResult> {
     return new Promise((resolve, reject) => {
       const startTime = performance.now();
-      const events: TradeEvent[] = [];
       let stderr = '';
-      let lineNumber = 0;
 
       // Determine if we need to use 'node' (for .js files on Windows)
       let command: string;
@@ -184,25 +189,13 @@ export class BacktestService {
         });
       }
 
-      // Parse ndjson from stdout
+      // Accumulate ALL stdout into a single buffer.
+      // The real Go engine writes one JSON blob; the old mock writes ndjson.
+      // We detect the format on process exit so both are supported.
+      let stdoutBuffer = '';
       if (child.stdout) {
-        child.stdout.pipe(split()).on('data', (line: string) => {
-          lineNumber++;
-
-          // Skip empty lines
-          if (!line.trim()) {
-            return;
-          }
-
-          try {
-            const event = parseEventLine(line, lineNumber);
-            events.push(event);
-          } catch (error) {
-            // Log parse error but continue (graceful degradation)
-            if (this.logger) {
-              this.logger.error(`Parse error at line ${lineNumber}: ${error instanceof Error ? error.message : String(error)}`);
-            }
-          }
+        child.stdout.on('data', (data: Buffer) => {
+          stdoutBuffer += data.toString();
         });
       }
 
@@ -212,15 +205,52 @@ export class BacktestService {
         const executionTimeMs = Math.round(performance.now() - startTime);
 
         if (this.logger) {
-          this.logger.info(`Process exited: code=${exitCode}, signal=${signal}, time=${executionTimeMs}ms, events=${events.length}`);
+          this.logger.info(`Process exited: code=${exitCode}, signal=${signal}, time=${executionTimeMs}ms`);
         }
 
         // Success: exit code 0
         if (exitCode === 0) {
-          resolve({
-            events,
-            executionTimeMs,
-          });
+          let events: any[] = [];
+          let finalPosition: any | null = null;
+
+          const trimmed = stdoutBuffer.trim();
+          if (trimmed) {
+            let parsedAsBlob = false;
+
+            // Try new Go engine format first: a single JSON blob with top-level "events" array
+            try {
+              const parsed = JSON.parse(trimmed);
+              if (parsed && Array.isArray(parsed.events)) {
+                events = parsed.events;
+                finalPosition = parsed.final_position ?? null;
+                parsedAsBlob = true;
+                if (this.logger) {
+                  this.logger.info(`Go engine blob parsed: ${events.length} events, finalPosition=${finalPosition !== null}`);
+                }
+              }
+            } catch {
+              // Not a single JSON blob — fall through to ndjson
+            }
+
+            // Old ndjson fallback (mock engine / legacy format)
+            if (!parsedAsBlob) {
+              const lines = trimmed.split('\n');
+              for (let i = 0; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                try {
+                  const event = parseEventLine(line, i + 1);
+                  events.push(event);
+                } catch (error) {
+                  if (this.logger) {
+                    this.logger.error(`ndjson parse error at line ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
+                  }
+                }
+              }
+            }
+          }
+
+          resolve({ events, finalPosition, executionTimeMs });
           return;
         }
 

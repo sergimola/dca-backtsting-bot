@@ -351,20 +351,22 @@ func TestUS3_UniformDistribution_ScaleOne(t *testing.T) {
 	assertSumInvariant(t, seq, mustDecimal("300"))
 }
 
-// T058 — US3 Acceptance Scenario 5: amount_per_trade <= 1.0 stored as-is (no runtime interp).
-func TestUS3_FractionalAmountPerTradeStoredRaw(t *testing.T) {
+// T058 — US3 Acceptance Scenario 5: amount_per_trade ≤ 1.0 is treated as a fraction of
+// AccountBalance. V = AccountBalance × AmountPerTrade × Multiplier.
+func TestUS3_FractionalAmountPerTradeScaledByBalance(t *testing.T) {
 	cfg, err := NewConfig(WithAmountPerTrade(mustDecimal("0.5")))
 	if err != nil {
 		t.Fatalf("NewConfig: %v", err)
 	}
-	// Config must store the raw 0.5 value; runtime interpretation is NOT Config's concern
+	// Config stores 0.5 raw; ComputeAmountSequence applies V = AccountBalance × 0.5 × 1
+	// With DefaultAccountBalance=1000: V = 500 USDT
 	decimalEqual(&testing.T{}, "amount_per_trade", mustDecimal("0.5"), cfg.AmountPerTrade())
-	// ComputeAmountSequence will use 0.5 literally
 	seq, err := cfg.ComputeAmountSequence()
 	if err != nil {
 		t.Fatalf("ComputeAmountSequence: %v", err)
 	}
-	assertSumInvariant(t, seq, mustDecimal("0.5"))
+	// Sum must equal V = 500, not 0.5
+	assertSumInvariant(t, seq, mustDecimal("500"))
 }
 
 // T059 — US3: Edge case E3 — number_of_orders=1 returns single-element [C*m].

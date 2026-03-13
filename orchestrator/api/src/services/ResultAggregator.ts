@@ -211,4 +211,98 @@ export class ResultAggregator {
       safety_order_usage_counts: safetyOrderUsageCounts,
     };
   }
+
+  /**
+   * Aggregates raw Go engine events (new format) into a PnlSummary.
+   *
+   * Go engine emits:
+   *   { type: "PositionOpened",         data: { configured_orders: [...] } }
+   *   { type: "BuyOrderExecuted",        data: { price, base_size, fee, order_number, … } }
+   *   { type: "SellOrderExecuted",       data: { price, base_size, profit, fee } }  ← always paired with PositionClosed
+   *   { type: "PositionClosed",          data: { closing_price, size, profit, reason } }  ← authoritative P&L
+   *   { type: "LiquidationPriceUpdated", … }  ← noise, ignored
+   *   { type: "price.changed",           … }  ← noise, ignored
+   *
+   * ROI formula: (realizedPnL / accountBalance) × 100
+   * accountBalance comes from final_position.total_invested (= configured account size)
+   *
+   * NOTE: BuyOrderExecuted.size is the fractional amount from ComputeAmountSequence,
+   * NOT the USDT quote amount.  Do NOT use it as a totalInvested base.
+   *
+   * @param rawGoEvents  - Raw events array from Go engine stdout
+   * @param accountBalance - String decimal from final_position.total_invested (e.g. "1000")
+   */
+  async aggregateGoEvents(rawGoEvents: any[], accountBalance: string = '0'): Promise<PnlSummary> {
+    if (rawGoEvents.length === 0) {
+      return {
+        total_pnl: '0.00000000',
+        entry_fee: '0.00000000',
+        trading_fees: '0.00000000',
+        total_fees: '0.00000000',
+        roi_percent: '0.00000000',
+        total_fills: 0,
+        realized_pnl: '0.00000000',
+        safety_order_usage_counts: {},
+      };
+    }
+
+    // accountBalance is the configured capital size (denominator for ROI)
+    const accBalance = new Decimal(accountBalance || '0');
+
+    let entryFee = new Decimal(0);    // fee on order_number=1 (entry buy)
+    let tradingFees = new Decimal(0); // cumulative fees on all buys
+    let realizedPnl = new Decimal(0); // authoritative: from PositionClosed only
+    let totalFills = 0;
+    const safetyOrderUsageCounts: Record<number, number> = {};
+    let entryFeeSet = false;
+
+    for (const event of rawGoEvents) {
+      const type = event.type as string;
+      const d: any = event.data ?? {};
+
+      if (type === 'BuyOrderExecuted') {
+        // fee is in quote currency (USDT)
+        const fee      = new Decimal(d.fee  ?? '0');
+        const orderNum = (d.order_number as number) ?? 1;
+
+        tradingFees = tradingFees.plus(fee);
+
+        if (!entryFeeSet && orderNum === 1) {
+          entryFee    = fee;
+          entryFeeSet = true;
+        }
+
+        totalFills++;
+        // soIndex = orderNum - 1: entry (order 1) = index 0, SO#1 (order 2) = index 1, …
+        const soIndex = orderNum - 1;
+        safetyOrderUsageCounts[soIndex] = (safetyOrderUsageCounts[soIndex] ?? 0) + 1;
+
+      } else if (type === 'PositionClosed') {
+        // PositionClosed.profit is the authoritative realized P&L for the whole trade.
+        // SellOrderExecuted also emits a profit field but it duplicates this value.
+        // We read ONLY from PositionClosed to avoid double-counting.
+        realizedPnl = new Decimal(d.profit ?? '0');
+      }
+      // SellOrderExecuted, LiquidationPriceUpdated, price.changed → ignored
+    }
+
+    const totalPnl  = realizedPnl;
+    const totalFees = entryFee.plus(tradingFees);
+
+    // ROI = (realized P&L / account balance) × 100
+    const roiPercent = accBalance.isZero()
+      ? new Decimal(0)
+      : totalPnl.dividedBy(accBalance).times(100);
+
+    return {
+      total_pnl:    PrecisionFormatter.formatPrice(totalPnl),
+      entry_fee:    PrecisionFormatter.formatPrice(entryFee),
+      trading_fees: PrecisionFormatter.formatPrice(tradingFees),
+      total_fees:   PrecisionFormatter.formatPrice(totalFees),
+      roi_percent:  PrecisionFormatter.formatPercentage(roiPercent),
+      total_fills:  totalFills,
+      realized_pnl: PrecisionFormatter.formatPrice(realizedPnl),
+      safety_order_usage_counts: safetyOrderUsageCounts,
+    };
+  }
 }

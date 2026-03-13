@@ -17,8 +17,19 @@ import { IdempotencyCache } from '../services/IdempotencyCache.js';
 import { getValidatedBacktestRequest, validationMiddleware } from '../middleware/validation.middleware.js';
 import { MarketDataResolver, SameMonthGuardError, MarketDataNotFoundError } from '../services/MarketDataResolver.js';
 import { validateIdempotencyKey, isValidUuid } from '../utils/RequestIdGenerator.js';
-import { BacktestResult } from '../types/index.js';
+import { BacktestResult, TradeEvent, PnlSummary } from '../types/index.js';
 import { StorageError } from '../types/errors.js';
+
+/**
+ * Maps Go engine position state strings to the PositionState status field.
+ * Go states: Idle, Active, SafetyOrderActive, TakeProfitPending, Closed, Liquidated
+ */
+function mapGoStateToStatus(state: string | undefined): 'OPEN' | 'CLOSED' | 'LIQUIDATED' {
+  if (!state) return 'CLOSED';
+  if (state === 'Liquidated') return 'LIQUIDATED';
+  if (state === 'Idle' || state === 'Closed') return 'CLOSED';
+  return 'OPEN';
+}
 
 /**
  * Create backtest router with wired services
@@ -117,28 +128,49 @@ export function createBacktestRouter(
         const statusValue = statusResult || 'pending';
 
         if (statusValue === 'complete') {
-          // Use execution result captured by the enqueue callback.
-          // TypeScript CFA narrows execResult to 'never' here (fire-and-forget closure),
-          // so we use a double cast; runtime safety is guaranteed since this branch is
-          // only reached after _processNext() has set the status to 'complete'.
           const completedResult = execResult as unknown as BacktestExecutionResult;
 
-          // Aggregate events into PnlSummary
-          const pnlSummary = await resultAggregator.aggregateEvents(completedResult.events);
+          // Aggregate events into PnlSummary.
+          // Use aggregateGoEvents when finalPosition is set (real Go engine, new format).
+          // Fall back to aggregateEvents for old ndjson format (mock engine / tests).
+          let pnlSummary: PnlSummary;
+          if (completedResult.finalPosition !== null) {
+            // Real Go engine: pass account_balance from final_position as the ROI denominator
+            const accountBalance: string =
+              completedResult.finalPosition?.account_balance ||
+              completedResult.finalPosition?.total_invested ||
+              '0';
+            pnlSummary = await resultAggregator.aggregateGoEvents(completedResult.events, accountBalance);
+          } else {
+            pnlSummary = await resultAggregator.aggregateEvents(completedResult.events as TradeEvent[]);
+          }
+
+          // Build final_position.
+          // If Go engine returned live position state, map it to the PositionState schema.
+          // Otherwise fall back to the last event's position_state (old mock format).
+          const fp = completedResult.finalPosition;
+          const finalPosition = fp ? {
+            quantity:              fp.position_quantity     ?? '0.00000000',
+            average_cost:          fp.average_entry_price   ?? '0.00000000',
+            total_invested:        fp.account_balance       ?? '0.00000000',
+            leverage_level:        '1.00000000',
+            status:                mapGoStateToStatus(fp.state),
+            last_update_timestamp: 0,
+          } : (completedResult.events[completedResult.events.length - 1] as any)?.position_state ?? {
+            quantity: '0.00000000',
+            average_cost: '0.00000000',
+            total_invested: '0.00000000',
+            leverage_level: '0.00000000',
+            status: 'CLOSED',
+            last_update_timestamp: 0,
+          };
 
           // Build BacktestResult
           result = {
             request_id: backtestRequestId,
             status: 'success',
             events: completedResult.events,
-            final_position: completedResult.events[completedResult.events.length - 1]?.position_state || {
-              quantity: '0.00000000',
-              average_cost: '0.00000000',
-              total_invested: '0.00000000',
-              leverage_level: '0.00000000',
-              status: 'CLOSED',
-              last_update_timestamp: 0,
-            },
+            final_position: finalPosition,
             pnl_summary: pnlSummary,
             execution_time_ms: completedResult.executionTimeMs,
             timestamp: new Date().toISOString(),

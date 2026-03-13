@@ -110,7 +110,7 @@ func TestCanonical_Scenario2_BuySafetyOrderAndTakeProfit(t *testing.T) {
 	// Verify safety order filled
 	foundBuy := false
 	for _, evt := range events2 {
-		if evt.EventType() == "buy.order.executed" {
+		if evt.EventType() == "order.buy.executed" {
 			foundBuy = true
 		}
 	}
@@ -118,11 +118,16 @@ func TestCanonical_Scenario2_BuySafetyOrderAndTakeProfit(t *testing.T) {
 		t.Errorf("S2: expected buy order executed")
 	}
 
-	// Verify average entry recalculated: (10*100 + 20*98) / 30 = 98.667
-	expectedAvg := mustDecimal("1960.00").Div(mustDecimal("30.00"))
-	if !pos.AverageEntryPrice.Equal(expectedAvg) {
-		t.Errorf("S2: expected avg entry %v, got %v", expectedAvg, pos.AverageEntryPrice)
-	}
+	// Verify average entry recalculated using USDT dollar amounts.
+	// pos.Amounts[] are USDT dollar amounts; qty = USDT / fill_price.
+	// qty0 = amounts[0] / prices[0] = 10 / 100 = 0.1 BTC
+	// qty1 = amounts[1] / prices[1] = 20 / 98  = 0.20408163... BTC
+	// Pbar = (100×0.1 + 98×0.20408163) / (0.1 + 0.20408163) = 30 / 0.30408163 ≈ 98.6578
+	qty0 := mustDecimal("10.00").Div(mustDecimal("100.00"))
+	qty1 := mustDecimal("20.00").Div(mustDecimal("98.00"))
+	expectedAvg := mustDecimal("100.00").Mul(qty0).Add(mustDecimal("98.00").Mul(qty1)).
+		Div(qty0.Add(qty1))
+	assertDecimalEqualWithPrecision(t, expectedAvg, pos.AverageEntryPrice, 6, "S2: avg entry price")
 
 	// Candle 3: Take-profit above average + 0.5%
 	c3 := &Candle{

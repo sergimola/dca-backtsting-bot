@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"fmt"
 	"io"
+	"os"
 	"time"
 
 	"dca-bot/core-engine/domain/position"
@@ -72,6 +73,7 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 	startTime := time.Now().UTC()
 	candleCount := 0
 	eventCount := 0
+	var lastPosition *position.Position // tracks the most-recently active position (even after close)
 
 	// Initialize the backtest run
 	backtest := &BacktestRun{
@@ -93,49 +95,88 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 			break
 		}
 
-		// Initialize position on first candle (T020, T021, T022)
+		// Capture symbol from first candle
 		if candleCount == 0 {
 			if candle.Symbol != "" {
 				backtest.Symbol = candle.Symbol
 			}
 
-			// Create initial position on first candle
+			// [ENGINE-DEBUG] Symbol integrity check
+			configPair := ""
+			if orch.config.DomainConfig != nil {
+				configPair = orch.config.DomainConfig.TradingPair()
+			}
+			fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] First candle: Symbol=%q TradingPair(config)=%q candle.Close=%s\n",
+				candle.Symbol, configPair, candle.Close)
+			if candle.Symbol != "" && configPair != "" && candle.Symbol != configPair {
+				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] WARNING: candle.Symbol %q does not match config TradingPair %q — PSM may ignore candle data\n",
+					candle.Symbol, configPair)
+			}
+		}
+
+		// Open a new position whenever the position slot is empty (first candle or after close)
+		if orch.position == nil {
 			tradeID := fmt.Sprintf("%s-%d", backtest.ID, time.Now().UnixNano())
 
 			// Apply market-buy slippage: P_0 = candle.Close × (1 + marketTolerance)
-			// This anchors the entire safety-order grid to the actual fill price.
 			actualEntryPrice := candle.Close.Mul(decimal.NewFromInt(1).Add(marketTolerance))
 
-			// Compute order grid from domain config if available (SDD §2.1, §2.2)
 			var prices []decimal.Decimal
 			var amounts []decimal.Decimal
 			if orch.config.DomainConfig != nil {
 				priceSeq, priceErr := orch.config.DomainConfig.ComputePriceSequence(actualEntryPrice)
+				if priceErr != nil {
+					fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputePriceSequence error: %v\n", priceErr)
+				} else {
+					fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputePriceSequence OK: actualEntryPrice=%s resultCount=%d prices=%v\n",
+						actualEntryPrice, len(priceSeq), priceSeq)
+				}
 				if priceErr == nil && len(priceSeq) > 0 {
 					prices = []decimal.Decimal(priceSeq)
-					amountSeq, amountErr := orch.config.DomainConfig.ComputeAmountSequence()
-					if amountErr == nil && len(amountSeq) == len(prices) {
-						amounts = []decimal.Decimal(amountSeq)
+					// ComputeAmountSequence returns USDT dollar amounts (D_n) per order.
+					// The PSM execution layer (order_fills, minute_loop) divides by price
+					// at fill time to obtain base-currency (BTC) quantities.
+					usdtAmounts, amountErr := orch.config.DomainConfig.ComputeAmountSequence()
+					if amountErr != nil {
+						fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputeAmountSequence error: %v\n", amountErr)
+					} else {
+						fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputeAmountSequence OK: count=%d usdtAmounts=%v\n", len(usdtAmounts), usdtAmounts)
+						if len(usdtAmounts) == len(prices) {
+							amounts = []decimal.Decimal(usdtAmounts)
+						} else {
+							fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] WARNING: prices count (%d) != amounts count (%d)\n",
+								len(prices), len(usdtAmounts))
+						}
 					}
 				}
 			}
 
-			newPos, err := orch.psm.NewPosition(
-				tradeID,
-				candle.Timestamp,
-				prices,
-				amounts,
-			)
+			fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Opening new position: tradeID=%q candle.Close=%s prices=%d amounts=%d\n",
+				tradeID, candle.Close, len(prices), len(amounts))
+			if len(amounts) > 0 && len(prices) > 0 {
+				firstBTCQty := amounts[0].Div(prices[0])
+				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Order-0: D_0=%s USDT / P_0=%s → BTC Qty=%s\n",
+					amounts[0], prices[0], firstBTCQty)
+			}
+
+			newPos, err := orch.psm.NewPosition(tradeID, candle.Timestamp, prices, amounts)
 			if err != nil {
-				// If position creation fails, continue processing to allow backtest to proceed
-				// In real usage with proper PSM config, this would be fatal
-				orch.position = nil
+				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ERROR: NewPosition failed: %v — skipping candle\n", err)
 			} else {
+				// Set take-profit distance and account balance from domain config
+				if orch.config.DomainConfig != nil {
+					newPos.TakeProfitDistance = orch.config.DomainConfig.TakeProfitDistancePercent()
+					newPos.AccountBalance = orch.config.DomainConfig.AccountBalance()
+					newPos.ExitOnLastOrder = orch.config.DomainConfig.ExitOnLastOrder()
+				}
 				orch.position = newPos
+				lastPosition = orch.position
 			}
 		}
 
 		// Feed candle to PSM if position exists (T020, T021, T022, T023)
+		fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ProcessCandle candle#%d: ts=%s close=%s positionNil=%v\n",
+			candleCount, candle.Timestamp.Format("2006-01-02T15:04:05Z"), candle.Close, orch.position == nil)
 		if orch.position != nil {
 			// Convert Orchestrator Candle to PSM Candle (compatible structure)
 			psmCandle := &position.Candle{
@@ -151,23 +192,20 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 			psmEvents, err := orch.psm.ProcessCandle(orch.position, psmCandle)
 			if err != nil {
 				// Log error but continue processing if possible
-				// In production, may want stricter error handling
 				_ = err // Ignore for now - backtest continues
 			}
 
 			// Wrap PSM events into Orchestrator Event structs (T022: Full fidelity)
-			// T018 requirement: wrap PSM events with full Decimal precision preserved
 			if len(psmEvents) > 0 {
+				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] candle#%d produced %d PSM event(s)\n", candleCount, len(psmEvents))
 				for _, psmEvent := range psmEvents {
-					// Create orchestrator event wrapping the PSM event
 					orchEvent := Event{
 						Timestamp: psmEvent.EventTimestamp(),
 						Type:      mapPSMEventToType(psmEvent),
-						Data:      psmEvent, // Store raw PSM event data
-						RawEvent:  psmEvent, // Preserve original for extensibility
+						Data:      psmEvent,
+						RawEvent:  psmEvent,
 					}
 
-					// Append to event bus (T020, T021, T022, T028)
 					err := orch.eventBus.Append(orchEvent)
 					if err != nil {
 						return nil, fmt.Errorf("failed to append event to bus: %w", err)
@@ -175,6 +213,12 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 
 					eventCount++
 				}
+			}
+
+			// If the position was closed this candle, reset so the next candle opens a new trade
+			if orch.position.State == position.StateClosed {
+				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Position closed at candle#%d — resetting for re-entry next candle\n", candleCount)
+				orch.position = nil
 			}
 		}
 
@@ -189,6 +233,12 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 	backtest.EventCount = eventCount
 	backtest.EndTime = endTime
 	backtest.EventBus = orch.eventBus
+	// FinalPosition: prefer the live open position; fall back to the last closed one
+	if orch.position != nil {
+		backtest.FinalPosition = orch.position
+	} else {
+		backtest.FinalPosition = lastPosition
+	}
 
 	return backtest, nil
 }

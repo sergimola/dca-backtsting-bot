@@ -3,6 +3,8 @@ package orchestrator
 import (
 	"time"
 
+	"dca-bot/core-engine/domain/position"
+
 	"github.com/shopspring/decimal"
 )
 
@@ -39,12 +41,12 @@ type Event struct {
 
 // BacktestRun encapsulates a complete backtest execution.
 type BacktestRun struct {
-	ID         string    // Unique backtest identifier
-	Symbol     string    // Trading pair
-	StartTime  time.Time // Execution start time
-	EndTime    time.Time // Execution end time
-	CandleCount int      // Total candles processed
-	EventCount int       // Total events captured
-	EventBus   *EventBus // In-memory event log
-	// PSMConfig will be added when position.Config is available
+	ID            string             // Unique backtest identifier
+	Symbol        string             // Trading pair
+	StartTime     time.Time          // Execution start time
+	EndTime       time.Time          // Execution end time
+	CandleCount   int                // Total candles processed
+	EventCount    int                // Total events captured
+	EventBus      *EventBus          // In-memory event log
+	FinalPosition *position.Position // Live position state at end of backtest (nil if no position opened)
 }

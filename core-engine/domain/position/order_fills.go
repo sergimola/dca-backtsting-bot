@@ -24,18 +24,13 @@ func FillOrdersForCandle(ctx context.Context, pos *Position, lowPrice decimal.De
 		if lowPrice.LessThanOrEqual(orderPrice) {
 			// Fill this order at its pre-calculated price (Gap-Down Paradox Rule)
 			orderNumber := i + 1 // 1-indexed for user display
-			orderQuantity := decimal.NewFromInt(1) // Simplified: assume 1 unit per order
-			
-			// In reality, this would come from pre-calculated amounts
-			// For now, using simplified quantity
-			if i < len(pos.Amounts) {
-				// Could calculate quantity from amount, but keeping simple for test
-				// quoteAmount = pos.Amounts[i]
-				// orderQuantity = quoteAmount / orderPrice
-			}
-			
-			quoteAmount := pos.Amounts[i]
-			fee := CalculateFee(orderPrice, orderQuantity, OrderTypeLimit, 1) // Assuming spot for now
+
+			// pos.Amounts[i] is the USDT dollar amount for this order.
+			// Divide by limit price to get base currency quantity.
+			orderQuantity := pos.Amounts[i].Div(orderPrice)
+			quoteAmount   := pos.Amounts[i] // USDT notional = the configured dollar amount
+
+			fee := CalculateFee(orderPrice, orderQuantity, OrderTypeLimit, 1)
 			
 			fill := OrderFill{
 				OrderIndex:       i,

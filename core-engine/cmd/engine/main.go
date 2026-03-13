@@ -124,9 +124,24 @@ func main() {
 // buildConfigFromRequest creates a domain config from the EngineRequest
 // Maps all 13 SDD §4.1 parameters to their corresponding With* options
 func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
-	// Add this line at the start
-    fmt.Fprintf(os.Stderr, "[DEBUG] Mapping Request: Pair=%s, Entry=%s, SO_Count=%d\n", 
-        req.TradingPair, req.PriceEntry, req.NumberOfOrders)
+	// [ENGINE-DEBUG] Log every raw parameter received from the API before parsing
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] buildConfigFromRequest called\n")
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   TradingPair                = %q\n", req.TradingPair)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   StartDate                  = %q\n", req.StartDate)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   EndDate                    = %q\n", req.EndDate)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   PriceEntry                 = %q\n", req.PriceEntry)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   PriceScale                 = %q\n", req.PriceScale)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   AmountScale                = %q\n", req.AmountScale)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   NumberOfOrders (SO_Count)  = %d\n", req.NumberOfOrders)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   AmountPerTrade             = %q\n", req.AmountPerTrade)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   MarginType                 = %q\n", req.MarginType)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   Multiplier                 = %d\n", req.Multiplier)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   TakeProfitDistancePercent  = %q\n", req.TakeProfitDistancePercent)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   AccountBalance             = %q\n", req.AccountBalance)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   ExitOnLastOrder            = %v\n", req.ExitOnLastOrder)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   MarketDataCSVPath          = %q\n", req.MarketDataCSVPath)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   IdempotencyKey             = %q\n", req.IdempotencyKey)
+
 	// Parse all decimal values using shopspring/decimal for precision
 	priceEntry, err := decimal.NewFromString(req.PriceEntry)
 	if err != nil {
@@ -161,6 +176,10 @@ func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
 
 	multiplier := decimal.NewFromInt(int64(req.Multiplier))
 
+	// [ENGINE-DEBUG] Log parsed decimal values to confirm conversion succeeded
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Parsed decimals OK: priceEntry=%s priceScale=%s amountScale=%s amountPerTrade=%s takeProfitPct=%s accountBalance=%s multiplier=%s\n",
+		priceEntry, priceScale, amountScale, amountPerTrade, takeProfitDistancePercent, accountBalance, multiplier)
+
 	// Build config wiring all 13 SDD §4.1 parameters via With* options
 	cfg, err := config.NewConfig(
 		config.WithTradingPair(req.TradingPair),
@@ -188,7 +207,7 @@ func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
 func convertBacktestToOutput(backtest *orchestrator.BacktestRun, cfg *config.Config) *BacktestOutput {
 	// Convert orchestrator events to output format
 	events := make([]map[string]interface{}, 0, backtest.EventCount)
-	
+
 	if backtest.EventBus != nil {
 		// Get all events from the event bus
 		allEvents := backtest.EventBus.GetAllEvents()
@@ -203,6 +222,32 @@ func convertBacktestToOutput(backtest *orchestrator.BacktestRun, cfg *config.Con
 		}
 	}
 
+	// Build final_position with both config params and live position state.
+	// Live state (average_entry_price, position_quantity, etc.) allows the UI
+	// to compute unrealized PnL even if no trade has closed yet.
+	finalPosition := map[string]interface{}{
+		// Reference config params
+		"trading_pair":                 cfg.TradingPair(),
+		"start_date":                   cfg.StartDate(),
+		"end_date":                     cfg.EndDate(),
+		"price_entry":                  cfg.PriceEntry().String(),
+		"number_of_orders":             cfg.NumberOfOrders(),
+		"account_balance":              cfg.AccountBalance().String(),
+		"take_profit_distance_percent": cfg.TakeProfitDistancePercent().String(),
+		"exit_on_last_order":           cfg.ExitOnLastOrder(),
+	}
+	if fp := backtest.FinalPosition; fp != nil {
+		finalPosition["state"]               = fp.State.String()
+		finalPosition["average_entry_price"] = fp.AverageEntryPrice.String()
+		finalPosition["position_quantity"]   = fp.PositionQuantity.String()
+		finalPosition["take_profit_target"]  = fp.TakeProfitTarget.String()
+		finalPosition["liquidation_price"]   = fp.LiquidationPrice.String()
+		finalPosition["fees_accumulated"]    = fp.FeesAccumulated.String()
+		finalPosition["realized_profit"]     = fp.Profit.String()
+		finalPosition["orders_filled"]       = len(fp.Orders)
+		finalPosition["next_order_index"]    = fp.NextOrderIndex
+	}
+
 	// Calculate execution time in milliseconds
 	executionTimeMs := backtest.EndTime.Sub(backtest.StartTime).Milliseconds()
 
@@ -211,20 +256,6 @@ func convertBacktestToOutput(backtest *orchestrator.BacktestRun, cfg *config.Con
 		ExecutionTimeMs: executionTimeMs,
 		CandleCount:     backtest.CandleCount,
 		EventCount:      backtest.EventCount,
-		FinalPosition: map[string]interface{}{
-			"trading_pair":                    cfg.TradingPair(),
-			"start_date":                      cfg.StartDate(),
-			"end_date":                        cfg.EndDate(),
-			"price_entry":                     cfg.PriceEntry().String(),
-			"price_scale":                     cfg.PriceScale(),
-			"amount_scale":                    cfg.AmountScale(),
-			"number_of_orders":                cfg.NumberOfOrders(),
-			"amount_per_trade":                cfg.AmountPerTrade().String(),
-			"margin_type":                     cfg.MarginType(),
-			"multiplier":                      cfg.Multiplier(),
-			"take_profit_distance_percent":    cfg.TakeProfitDistancePercent().String(),
-			"account_balance":                 cfg.AccountBalance().String(),
-			"exit_on_last_order":              cfg.ExitOnLastOrder(),
-		},
+		FinalPosition:   finalPosition,
 	}
 }

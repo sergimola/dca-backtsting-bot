@@ -113,16 +113,18 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 
 	// Step 2: If State == StateIdle, execute market buy
 	if pos.State == StateIdle {
-		// Execute market buy at candle Close price
+		// pos.Amounts[0] is the USDT dollar amount for Order 0.
+		// Divide by market close price to get base currency quantity.
+		marketBuyQuantity := pos.Amounts[0].Div(candle.Close)
 		marketBuyFill := OrderFill{
 			OrderIndex:       0,
 			OrderNumber:      1,
 			OrderType:        OrderTypeMarket,
 			ExecutedPrice:    candle.Close,
-			ExecutedQuantity: decimal.NewFromInt(1), // Simplified: 1 unit per order
-			QuoteAmount:      pos.Amounts[0],        // From pre-calculated grid
+			ExecutedQuantity: marketBuyQuantity,
+			QuoteAmount:      pos.Amounts[0], // USDT notional = configured dollar amount
 			Timestamp:        candle.Timestamp,
-			Fee:              CalculateFee(candle.Close, decimal.NewFromInt(1), OrderTypeMarket, 1),
+			Fee:              CalculateFee(candle.Close, marketBuyQuantity, OrderTypeMarket, 1),
 		}
 
 		// Add to orders history
@@ -192,6 +194,18 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			if !pos.AverageEntryPrice.IsZero() {
 				half, _ := decimal.NewFromString("0.5")
 				pos.LiquidationPrice = pos.AverageEntryPrice.Mul(half)
+			}
+
+			// Recalculate TakeProfitTarget based on the updated average entry price.
+			// This must happen here (Step 3b) so that Step 3d sees the correct target
+			// reflecting ALL fills that happened in this candle (not a stale value from
+			// a prior candle's average).
+			{
+				tpDist := pos.TakeProfitDistance
+				if tpDist.IsZero() {
+					tpDist = decimal.NewFromFloat(0.5)
+				}
+				pos.TakeProfitTarget = CalculateTakeProfitTarget(pos.AverageEntryPrice, tpDist)
 			}
 
 			// Recalculate fees
@@ -308,11 +322,11 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 		// Note: Take-profit target needs to be set (requires distance parameter)
 		// For now, hardcode 0.5% distance as per test
 		if pos.TakeProfitTarget.IsZero() && !pos.AverageEntryPrice.IsZero() {
-			distance, err := decimal.NewFromString("0.5")
-			if err != nil {
-				distance = decimal.NewFromInt(0)
+			tpDist := pos.TakeProfitDistance
+			if tpDist.IsZero() {
+				tpDist = decimal.NewFromFloat(0.5) // fallback: 0.5% if not configured
 			}
-			pos.TakeProfitTarget = CalculateTakeProfitTarget(pos.AverageEntryPrice, distance)
+			pos.TakeProfitTarget = CalculateTakeProfitTarget(pos.AverageEntryPrice, tpDist)
 		}
 
 		if !pos.TakeProfitTarget.IsZero() && CheckTakeProfit(ctx, candle.High, pos.TakeProfitTarget) {
