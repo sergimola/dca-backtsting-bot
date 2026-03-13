@@ -1,5 +1,5 @@
 import { submitBacktest, getStatus, getResults } from '../../services/backtest-api'
-import type { BacktestConfiguration, BacktestResults } from '../../services/types'
+import type { BacktestFormState, BacktestResults } from '../../services/types'
 import axios from 'axios'
 
 // Mock axios
@@ -13,12 +13,20 @@ describe('backtest-api', () => {
 
   describe('submitBacktest', () => {
     it('should POST to /backtest with configuration and return backtestId', async () => {
-      const config: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100, 200],
-        sequences: 5,
-        leverage: 2,
-        marginRatio: 50,
+      const config: BacktestFormState = {
+        tradingPair: 'BTC/USDT',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        priceEntry: '50000',
+        priceScale: '1.10',
+        amountScale: '2.0',
+        numberOfOrders: '5',
+        amountPerTrade: '0.10',
+        marginType: 'cross',
+        multiplier: '1',
+        takeProfitDistancePercent: '2.5',
+        accountBalance: '1000.00',
+        exitOnLastOrder: false,
       }
 
       const mockResponse = {
@@ -32,19 +40,31 @@ describe('backtest-api', () => {
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
         expect.stringContaining('/backtest'),
-        config,
+        expect.objectContaining({
+          trading_pair: 'BTC/USDT',
+          price_entry: '50000',
+          margin_type: 'cross',
+        }),
         expect.any(Object)
       )
       expect(result).toEqual({ backtestId: 'test-123' })
     })
 
     it('should throw error on 400 validation error', async () => {
-      const config: BacktestConfiguration = {
-        entryPrice: 0,
-        amounts: [],
-        sequences: 0,
-        leverage: 0,
-        marginRatio: 150,
+      const config: BacktestFormState = {
+        tradingPair: '',
+        startDate: '',
+        endDate: '',
+        priceEntry: '0',
+        priceScale: '1.10',
+        amountScale: '2.0',
+        numberOfOrders: '0',
+        amountPerTrade: '0',
+        marginType: 'cross',
+        multiplier: '0',
+        takeProfitDistancePercent: '0',
+        accountBalance: '0',
+        exitOnLastOrder: false,
       }
 
       const error = new Error('Validation failed')
@@ -59,12 +79,20 @@ describe('backtest-api', () => {
     })
 
     it('should throw error on 500 server error', async () => {
-      const config: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
+      const config: BacktestFormState = {
+        tradingPair: 'BTC/USDT',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        priceEntry: '50000',
+        priceScale: '1.10',
+        amountScale: '2.0',
+        numberOfOrders: '5',
+        amountPerTrade: '0.10',
+        marginType: 'cross',
+        multiplier: '1',
+        takeProfitDistancePercent: '2.5',
+        accountBalance: '1000.00',
+        exitOnLastOrder: false,
       }
 
       const error = new Error('Internal Server Error')
@@ -79,12 +107,20 @@ describe('backtest-api', () => {
     })
 
     it('should throw error if backtestId is missing from response', async () => {
-      const config: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
+      const config: BacktestFormState = {
+        tradingPair: 'BTC/USDT',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        priceEntry: '50000',
+        priceScale: '1.10',
+        amountScale: '2.0',
+        numberOfOrders: '5',
+        amountPerTrade: '0.10',
+        marginType: 'cross',
+        multiplier: '1',
+        takeProfitDistancePercent: '2.5',
+        accountBalance: '1000.00',
+        exitOnLastOrder: false,
       }
 
       mockedAxios.post.mockResolvedValue({
@@ -96,12 +132,20 @@ describe('backtest-api', () => {
     })
 
     it('should validate response status is 201', async () => {
-      const config: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
+      const config: BacktestFormState = {
+        tradingPair: 'BTC/USDT',
+        startDate: '2024-01-01',
+        endDate: '2024-01-31',
+        priceEntry: '50000',
+        priceScale: '1.10',
+        amountScale: '2.0',
+        numberOfOrders: '5',
+        amountPerTrade: '0.10',
+        marginType: 'cross',
+        multiplier: '1',
+        takeProfitDistancePercent: '2.5',
+        accountBalance: '1000.00',
+        exitOnLastOrder: false,
       }
 
       mockedAxios.post.mockResolvedValue({
@@ -110,6 +154,74 @@ describe('backtest-api', () => {
       })
 
       await expect(submitBacktest(config)).rejects.toThrow()
+    })
+
+    it('T004.2: pads YYYY-MM-DD dates to RFC 3339 before sending to API', async () => {
+      const config: BacktestFormState = {
+        tradingPair: 'LTC/USDT',
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+        priceEntry: '2.0',
+        priceScale: '1.1',
+        amountScale: '2.0',
+        numberOfOrders: '3',
+        amountPerTrade: '1000.0',
+        marginType: 'cross',
+        multiplier: '1',
+        takeProfitDistancePercent: '2.0',
+        accountBalance: '10000.0',
+        exitOnLastOrder: false,
+      }
+
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: { request_id: 'pad-test-001' },
+      })
+
+      await submitBacktest(config)
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/backtest'),
+        expect.objectContaining({
+          start_date: '2025-01-01T00:00:00Z',
+          end_date: '2025-01-31T23:59:59Z',
+        }),
+        expect.any(Object),
+      )
+    })
+
+    it('T004.2: converts padded datetime to RFC 3339 format', async () => {
+      const config: BacktestFormState = {
+        tradingPair: 'LTC/USDT',
+        startDate: '2025-01-01 00:00:00',
+        endDate: '2025-01-31 23:59:59',
+        priceEntry: '2.0',
+        priceScale: '1.1',
+        amountScale: '2.0',
+        numberOfOrders: '3',
+        amountPerTrade: '1000.0',
+        marginType: 'cross',
+        multiplier: '1',
+        takeProfitDistancePercent: '2.0',
+        accountBalance: '10000.0',
+        exitOnLastOrder: false,
+      }
+
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: { request_id: 'pad-test-002' },
+      })
+
+      await submitBacktest(config)
+
+      expect(mockedAxios.post).toHaveBeenCalledWith(
+        expect.stringContaining('/backtest'),
+        expect.objectContaining({
+          start_date: '2025-01-01T00:00:00Z',
+          end_date: '2025-01-31T23:59:59Z',
+        }),
+        expect.any(Object),
+      )
     })
   })
 

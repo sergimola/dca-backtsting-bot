@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import App from '../../App'
-import type { BacktestConfiguration, BacktestResults } from '../../services/types'
+import type { BacktestFormState, BacktestResults } from '../../services/types'
 
 // Mock the API service
 jest.mock('../../services/backtest-api', () => ({
@@ -22,13 +22,20 @@ jest.mock('../../services/backtest-api', () => ({
   )
 }))
 
-const mockConfig: BacktestConfiguration = {
-  entryPrice: 100,
-  amounts: [50, 100, 200],
-  sequences: 5,
-  leverage: 2,
-  marginRatio: 50,
-  market_data_csv_path: '/data/BTCUSDT_1m.csv'
+const mockConfig: BacktestFormState = {
+  tradingPair: 'BTC/USDT',
+  startDate: '2024-01-01',
+  endDate: '2024-01-31',
+  priceEntry: '100',
+  priceScale: '1.10',
+  amountScale: '2.0',
+  numberOfOrders: '5',
+  amountPerTrade: '0.10',
+  marginType: 'cross',
+  multiplier: '1',
+  takeProfitDistancePercent: '2.5',
+  accountBalance: '1000.00',
+  exitOnLastOrder: false,
 }
 
 describe('App State Machine Integration Tests', () => {
@@ -41,14 +48,14 @@ describe('App State Machine Integration Tests', () => {
     
     // Should render ConfigurationForm (which is part of ConfigurationPage)
     expect(screen.getByText(/DCA Backtesting Bot/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/Entry Price/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/Price Entry/i)).toBeInTheDocument()
   })
 
   test('T040.2: Submitting configuration form transitions to PollingPage', async () => {
     render(<App />)
     
     // Fill and submit the configuration form
-    const entryPriceInput = screen.getByLabelText(/Entry Price/i)
+    const entryPriceInput = screen.getByLabelText(/Price Entry/i)
     fireEvent.change(entryPriceInput, { target: { value: '100' } })
     
     // Find the submit button and click it
@@ -66,7 +73,7 @@ describe('App State Machine Integration Tests', () => {
     render(<App />)
     
     // Fill the form
-    const entryPriceInput = screen.getByLabelText(/Entry Price/i)
+    const entryPriceInput = screen.getByLabelText(/Price Entry/i)
     fireEvent.change(entryPriceInput, { target: { value: '100' } })
     
     // Click clear button
@@ -87,7 +94,7 @@ describe('App State Machine Integration Tests', () => {
     render(<App />)
     
     // Fill and submit
-    const entryPriceInput = screen.getByLabelText(/Entry Price/i)
+    const entryPriceInput = screen.getByLabelText(/Price Entry/i)
     fireEvent.change(entryPriceInput, { target: { value: '100' } })
     
     const submitButton = screen.getByRole('button', { name: /submit/i })
@@ -97,7 +104,7 @@ describe('App State Machine Integration Tests', () => {
     await waitFor(() => {
       // Either error is displayed or we're back on configuration form
       const errorPresent = screen.queryByText(/error|failed|invalid/i)
-      const formStillVisible = screen.queryByLabelText(/Entry Price/i)
+      const formStillVisible = screen.queryByLabelText(/Price Entry/i)
       expect(errorPresent || formStillVisible).toBeTruthy()
     }, { timeout: 2000 })
   })
@@ -106,8 +113,8 @@ describe('App State Machine Integration Tests', () => {
     render(<App />)
     
     // Fill and submit the form
-    const entryPriceInput = screen.getByLabelText(/Entry Price/i)
-    fireEvent.change(entryPriceInput, { target: { value: mockConfig.entryPrice.toString() } })
+    const entryPriceInput = screen.getByLabelText(/Price Entry/i)
+    fireEvent.change(entryPriceInput, { target: { value: mockConfig.priceEntry } })
     
     const submitButton = screen.getByRole('button', { name: /submit/i })
     fireEvent.click(submitButton)
@@ -130,7 +137,7 @@ describe('App State Machine Integration Tests', () => {
     render(<App />)
     
     // Fill configuration
-    const entryPriceInput = screen.getByLabelText(/Entry Price/i)
+    const entryPriceInput = screen.getByLabelText(/Price Entry/i)
     const initialValue = '100'
     fireEvent.change(entryPriceInput, { target: { value: initialValue } })
     

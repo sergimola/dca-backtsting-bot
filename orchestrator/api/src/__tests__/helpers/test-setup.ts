@@ -13,6 +13,7 @@ import { BacktestService } from '../../services/BacktestService.js';
 import { ResultAggregator } from '../../services/ResultAggregator.js';
 import { IdempotencyCache } from '../../services/IdempotencyCache.js';
 import { HealthMonitor } from '../../services/HealthMonitor.js';
+import { MarketDataResolver } from '../../services/MarketDataResolver.js';
 
 /**
  * Check if Core Engine binary is available
@@ -59,6 +60,9 @@ export async function setupTestApp(): Promise<Express> {
   const coreEngineBinaryPath = mockBinaryPath;
   const healthMonitor = new HealthMonitor(processManager, coreEngineBinaryPath);
 
+  // Use an in-memory no-op resolver for tests (resolves any path as existing)
+  const marketDataResolver = new MarketDataResolver(tempDir);
+
   // Create Express app
   testAppInstance = createApp({
     resultStore,
@@ -68,6 +72,7 @@ export async function setupTestApp(): Promise<Express> {
     idempotencyCache,
     healthMonitor,
     coreEngineBinaryPath,
+    marketDataResolver,
   });
 
   testServices = {

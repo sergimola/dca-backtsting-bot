@@ -7,7 +7,7 @@
 
 import { spawn } from 'child_process';
 import split from 'split2';
-import { BacktestRequest, TradeEvent } from '../types/index.js';
+import { ApiBacktestRequest, TradeEvent } from '../types/index.js';
 import { ProcessError } from '../types/errors.js';
 import { parseEventLine } from '../utils/EventBusParser.js';
 import * as fs from 'fs';
@@ -66,7 +66,7 @@ export class BacktestService {
   /**
    * Executes backtest with Core Engine binary
    *
-   * @param request - BacktestRequest with configuration
+   * @param request - ApiBacktestRequest with configuration (market_data_csv_path appended by resolver)
    * @param timeoutMs - Timeout in milliseconds (default from constructor)
    * @returns BacktestExecutionResult with events array and execution time
    * @throws ProcessError if subprocess fails or times out
@@ -89,7 +89,10 @@ export class BacktestService {
    *   }
    * }
    */
-  async execute(request: BacktestRequest, timeoutMs?: number): Promise<BacktestExecutionResult> {
+  async execute(
+    request: ApiBacktestRequest & { market_data_csv_path: string },
+    timeoutMs?: number
+  ): Promise<BacktestExecutionResult> {
     const timeout = timeoutMs ?? this.timeoutMs;
     return this.executeInternal(request, timeout, []);
   }
@@ -97,11 +100,14 @@ export class BacktestService {
   /**
    * Executes backtest with additional flags (for testing with mock binary)
    *
-   * @param request - BacktestRequest with configuration
+   * @param request - ApiBacktestRequest with configuration (market_data_csv_path appended by resolver)
    * @param flags - Additional command-line flags to pass to binary (e.g., ['--fail', '--timeout'])
    * @returns BacktestExecutionResult or throws with stderr attached
    */
-  async executeWithStderr(request: BacktestRequest, flags: string[] = []): Promise<BacktestExecutionResult> {
+  async executeWithStderr(
+    request: ApiBacktestRequest & { market_data_csv_path: string },
+    flags: string[] = []
+  ): Promise<BacktestExecutionResult> {
     return this.executeInternal(request, this.timeoutMs, flags);
   }
 
@@ -109,7 +115,7 @@ export class BacktestService {
    * Internal implementation of execute with optional flags for testing
    */
   private async executeInternal(
-    request: BacktestRequest,
+    request: ApiBacktestRequest & { market_data_csv_path: string },
     timeoutMs: number,
     flags: string[] = []
   ): Promise<BacktestExecutionResult> {

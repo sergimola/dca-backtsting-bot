@@ -129,7 +129,7 @@ export const ERROR_CODE_MAP: Record<ErrorCode, ErrorCodeInfo> = {
     message_template: 'Field "{field}" must be a decimal string, not a float. Example: "{example}"',
   },
   [ErrorCode.VALIDATION_OUT_OF_BOUNDS]: {
-    http_status: 422,
+    http_status: 400,
     message_template: 'Field "{field}" is out of bounds. Expected range: {range}. Got: {value}',
   },
   [ErrorCode.VALIDATION_TYPE_ERROR]: {

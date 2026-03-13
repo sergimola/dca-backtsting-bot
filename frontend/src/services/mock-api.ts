@@ -1,4 +1,4 @@
-import type { BacktestConfiguration, BacktestResults, BacktestStatus } from './types'
+import type { BacktestFormState, BacktestResults, BacktestStatus } from './types'
 
 /**
  * Mock API implementation for local development and testing
@@ -9,11 +9,11 @@ let requestCount = 0
 
 /**
  * Mock submitBacktest - simulates form submission delay
- * @param config - BacktestConfiguration
+ * @param config - BacktestFormState
  * @returns Promise with mock backtestId
  */
 export async function mockSubmitBacktest(
-  config: BacktestConfiguration
+  config: BacktestFormState
 ): Promise<{ backtestId: string }> {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500))

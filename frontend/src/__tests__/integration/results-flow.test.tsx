@@ -2,7 +2,7 @@ import React from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import '@testing-library/jest-dom'
 import { ResultsPage } from '../../pages/ResultsPage'
-import type { BacktestResults, BacktestConfiguration } from '../../services/types'
+import type { BacktestResults } from '../../services/types'
 
 describe('ResultsPage Integration Tests', () => {
   const mockResults: BacktestResults = {

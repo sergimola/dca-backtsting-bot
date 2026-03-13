@@ -1,5 +1,9 @@
 package orchestrator
 
+import (
+	domainconfig "dca-bot/core-engine/domain/config"
+)
+
 // OrchestratorConfig configures the backtest orchestrator.
 type OrchestratorConfig struct {
 	// PSM configuration (will accept position.Config when available)
@@ -16,4 +20,8 @@ type OrchestratorConfig struct {
 
 	// Optional: early exit callback for progress monitoring
 	ProgressCallback func(candleIdx int, eventCount int) error
+
+	// DomainConfig provides SDD §2.1/§2.2 parameter configuration for computing
+	// price and amount sequences. If nil, NewPosition uses empty grids (no orders).
+	DomainConfig *domainconfig.Config
 }

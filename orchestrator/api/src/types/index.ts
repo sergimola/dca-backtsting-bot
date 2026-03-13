@@ -1,17 +1,24 @@
 /**
  * Type Exports - Central point for all API type definitions
- * Mirrors contracts/ files: backtest-request, trade-event, backtest-result, error-mapping, health-metrics
+ * Mirrors contracts/ files: api-backtest-request, trade-event, backtest-result, error-mapping, health-metrics
  */
 
-// ============== BacktestRequest Types ==============
+// ============== ApiBacktestRequest Types ==============
 
-export interface BacktestRequest {
-  entry_price: string;
-  amounts: string[];
-  sequences: number[];
-  leverage: string;
-  margin_ratio: string;
-  market_data_csv_path: string;
+export interface ApiBacktestRequest {
+  trading_pair: string;
+  start_date: string;
+  end_date: string;
+  price_entry: string;
+  price_scale: string;
+  amount_scale: string;
+  number_of_orders: number;
+  amount_per_trade: string;
+  margin_type: 'cross' | 'isolated';
+  multiplier: number;
+  take_profit_distance_percent: string;
+  account_balance: string;
+  exit_on_last_order: boolean;
   idempotency_key?: string;
 }
 

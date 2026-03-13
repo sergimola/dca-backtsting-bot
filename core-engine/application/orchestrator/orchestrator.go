@@ -10,6 +10,11 @@ import (
 	"github.com/shopspring/decimal"
 )
 
+// marketTolerance is the fixed slippage applied to market-buy execution prices (0.05%).
+// When a new position opens, the actual P_0 = candle.Close × (1 + marketTolerance)
+// so that safety-order prices (P_1 … P_N) are anchored to the true fill price.
+var marketTolerance = decimal.NewFromFloat(0.0005)
+
 // Orchestrator coordinates CSV data loading, PSM position processing, and event capture
 type Orchestrator struct {
 	psm       position.PositionStateMachine
@@ -96,11 +101,30 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 
 			// Create initial position on first candle
 			tradeID := fmt.Sprintf("%s-%d", backtest.ID, time.Now().UnixNano())
+
+			// Apply market-buy slippage: P_0 = candle.Close × (1 + marketTolerance)
+			// This anchors the entire safety-order grid to the actual fill price.
+			actualEntryPrice := candle.Close.Mul(decimal.NewFromInt(1).Add(marketTolerance))
+
+			// Compute order grid from domain config if available (SDD §2.1, §2.2)
+			var prices []decimal.Decimal
+			var amounts []decimal.Decimal
+			if orch.config.DomainConfig != nil {
+				priceSeq, priceErr := orch.config.DomainConfig.ComputePriceSequence(actualEntryPrice)
+				if priceErr == nil && len(priceSeq) > 0 {
+					prices = []decimal.Decimal(priceSeq)
+					amountSeq, amountErr := orch.config.DomainConfig.ComputeAmountSequence()
+					if amountErr == nil && len(amountSeq) == len(prices) {
+						amounts = []decimal.Decimal(amountSeq)
+					}
+				}
+			}
+
 			newPos, err := orch.psm.NewPosition(
 				tradeID,
 				candle.Timestamp,
-				[]decimal.Decimal{}, // Will be populated from config in real usage
-				[]decimal.Decimal{}, // Will be populated from config in real usage
+				prices,
+				amounts,
 			)
 			if err != nil {
 				// If position creation fails, continue processing to allow backtest to proceed

@@ -1,0 +1,25 @@
+{
+  "request_id": "aaf86b6d-bd7c-42bc-ba7f-3a6afbcd1bc4",
+  "status": "success",
+  "events": [],
+  "final_position": {
+    "quantity": "0.00000000",
+    "average_cost": "0.00000000",
+    "total_invested": "0.00000000",
+    "leverage_level": "0.00000000",
+    "status": "CLOSED",
+    "last_update_timestamp": 0
+  },
+  "pnl_summary": {
+    "total_pnl": "0.00000000",
+    "entry_fee": "0.00000000",
+    "trading_fees": "0.00000000",
+    "total_fees": "0.00000000",
+    "roi_percent": "0.00000000",
+    "total_fills": 0,
+    "realized_pnl": "0.00000000",
+    "safety_order_usage_counts": {}
+  },
+  "execution_time_ms": 520,
+  "timestamp": "2026-03-13T19:23:55.470Z"
+}

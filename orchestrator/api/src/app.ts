@@ -18,6 +18,7 @@ import { requestLoggerMiddleware } from './middleware/request-logger.middleware.
 import { errorHandlerMiddleware } from './middleware/error-handler.middleware.js';
 import { createBacktestRouter } from './routes/backtest.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
+import { MarketDataResolver } from './services/MarketDataResolver.js';
 
 /**
  * Create and configure Express app
@@ -33,6 +34,7 @@ export interface AppServices {
   idempotencyCache: IdempotencyCache;
   healthMonitor: HealthMonitor;
   coreEngineBinaryPath: string;
+  marketDataResolver: MarketDataResolver;
 }
 
 export function createApp(services: AppServices): Express {
@@ -58,6 +60,7 @@ export function createApp(services: AppServices): Express {
     services.backtestService,
     services.resultAggregator,
     services.idempotencyCache,
+    services.marketDataResolver,
   ));
 
   app.use('/', createHealthRouter(services.healthMonitor));

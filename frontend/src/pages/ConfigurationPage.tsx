@@ -1,10 +1,10 @@
 import React from 'react'
-import type { BacktestConfiguration } from '../services/types'
+import type { BacktestFormState } from '../services/types'
 import { ConfigurationForm } from '../components/ConfigurationForm'
 
 interface ConfigurationPageProps {
-  onSubmit: (config: BacktestConfiguration) => void
-  initialValues?: BacktestConfiguration
+  onSubmit: (config: BacktestFormState) => void
+  initialValues?: BacktestFormState
   error?: string
   isSubmitting?: boolean
 }

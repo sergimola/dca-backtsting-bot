@@ -1,38 +1,49 @@
 import React, { useState, useCallback, useMemo } from 'react'
 import { FormInput } from './FormInput'
-import type { BacktestConfiguration } from '../../services/types'
+import type { BacktestFormState } from '../services/types'
 
 interface ConfigurationFormProps {
-  onSubmit: (config: BacktestConfiguration) => void | Promise<void>
-  initialValues?: BacktestConfiguration
+  onSubmit: (config: BacktestFormState) => void | Promise<void>
+  initialValues?: BacktestFormState
   isSubmitting?: boolean
   serverErrors?: Record<string, string>
 }
 
-interface FormState {
-  entryPrice: number | ''
-  amounts: (number | '')[]
-  sequences: number | ''
-  leverage: number | ''
-  marginRatio: number | ''
-  market_data_csv_path: string
+type FormErrors = Partial<
+  Record<Exclude<keyof BacktestFormState, 'marginType' | 'exitOnLastOrder'>, string>
+>
+type FormTouched = Partial<Record<keyof BacktestFormState, boolean>>
+
+const EMPTY_FORM: BacktestFormState = {
+  tradingPair: '',
+  startDate: '',
+  endDate: '',
+  priceEntry: '',
+  priceScale: '',
+  amountScale: '',
+  numberOfOrders: '',
+  amountPerTrade: '',
+  marginType: 'cross',
+  multiplier: '',
+  takeProfitDistancePercent: '',
+  accountBalance: '',
+  exitOnLastOrder: false,
 }
 
-interface FormErrors {
-  entryPrice?: string
-  amounts?: string
-  sequences?: string
-  leverage?: string
-  marginRatio?: string
-}
-
-interface FormTouched {
-  entryPrice?: boolean
-  amounts?: Record<number, boolean>
-  sequences?: boolean
-  leverage?: boolean
-  marginRatio?: boolean
-}
+/** Fields that require non-empty string validation before submission */
+const REQUIRED_FIELDS: (keyof BacktestFormState)[] = [
+  'tradingPair',
+  'startDate',
+  'endDate',
+  'priceEntry',
+  'priceScale',
+  'amountScale',
+  'numberOfOrders',
+  'amountPerTrade',
+  'multiplier',
+  'takeProfitDistancePercent',
+  'accountBalance',
+]
 
 export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
   onSubmit,
@@ -40,58 +51,80 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
   isSubmitting = false,
   serverErrors = {},
 }) => {
-  const [values, setValues] = useState<FormState>({
-    entryPrice: initialValues?.entryPrice || '',
-    amounts: initialValues?.amounts || [''],
-    sequences: initialValues?.sequences || '',
-    leverage: initialValues?.leverage || '',
-    marginRatio: initialValues?.marginRatio || '',
-    market_data_csv_path: initialValues?.market_data_csv_path || '/data/BTCUSDT_1m.csv',
-  })
-
+  const [values, setValues] = useState<BacktestFormState>({ ...EMPTY_FORM, ...initialValues })
   const [touched, setTouched] = useState<FormTouched>({})
   const [errors, setErrors] = useState<FormErrors>({})
 
-  // Validation logic
   const validateField = useCallback(
-    (fieldName: keyof FormState, value: any): string | undefined => {
-      switch (fieldName) {
-        case 'entryPrice': {
-          const numValue = Number(value)
-          if (!value && value !== 0) return undefined // Allow empty for now
-          if (numValue <= 0) return 'Entry price must be greater than 0'
+    (field: keyof BacktestFormState, value: any): string | undefined => {
+      switch (field) {
+        case 'tradingPair':
+          if (!value || (value as string).trim() === '') return 'Trading pair is required'
+          return undefined
+
+        case 'startDate':
+          if (!value) return 'Start date is required'
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(value as string)) return 'Start date must be YYYY-MM-DD'
+          return undefined
+
+        case 'endDate':
+          if (!value) return 'End date is required'
+          if (!/^\d{4}-\d{2}-\d{2}$/.test(value as string)) return 'End date must be YYYY-MM-DD'
+          return undefined
+
+        case 'priceEntry': {
+          const n = parseFloat(value as string)
+          if (!value) return 'Price entry is required'
+          if (isNaN(n) || n <= 0) return 'Price entry must be greater than 0'
           return undefined
         }
 
-        case 'amounts': {
-          if (!Array.isArray(value)) return undefined
-          if (value.length === 0) return 'At least one amount is required'
-          const hasInvalid = value.some((v) => {
-            if (!v && v !== 0) return false
-            return Number(v) <= 0
-          })
-          if (hasInvalid) return 'All amounts must be greater than 0'
+        case 'priceScale': {
+          const n = parseFloat(value as string)
+          if (!value) return 'Price scale is required'
+          if (isNaN(n) || n <= 0) return 'Price scale must be greater than 0'
           return undefined
         }
 
-        case 'sequences': {
-          const numValue = Number(value)
-          if (!value && value !== 0) return undefined
-          if (numValue < 1 || numValue > 10) return 'Sequences must be between 1 and 10'
+        case 'amountScale': {
+          const n = parseFloat(value as string)
+          if (!value) return 'Amount scale is required'
+          if (isNaN(n) || n <= 0) return 'Amount scale must be greater than 0'
           return undefined
         }
 
-        case 'leverage': {
-          const numValue = Number(value)
-          if (!value && value !== 0) return undefined
-          if (numValue < 1 || numValue > 25) return 'Leverage must be between 1 and 25'
+        case 'numberOfOrders': {
+          const n = parseInt(value as string, 10)
+          if (!value) return 'Number of orders is required'
+          if (isNaN(n) || n < 1) return 'Number of orders must be >= 1'
           return undefined
         }
 
-        case 'marginRatio': {
-          const numValue = Number(value)
-          if (!value && value !== 0) return undefined
-          if (numValue < 1 || numValue > 100) return 'Margin ratio must be between 1 and 100'
+        case 'amountPerTrade': {
+          const n = parseFloat(value as string)
+          if (!value) return 'Amount per trade is required'
+          if (isNaN(n) || n <= 0 || n > 1) return 'Amount per trade must be between 0 and 1'
+          return undefined
+        }
+
+        case 'multiplier': {
+          const n = parseInt(value as string, 10)
+          if (!value) return 'Multiplier is required'
+          if (isNaN(n) || n < 1) return 'Multiplier must be >= 1'
+          return undefined
+        }
+
+        case 'takeProfitDistancePercent': {
+          const n = parseFloat(value as string)
+          if (!value) return 'Take profit distance is required'
+          if (isNaN(n) || n <= 0) return 'Take profit distance must be greater than 0'
+          return undefined
+        }
+
+        case 'accountBalance': {
+          const n = parseFloat(value as string)
+          if (!value) return 'Account balance is required'
+          if (isNaN(n) || n <= 0) return 'Account balance must be greater than 0'
           return undefined
         }
 
@@ -99,360 +132,236 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
           return undefined
       }
     },
-    []
+    [],
   )
 
-  // Validate all fields
-  const validateAllFields = useCallback(() => {
+  const validateAll = useCallback(() => {
     const newErrors: FormErrors = {}
-
-    if (!values.entryPrice && values.entryPrice !== 0) {
-      newErrors.entryPrice = 'Entry price is required'
-    } else {
-      const err = validateField('entryPrice', values.entryPrice)
-      if (err) newErrors.entryPrice = err
+    for (const f of REQUIRED_FIELDS) {
+      const err = validateField(f, values[f])
+      if (err) (newErrors as any)[f] = err
     }
-
-    if (values.amounts.length === 0 || values.amounts.every((v) => !v && v !== 0)) {
-      newErrors.amounts = 'At least one amount is required'
-    } else {
-      const err = validateField('amounts', values.amounts)
-      if (err) newErrors.amounts = err
-    }
-
-    if (!values.sequences && values.sequences !== 0) {
-      newErrors.sequences = 'Sequences is required'
-    } else {
-      const err = validateField('sequences', values.sequences)
-      if (err) newErrors.sequences = err
-    }
-
-    if (!values.leverage && values.leverage !== 0) {
-      newErrors.leverage = 'Leverage is required'
-    } else {
-      const err = validateField('leverage', values.leverage)
-      if (err) newErrors.leverage = err
-    }
-
-    if (!values.marginRatio && values.marginRatio !== 0) {
-      newErrors.marginRatio = 'Margin ratio is required'
-    } else {
-      const err = validateField('marginRatio', values.marginRatio)
-      if (err) newErrors.marginRatio = err
-    }
-
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }, [values, validateField])
 
-  // Handle field change
-  const handleFieldChange = (fieldName: keyof FormState, value: any) => {
-    setValues((prev) => ({
-      ...prev,
-      [fieldName]: value,
-    }))
-
-    // Validate on change
-    if (touched[fieldName]) {
-      const error = validateField(fieldName, value)
-      setErrors((prev) => ({
-        ...prev,
-        [fieldName]: error,
-      }))
+  const handleChange = (field: keyof BacktestFormState, value: string | boolean) => {
+    setValues((prev) => ({ ...prev, [field]: value }))
+    if (touched[field]) {
+      const err = validateField(field, value)
+      setErrors((prev) => ({ ...prev, [field]: err }))
     }
   }
 
-  // Handle field blur
-  const handleBlur = (fieldName: keyof FormState) => {
-    setTouched((prev) => ({
-      ...prev,
-      [fieldName]: true,
-    }))
-
-    const error = validateField(fieldName, values[fieldName])
-    setErrors((prev) => ({
-      ...prev,
-      [fieldName]: error,
-    }))
+  const handleBlur = (field: keyof BacktestFormState) => {
+    setTouched((prev) => ({ ...prev, [field]: true }))
+    const err = validateField(field, values[field])
+    setErrors((prev) => ({ ...prev, [field]: err }))
   }
 
-  // Handle amount change
-  const handleAmountChange = (index: number, value: any) => {
-    const newAmounts = [...values.amounts]
-    newAmounts[index] = value
+  const isFormValid = useMemo(() => {
+    const allFilled = REQUIRED_FIELDS.every((f) => {
+      const v = values[f]
+      return typeof v === 'string' && v.trim() !== ''
+    })
+    if (!allFilled) return false
+    return !Object.values(errors).some(Boolean)
+  }, [values, errors])
 
-    handleFieldChange('amounts', newAmounts)
-
-    // Mark as touched
-    setTouched((prev) => ({
-      ...prev,
-      amounts: {
-        ...(prev.amounts || {}),
-        [index]: true,
-      },
-    }))
-  }
-
-  // Add new amount
-  const handleAddAmount = () => {
-    setValues((prev) => ({
-      ...prev,
-      amounts: [...prev.amounts, ''],
-    }))
-  }
-
-  // Remove amount
-  const handleRemoveAmount = (index: number) => {
-    if (values.amounts.length === 1) return // Can't remove last amount
-
-    setValues((prev) => ({
-      ...prev,
-      amounts: prev.amounts.filter((_, i) => i !== index),
-    }))
-
-    // Clear error for this field
-    const err = validateField('amounts', values.amounts.filter((_, i) => i !== index))
-    setErrors((prev) => ({
-      ...prev,
-      amounts: err,
-    }))
-  }
-
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-
-    // Mark all fields as touched
-    setTouched({
-      entryPrice: true,
-      sequences: true,
-      leverage: true,
-      marginRatio: true,
-      amounts: values.amounts.reduce(
-        (acc, _, i) => {
-          acc[i] = true
-          return acc
-        },
-        {} as Record<number, boolean>
-      ),
+    const allTouched: FormTouched = {}
+    ;(Object.keys(values) as (keyof BacktestFormState)[]).forEach((k) => {
+      allTouched[k] = true
     })
-
-    // Validate all fields
-    const validationErrors: FormErrors = {}
-
-    if (!values.entryPrice && values.entryPrice !== 0) {
-      validationErrors.entryPrice = 'Entry price is required'
-    } else {
-      const err = validateField('entryPrice', values.entryPrice)
-      if (err) validationErrors.entryPrice = err
-    }
-
-    if (values.amounts.length === 0 || values.amounts.every((v) => !v && v !== 0)) {
-      validationErrors.amounts = 'At least one amount is required'
-    } else {
-      const err = validateField('amounts', values.amounts)
-      if (err) validationErrors.amounts = err
-    }
-
-    if (!values.sequences && values.sequences !== 0) {
-      validationErrors.sequences = 'Sequences is required'
-    } else {
-      const err = validateField('sequences', values.sequences)
-      if (err) validationErrors.sequences = err
-    }
-
-    if (!values.leverage && values.leverage !== 0) {
-      validationErrors.leverage = 'Leverage is required'
-    } else {
-      const err = validateField('leverage', values.leverage)
-      if (err) validationErrors.leverage = err
-    }
-
-    if (!values.marginRatio && values.marginRatio !== 0) {
-      validationErrors.marginRatio = 'Margin ratio is required'
-    } else {
-      const err = validateField('marginRatio', values.marginRatio)
-      if (err) validationErrors.marginRatio = err
-    }
-
-    setErrors(validationErrors)
-
-    if (Object.keys(validationErrors).length > 0) return
-
-    const config: BacktestConfiguration = {
-      entryPrice: Number(values.entryPrice),
-      amounts: (values.amounts as (number | string)[]).map(Number),
-      sequences: Number(values.sequences),
-      leverage: Number(values.leverage),
-      marginRatio: Number(values.marginRatio),
-      market_data_csv_path: values.market_data_csv_path,
-    }
-
-    await onSubmit(config)
+    setTouched(allTouched)
+    if (!validateAll()) return
+    await onSubmit(values)
   }
 
-  // Handle clear
   const handleClear = () => {
-    setValues({
-      entryPrice: initialValues?.entryPrice || '',
-      amounts: initialValues?.amounts || [''],
-      sequences: initialValues?.sequences || '',
-      leverage: initialValues?.leverage || '',
-      marginRatio: initialValues?.marginRatio || '',
-      market_data_csv_path: initialValues?.market_data_csv_path || '/data/BTCUSDT_1m.csv',
-    })
+    setValues({ ...EMPTY_FORM, ...initialValues })
     setTouched({})
     setErrors({})
   }
 
-  // Calculate form validity without causing infinite loops
-  const isFormValid = useMemo(() => {
-    const hasAllValues =
-      values.entryPrice &&
-      values.sequences &&
-      values.leverage &&
-      values.marginRatio &&
-      values.amounts.length > 0 &&
-      values.amounts.some((a) => a !== '' && a !== 0)
-
-    // Basic checks before full validation
-    if (!hasAllValues) return false
-
-    // Check for any existing errors
-    const hasErrors =
-      errors.entryPrice ||
-      errors.amounts ||
-      errors.sequences ||
-      errors.leverage ||
-      errors.marginRatio
-
-    return !hasErrors
-  }, [values, errors])
-
   return (
-    <form onSubmit={handleSubmit} className="p-6 border border-gray-300 rounded-lg bg-white max-w-md mx-auto">
+    <form
+      onSubmit={handleSubmit}
+      className="p-6 border border-gray-300 rounded-lg bg-white max-w-3xl mx-auto"
+    >
       <h2 className="text-2xl font-bold mb-6 text-gray-800">Backtest Configuration</h2>
 
-      {/* Entry Price */}
-      <FormInput
-        label="Entry Price"
-        type="number"
-        value={values.entryPrice}
-        onChange={(val) => handleFieldChange('entryPrice', val)}
-        onBlur={() => handleBlur('entryPrice')}
-        error={errors.entryPrice}
-        touched={touched.entryPrice}
-        placeholder="e.g., 50000"
-        step="0.01"
-        serverError={serverErrors.entryPrice}
-      />
+      <div className="grid grid-cols-2 gap-x-6">
+        <FormInput
+          label="Trading Pair"
+          type="text"
+          value={values.tradingPair}
+          onChange={(val) => handleChange('tradingPair', val)}
+          onBlur={() => handleBlur('tradingPair')}
+          error={errors.tradingPair}
+          touched={touched.tradingPair}
+          placeholder="e.g., BTC/USDT"
+          serverError={serverErrors.tradingPair}
+        />
 
-      {/* Amounts Array */}
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 mb-2">Amounts</label>
-        <div className="space-y-2">
-          {values.amounts.map((amount, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <input
-                type="number"
-                value={amount}
-                onChange={(e) => handleAmountChange(index, e.target.value || '')}
-                onBlur={() => {
-                  setTouched((prev) => ({
-                    ...prev,
-                    amounts: {
-                      ...(prev.amounts || {}),
-                      [index]: true,
-                    },
-                  }))
-                }}
-                placeholder="e.g., 100"
-                className="flex-1 border border-gray-300 rounded px-3 py-2 text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              {values.amounts.length > 1 && (
-                <button
-                  type="button"
-                  onClick={() => handleRemoveAmount(index)}
-                  className="bg-red-500 text-white px-3 py-2 rounded hover:bg-red-600 transition-colors"
-                  title="Remove"
-                >
-                  -
-                </button>
-              )}
-            </div>
-          ))}
+        <FormInput
+          label="Start Date"
+          type="text"
+          value={values.startDate}
+          onChange={(val) => handleChange('startDate', val)}
+          onBlur={() => handleBlur('startDate')}
+          error={errors.startDate}
+          touched={touched.startDate}
+          placeholder="YYYY-MM-DD"
+          serverError={serverErrors.startDate}
+        />
+
+        <FormInput
+          label="End Date"
+          type="text"
+          value={values.endDate}
+          onChange={(val) => handleChange('endDate', val)}
+          onBlur={() => handleBlur('endDate')}
+          error={errors.endDate}
+          touched={touched.endDate}
+          placeholder="YYYY-MM-DD"
+          serverError={serverErrors.endDate}
+        />
+
+        <FormInput
+          label="Price Entry (First Safety Order Drop) (%)"
+          type="text"
+          value={values.priceEntry}
+          onChange={(val) => handleChange('priceEntry', val)}
+          onBlur={() => handleBlur('priceEntry')}
+          error={errors.priceEntry}
+          touched={touched.priceEntry}
+          placeholder="e.g., 2.0"
+          serverError={serverErrors.priceEntry}
+        />
+
+        <FormInput
+          label="Price Scale (%)"
+          type="text"
+          value={values.priceScale}
+          onChange={(val) => handleChange('priceScale', val)}
+          onBlur={() => handleBlur('priceScale')}
+          error={errors.priceScale}
+          touched={touched.priceScale}
+          placeholder="e.g., 1.10"
+          serverError={serverErrors.priceScale}
+        />
+
+        <FormInput
+          label="Amount Scale (%)"
+          type="text"
+          value={values.amountScale}
+          onChange={(val) => handleChange('amountScale', val)}
+          onBlur={() => handleBlur('amountScale')}
+          error={errors.amountScale}
+          touched={touched.amountScale}
+          placeholder="e.g., 2.0"
+          serverError={serverErrors.amountScale}
+        />
+
+        <FormInput
+          label="Number of Orders"
+          type="text"
+          value={values.numberOfOrders}
+          onChange={(val) => handleChange('numberOfOrders', val)}
+          onBlur={() => handleBlur('numberOfOrders')}
+          error={errors.numberOfOrders}
+          touched={touched.numberOfOrders}
+          placeholder="e.g., 5"
+          serverError={serverErrors.numberOfOrders}
+        />
+
+        <FormInput
+          label="Amount Per Trade"
+          type="text"
+          value={values.amountPerTrade}
+          onChange={(val) => handleChange('amountPerTrade', val)}
+          onBlur={() => handleBlur('amountPerTrade')}
+          error={errors.amountPerTrade}
+          touched={touched.amountPerTrade}
+          placeholder="e.g., 0.10 (fraction of balance)"
+          serverError={serverErrors.amountPerTrade}
+        />
+
+        {/* Margin Type — select element */}
+        <div className="mb-4">
+          <label
+            htmlFor="margin-type"
+            className="block text-sm font-medium text-gray-700 mb-1"
+          >
+            Margin Type
+          </label>
+          <select
+            id="margin-type"
+            value={values.marginType}
+            onChange={(e) =>
+              handleChange('marginType', e.target.value as 'cross' | 'isolated')
+            }
+            className="w-full border border-gray-300 rounded px-3 py-2 text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="cross">Cross</option>
+            <option value="isolated">Isolated</option>
+          </select>
         </div>
-        <button
-          type="button"
-          onClick={handleAddAmount}
-          className="mt-2 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 transition-colors"
-        >
-          + Add
-        </button>
-        {(errors.amounts || serverErrors.amounts) && touched.amounts ? (
-          <p className="text-red-600 text-sm mt-2">{errors.amounts || serverErrors.amounts}</p>
-        ) : null}
+
+        <FormInput
+          label="Multiplier"
+          type="text"
+          value={values.multiplier}
+          onChange={(val) => handleChange('multiplier', val)}
+          onBlur={() => handleBlur('multiplier')}
+          error={errors.multiplier}
+          touched={touched.multiplier}
+          placeholder="e.g., 1"
+          serverError={serverErrors.multiplier}
+        />
+
+        <FormInput
+          label="Take Profit Distance %"
+          type="text"
+          value={values.takeProfitDistancePercent}
+          onChange={(val) => handleChange('takeProfitDistancePercent', val)}
+          onBlur={() => handleBlur('takeProfitDistancePercent')}
+          error={errors.takeProfitDistancePercent}
+          touched={touched.takeProfitDistancePercent}
+          placeholder="e.g., 2.5"
+          serverError={serverErrors.takeProfitDistancePercent}
+        />
+
+        <FormInput
+          label="Account Balance"
+          type="text"
+          value={values.accountBalance}
+          onChange={(val) => handleChange('accountBalance', val)}
+          onBlur={() => handleBlur('accountBalance')}
+          error={errors.accountBalance}
+          touched={touched.accountBalance}
+          placeholder="e.g., 1000.00"
+          serverError={serverErrors.accountBalance}
+        />
       </div>
 
-      {/* Sequences */}
-      <FormInput
-        label="Sequences"
-        type="number"
-        value={values.sequences}
-        onChange={(val) => handleFieldChange('sequences', val)}
-        onBlur={() => handleBlur('sequences')}
-        error={errors.sequences}
-        touched={touched.sequences}
-        placeholder="e.g., 5"
-        step="1"
-        min="1"
-        max="10"
-        serverError={serverErrors.sequences}
-      />
+      {/* Exit on Last Order — full width checkbox */}
+      <div className="mb-6 flex items-center gap-3">
+        <input
+          id="exit-on-last-order"
+          type="checkbox"
+          checked={values.exitOnLastOrder}
+          onChange={(e) => handleChange('exitOnLastOrder', e.target.checked)}
+          className="w-4 h-4 border-gray-300 rounded"
+        />
+        <label htmlFor="exit-on-last-order" className="text-sm font-medium text-gray-700">
+          Exit on Last Order
+        </label>
+      </div>
 
-      {/* Leverage */}
-      <FormInput
-        label="Leverage"
-        type="number"
-        value={values.leverage}
-        onChange={(val) => handleFieldChange('leverage', val)}
-        onBlur={() => handleBlur('leverage')}
-        error={errors.leverage}
-        touched={touched.leverage}
-        placeholder="e.g., 2"
-        step="0.1"
-        min="1"
-        max="25"
-        serverError={serverErrors.leverage}
-      />
-
-      {/* Margin Ratio */}
-      <FormInput
-        label="Margin Ratio"
-        type="number"
-        value={values.marginRatio}
-        onChange={(val) => handleFieldChange('marginRatio', val)}
-        onBlur={() => handleBlur('marginRatio')}
-        error={errors.marginRatio}
-        touched={touched.marginRatio}
-        placeholder="e.g., 50"
-        step="0.1"
-        min="0"
-        max="100"
-        serverError={serverErrors.marginRatio}
-      />
-
-      {/* Market Data CSV Path */}
-      <FormInput
-        label="Market Data CSV Path"
-        type="text"
-        value={values.market_data_csv_path}
-        onChange={(val) => handleFieldChange('market_data_csv_path', val)}
-        placeholder="/data/BTCUSDT_1m.csv"
-        serverError={serverErrors.market_data_csv_path}
-      />
-
-      {/* Buttons */}
+      {/* Submit / Clear */}
       <div className="flex gap-3">
         <button
           type="submit"
@@ -461,7 +370,7 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
             !isFormValid || isSubmitting
               ? 'bg-gray-400 text-gray-700 cursor-not-allowed'
               : 'bg-blue-500 text-white hover:bg-blue-600'
-          } ${isSubmitting ? 'flex items-center justify-center' : ''}`}
+          }`}
         >
           {isSubmitting ? (
             <>
@@ -484,3 +393,4 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
     </form>
   )
 }
+

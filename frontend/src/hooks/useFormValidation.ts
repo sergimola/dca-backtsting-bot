@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { BacktestConfiguration } from '../services/types'
+import type { BacktestFormState } from '../services/types'
 
 export interface ValidationErrors {
   [key: string]: string | undefined
@@ -11,67 +11,96 @@ export interface UseFormValidationResult {
 }
 
 /**
- * Custom hook for validating backtest configuration form values
+ * Custom hook for validating BacktestFormState values
  * Returns validation errors for touched fields
  * Completes validation in < 100ms
  */
 export function useFormValidation(
-  values: Partial<BacktestConfiguration>,
-  touched: Record<string, boolean>
+  values: Partial<BacktestFormState>,
+  touched: Record<string, boolean>,
 ): UseFormValidationResult {
   return useMemo(() => {
     const errors: ValidationErrors = {}
 
-    // Validate entry price
-    if (touched.entryPrice) {
-      if (values.entryPrice === undefined || values.entryPrice <= 0) {
-        errors.entryPrice = 'Entry Price must be greater than 0'
+    if (touched.tradingPair && !values.tradingPair?.trim()) {
+      errors.tradingPair = 'Trading pair is required'
+    }
+
+    if (touched.startDate) {
+      if (!values.startDate) {
+        errors.startDate = 'Start date is required'
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(values.startDate)) {
+        errors.startDate = 'Start date must be YYYY-MM-DD'
       }
     }
 
-    // Validate amounts array
-    if (touched.amounts) {
-      if (!values.amounts || values.amounts.length === 0) {
-        errors.amounts = 'At least one amount is required'
-      } else if (values.amounts.some((amount) => amount <= 0)) {
-        errors.amounts = 'All amounts must be greater than 0'
+    if (touched.endDate) {
+      if (!values.endDate) {
+        errors.endDate = 'End date is required'
+      } else if (!/^\d{4}-\d{2}-\d{2}$/.test(values.endDate)) {
+        errors.endDate = 'End date must be YYYY-MM-DD'
       }
     }
 
-    // Validate sequences (must be integer 1-10)
-    if (touched.sequences) {
-      if (values.sequences === undefined) {
-        errors.sequences = 'Sequences is required'
-      } else if (!Number.isInteger(values.sequences)) {
-        errors.sequences = 'Sequences must be an integer'
-      } else if (values.sequences < 1 || values.sequences > 10) {
-        errors.sequences = 'Sequences must be between 1 and 10'
+    if (touched.priceEntry) {
+      const n = parseFloat(values.priceEntry || '')
+      if (!values.priceEntry || isNaN(n) || n <= 0) {
+        errors.priceEntry = 'Price entry must be greater than 0'
       }
     }
 
-    // Validate leverage
-    if (touched.leverage) {
-      if (values.leverage === undefined || values.leverage <= 0) {
-        errors.leverage = 'Leverage must be greater than 0'
+    if (touched.priceScale) {
+      const n = parseFloat(values.priceScale || '')
+      if (!values.priceScale || isNaN(n) || n <= 0) {
+        errors.priceScale = 'Price scale must be greater than 0'
       }
     }
 
-    // Validate margin ratio (0 <= value < 100)
-    if (touched.marginRatio) {
-      if (
-        values.marginRatio === undefined ||
-        values.marginRatio < 0 ||
-        values.marginRatio >= 100
-      ) {
-        errors.marginRatio = 'Margin Ratio must be between 0 and less than 100'
+    if (touched.amountScale) {
+      const n = parseFloat(values.amountScale || '')
+      if (!values.amountScale || isNaN(n) || n <= 0) {
+        errors.amountScale = 'Amount scale must be greater than 0'
+      }
+    }
+
+    if (touched.numberOfOrders) {
+      const n = parseInt(values.numberOfOrders || '', 10)
+      if (!values.numberOfOrders || isNaN(n) || n < 1) {
+        errors.numberOfOrders = 'Number of orders must be >= 1'
+      }
+    }
+
+    if (touched.amountPerTrade) {
+      const n = parseFloat(values.amountPerTrade || '')
+      if (!values.amountPerTrade || isNaN(n) || n <= 0 || n > 1) {
+        errors.amountPerTrade = 'Amount per trade must be between 0 and 1'
+      }
+    }
+
+    if (touched.multiplier) {
+      const n = parseInt(values.multiplier || '', 10)
+      if (!values.multiplier || isNaN(n) || n < 1) {
+        errors.multiplier = 'Multiplier must be >= 1'
+      }
+    }
+
+    if (touched.takeProfitDistancePercent) {
+      const n = parseFloat(values.takeProfitDistancePercent || '')
+      if (!values.takeProfitDistancePercent || isNaN(n) || n <= 0) {
+        errors.takeProfitDistancePercent = 'Take profit distance must be greater than 0'
+      }
+    }
+
+    if (touched.accountBalance) {
+      const n = parseFloat(values.accountBalance || '')
+      if (!values.accountBalance || isNaN(n) || n <= 0) {
+        errors.accountBalance = 'Account balance must be greater than 0'
       }
     }
 
     const isValid = Object.keys(errors).length === 0
 
-    return {
-      isValid,
-      errors,
-    }
+    return { isValid, errors }
   }, [values, touched])
 }
+

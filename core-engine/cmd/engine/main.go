@@ -13,15 +13,23 @@ import (
 	"github.com/shopspring/decimal"
 )
 
-// BacktestRequest matches the Node.js API input schema
-type BacktestRequest struct {
-	EntryPrice           string   `json:"entry_price"`           // Decimal string (e.g., "100.50")
-	Amounts              []string `json:"amounts"`               // Array of decimal strings
-	Sequences            []int    `json:"sequences"`             // Array of safety order indices
-	Leverage             string   `json:"leverage"`              // Decimal string (e.g., "2.00")
-	MarginRatio          string   `json:"margin_ratio"`          // Decimal string (e.g., "0.50")
-	MarketDataCSVPath    string   `json:"market_data_csv_path"`  // Path to CSV file
-	IdempotencyKey       string   `json:"idempotency_key"`       // Optional UUID
+// EngineRequest matches the new API input schema with all 13 SDD §4.1 parameters
+type EngineRequest struct {
+	TradingPair                   string `json:"trading_pair"`                    // e.g., "BTC/USDT"
+	StartDate                     string `json:"start_date"`                      // RFC 3339 format: YYYY-MM-DDTHH:MM:SSZ
+	EndDate                       string `json:"end_date"`                        // RFC 3339 format: YYYY-MM-DDTHH:MM:SSZ
+	PriceEntry                    string `json:"price_entry"`                     // Decimal string > 0
+	PriceScale                    string `json:"price_scale"`                     // Decimal string > 0 (SDD §2.1 recurrence base, e.g., "1.1")
+	AmountScale                   string `json:"amount_scale"`                    // Decimal string > 0 (SDD §2.2 recurrence base, e.g., "2.0")
+	NumberOfOrders                int    `json:"number_of_orders"`                // Integer >= 1 (number of safety orders)
+	AmountPerTrade                string `json:"amount_per_trade"`                // Decimal string in (0, 1] (fraction of equity)
+	MarginType                    string `json:"margin_type"`                     // "cross" or "isolated"
+	Multiplier                    int    `json:"multiplier"`                      // Integer >= 1 (leverage, 1=spot)
+	TakeProfitDistancePercent     string `json:"take_profit_distance_percent"`    // Decimal string > 0
+	AccountBalance                string `json:"account_balance"`                 // Decimal string > 0 (total capital in USDT)
+	ExitOnLastOrder               bool   `json:"exit_on_last_order"`              // Boolean: end simulation when last order fills
+	MarketDataCSVPath             string `json:"market_data_csv_path"`             // Path to CSV file (derived/resolved by API)
+	IdempotencyKey                string `json:"idempotency_key"`                 // Optional UUID
 }
 
 // BacktestOutput matches the Node.js API output schema
@@ -43,7 +51,7 @@ func main() {
 	}()
 
 	// Read JSON request from stdin
-	var request BacktestRequest
+	var request EngineRequest
 	decoder := json.NewDecoder(os.Stdin)
 	if err := decoder.Decode(&request); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to parse JSON input: %v\n", err)
@@ -51,12 +59,12 @@ func main() {
 	}
 
 	// Validate required fields
-	if request.EntryPrice == "" || request.MarketDataCSVPath == "" {
-		fmt.Fprintf(os.Stderr, "Missing required fields: entry_price and market_data_csv_path are required\n")
+	if request.PriceEntry == "" || request.MarketDataCSVPath == "" || request.TradingPair == "" {
+		fmt.Fprintf(os.Stderr, "Missing required fields: price_entry, market_data_csv_path, and trading_pair are required\n")
 		os.Exit(1)
 	}
 
-	// Build Config from BacktestRequest
+	// Build Config from EngineRequest
 	cfg, err := buildConfigFromRequest(&request)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to build config: %v\n", err)
@@ -71,6 +79,7 @@ func main() {
 		DataSourcePath:       request.MarketDataCSVPath,
 		EstimatedCandleCount: 10000, // Reasonable estimate for backtest
 		BacktestID:           request.IdempotencyKey,
+		DomainConfig:         cfg,
 	}
 
 	// Create orchestrator
@@ -112,46 +121,61 @@ func main() {
 	}
 }
 
-// buildConfigFromRequest creates a domain config from the BacktestRequest
-// Uses the incoming parameters and sensible defaults for fields not in the API request
-func buildConfigFromRequest(req *BacktestRequest) (*config.Config, error) {
-	// Parse decimal values
-	entryPrice, err := decimal.NewFromString(req.EntryPrice)
+// buildConfigFromRequest creates a domain config from the EngineRequest
+// Maps all 13 SDD §4.1 parameters to their corresponding With* options
+func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
+	// Add this line at the start
+    fmt.Fprintf(os.Stderr, "[DEBUG] Mapping Request: Pair=%s, Entry=%s, SO_Count=%d\n", 
+        req.TradingPair, req.PriceEntry, req.NumberOfOrders)
+	// Parse all decimal values using shopspring/decimal for precision
+	priceEntry, err := decimal.NewFromString(req.PriceEntry)
 	if err != nil {
-		return nil, fmt.Errorf("invalid entry_price: %w", err)
+		return nil, fmt.Errorf("invalid price_entry: %w", err)
 	}
 
-	leverage, err := decimal.NewFromString(req.Leverage)
+	amountPerTrade, err := decimal.NewFromString(req.AmountPerTrade)
 	if err != nil {
-		return nil, fmt.Errorf("invalid leverage: %w", err)
+		return nil, fmt.Errorf("invalid amount_per_trade: %w", err)
 	}
 
-	// Calculate amountPerTrade from first amount if available
-	var amountPerTrade decimal.Decimal
-	if len(req.Amounts) > 0 {
-		amountPerTrade, err = decimal.NewFromString(req.Amounts[0])
-		if err != nil {
-			return nil, fmt.Errorf("invalid amounts[0]: %w", err)
-		}
-	} else {
-		amountPerTrade = config.DefaultAmountPerTrade
+	takeProfitDistancePercent, err := decimal.NewFromString(req.TakeProfitDistancePercent)
+	if err != nil {
+		return nil, fmt.Errorf("invalid take_profit_distance_percent: %w", err)
 	}
 
-	// Build config with provided values and defaults
+	accountBalance, err := decimal.NewFromString(req.AccountBalance)
+	if err != nil {
+		return nil, fmt.Errorf("invalid account_balance: %w", err)
+	}
+
+	// Parse decimal scales and multiplier
+	priceScale, err := decimal.NewFromString(req.PriceScale)
+	if err != nil {
+		return nil, fmt.Errorf("invalid price_scale: %w", err)
+	}
+
+	amountScale, err := decimal.NewFromString(req.AmountScale)
+	if err != nil {
+		return nil, fmt.Errorf("invalid amount_scale: %w", err)
+	}
+
+	multiplier := decimal.NewFromInt(int64(req.Multiplier))
+
+	// Build config wiring all 13 SDD §4.1 parameters via With* options
 	cfg, err := config.NewConfig(
-		config.WithPriceEntry(entryPrice),
+		config.WithTradingPair(req.TradingPair),
+		config.WithStartDate(req.StartDate),
+		config.WithEndDate(req.EndDate),
+		config.WithPriceEntry(priceEntry),
+		config.WithPriceScale(priceScale),
+		config.WithAmountScale(amountScale),
+		config.WithNumberOfOrders(req.NumberOfOrders),
 		config.WithAmountPerTrade(amountPerTrade),
-		config.WithMultiplier(leverage),
-		config.WithNumberOfOrders(len(req.Sequences)),
-		// Use defaults for fields not in API request:
-		// - TradingPair: DefaultTradingPair
-		// - StartDate/EndDate: Defaults (will be overridden by CSV headers in practice)
-		// - PriceScale, AmountScale: Defaults
-		// - MarginType: Cross margin (default)
-		// - TakeProfitDistancePercent: Default
-		// - AccountBalance: Default
-		// - MonthlyAddition: Default
-		// - ExitOnLastOrder: Default
+		config.WithMarginType(req.MarginType),
+		config.WithMultiplier(multiplier),
+		config.WithTakeProfitDistancePercent(takeProfitDistancePercent),
+		config.WithAccountBalance(accountBalance),
+		config.WithExitOnLastOrder(req.ExitOnLastOrder),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config: %w", err)
@@ -188,13 +212,19 @@ func convertBacktestToOutput(backtest *orchestrator.BacktestRun, cfg *config.Con
 		CandleCount:     backtest.CandleCount,
 		EventCount:      backtest.EventCount,
 		FinalPosition: map[string]interface{}{
-			"trading_pair":       cfg.TradingPair(),
-			"entry_price":        cfg.PriceEntry().String(),
-			"leverage":           cfg.Multiplier().String(),
-			"margin_type":        cfg.MarginType(),
-			"number_of_orders":   cfg.NumberOfOrders(),
-			"amount_per_trade":   cfg.AmountPerTrade().String(),
-			"account_balance":    cfg.AccountBalance().String(),
+			"trading_pair":                    cfg.TradingPair(),
+			"start_date":                      cfg.StartDate(),
+			"end_date":                        cfg.EndDate(),
+			"price_entry":                     cfg.PriceEntry().String(),
+			"price_scale":                     cfg.PriceScale(),
+			"amount_scale":                    cfg.AmountScale(),
+			"number_of_orders":                cfg.NumberOfOrders(),
+			"amount_per_trade":                cfg.AmountPerTrade().String(),
+			"margin_type":                     cfg.MarginType(),
+			"multiplier":                      cfg.Multiplier(),
+			"take_profit_distance_percent":    cfg.TakeProfitDistancePercent().String(),
+			"account_balance":                 cfg.AccountBalance().String(),
+			"exit_on_last_order":              cfg.ExitOnLastOrder(),
 		},
 	}
 }

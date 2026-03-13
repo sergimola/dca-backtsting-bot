@@ -21,6 +21,7 @@ import { ResultAggregator } from './services/ResultAggregator.js';
 import { IdempotencyCache } from './services/IdempotencyCache.js';
 import { HealthMonitor } from './services/HealthMonitor.js';
 import { ResultCleanupJob } from './jobs/ResultCleanupJob.js';
+import { MarketDataResolver } from './services/MarketDataResolver.js';
 
 /**
  * Main server initialization and startup
@@ -33,6 +34,7 @@ async function main(): Promise<void> {
     const storagePath = process.env.STORAGE_PATH || './storage';
     const resultsTtlDays = parseInt(process.env.RESULTS_TTL_DAYS || '7', 10);
     const maxWorkers = parseInt(process.env.MAX_WORKERS || '0', 10); // 0 = auto-detect
+    const marketDataDir = process.env.MARKET_DATA_DIR || './data/market';
 
     console.log('[main] Initializing API server...');
     console.log(`  - Port: ${port}`);
@@ -67,6 +69,10 @@ async function main(): Promise<void> {
     const healthMonitor = new HealthMonitor(processManager, coreEngineBinaryPath);
     console.log('[main] ✓ HealthMonitor initialized');
 
+    // 7. Market data resolver
+    const marketDataResolver = new MarketDataResolver(marketDataDir);
+    console.log(`[main] ✓ MarketDataResolver initialized (dir: ${marketDataDir})`);
+
     // 7. Cleanup job (runs daily at midnight UTC)
     const cleanupJob = new ResultCleanupJob(resultStore, 0);
     cleanupJob.start();
@@ -81,6 +87,7 @@ async function main(): Promise<void> {
       idempotencyCache,
       healthMonitor,
       coreEngineBinaryPath,
+      marketDataResolver,
     });
 
     // Create HTTP server

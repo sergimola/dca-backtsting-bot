@@ -1,666 +1,192 @@
 import { useFormValidation } from '../../hooks/useFormValidation'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook } from '@testing-library/react'
+import type { BacktestFormState } from '../../services/types'
+
+const validValues: Partial<BacktestFormState> = {
+  tradingPair: 'BTC/USDT',
+  startDate: '2024-01-01',
+  endDate: '2024-01-31',
+  priceEntry: '50000',
+  priceScale: '1.10',
+  amountScale: '2.0',
+  numberOfOrders: '5',
+  amountPerTrade: '0.10',
+  multiplier: '1',
+  takeProfitDistancePercent: '2.5',
+  accountBalance: '1000.00',
+}
+
+const allTouched: Record<string, boolean> = {
+  tradingPair: true,
+  startDate: true,
+  endDate: true,
+  priceEntry: true,
+  priceScale: true,
+  amountScale: true,
+  numberOfOrders: true,
+  amountPerTrade: true,
+  multiplier: true,
+  takeProfitDistancePercent: true,
+  accountBalance: true,
+}
 
 describe('useFormValidation', () => {
   describe('Valid inputs', () => {
     it('should return isValid: true when all fields are correct', () => {
-      const values = {
-        entryPrice: 50000,
-        amounts: [100, 200, 300],
-        sequences: 5,
-        leverage: 2,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
+      const { result } = renderHook(() => useFormValidation(validValues, allTouched))
       expect(result.current.isValid).toBe(true)
       expect(result.current.errors).toEqual({})
     })
 
-    it('should accept entry price with decimals (max 2)', () => {
-      const values = {
-        entryPrice: 50000.99,
-        amounts: [100, 200],
-        sequences: 3,
-        leverage: 1.5,
-        marginRatio: 75,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
+    it('should accept priceEntry with decimal places', () => {
+      const values = { ...validValues, priceEntry: '50000.99' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(true)
     })
 
-    it('should handle minimum valid leverage (0.1)', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [10],
-        sequences: 1,
-        leverage: 0.1,
-        marginRatio: 10,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
+    it('should accept amountPerTrade equal to 1 (upper boundary)', () => {
+      const values = { ...validValues, amountPerTrade: '1' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(true)
     })
 
-    it('should handle maximum sequences (10)', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [10],
-        sequences: 10,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(true)
-    })
-
-    it('should handle margin ratio boundaries (0 to <100)', () => {
-      const { result: result1 } = renderHook(() =>
-        useFormValidation(
-          {
-            entryPrice: 100,
-            amounts: [10],
-            sequences: 1,
-            leverage: 1,
-            marginRatio: 0,
-          },
-          {
-            entryPrice: true,
-            amounts: true,
-            sequences: true,
-            leverage: true,
-            marginRatio: true,
-          }
-        )
-      )
-      expect(result1.current.isValid).toBe(true)
-
-      const { result: result2 } = renderHook(() =>
-        useFormValidation(
-          {
-            entryPrice: 100,
-            amounts: [10],
-            sequences: 1,
-            leverage: 1,
-            marginRatio: 99.99,
-          },
-          {
-            entryPrice: true,
-            amounts: true,
-            sequences: true,
-            leverage: true,
-            marginRatio: true,
-          }
-        )
-      )
-      expect(result2.current.isValid).toBe(true)
-    })
-  })
-
-  describe('Entry Price validation', () => {
-    it('should reject entry price <= 0', () => {
-      const values = {
-        entryPrice: 0,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.entryPrice).toBe(
-        'Entry Price must be greater than 0'
-      )
-    })
-
-    it('should reject negative entry price', () => {
-      const values = {
-        entryPrice: -100,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.entryPrice).toBe(
-        'Entry Price must be greater than 0'
-      )
-    })
-
-    it('should not validate entry price if not touched', () => {
-      const values = {
-        entryPrice: 0,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: false,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.errors.entryPrice).toBeUndefined()
-    })
-  })
-
-  describe('Amounts validation', () => {
-    it('should reject empty amounts array', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.amounts).toBe(
-        'At least one amount is required'
-      )
-    })
-
-    it('should reject amounts with zero or negative values', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100, 0, 50],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.amounts).toContain('must be greater than 0')
-    })
-
-    it('should reject amounts with negative values', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100, -50],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.amounts).toContain('must be greater than 0')
-    })
-
-    it('should accept multiple valid amounts', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100, 200, 300, 400, 500],
-        sequences: 5,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(true)
-      expect(result.current.errors.amounts).toBeUndefined()
-    })
-
-    it('should not validate amounts if not touched', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: false,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.errors.amounts).toBeUndefined()
-    })
-  })
-
-  describe('Sequences validation', () => {
-    it('should reject sequences < 1', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 0,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.sequences).toContain('must be between 1 and 10')
-    })
-
-    it('should reject sequences > 10', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 11,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.sequences).toContain('must be between 1 and 10')
-    })
-
-    it('should reject non-integer sequences', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 5.5,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.sequences).toContain('must be an integer')
-    })
-
-    it('should accept valid sequences (1-10)', () => {
-      for (let i = 1; i <= 10; i++) {
-        const values = {
-          entryPrice: 100,
-          amounts: [100],
-          sequences: i,
-          leverage: 1,
-          marginRatio: 50,
-        }
-        const touched = {
-          entryPrice: true,
-          amounts: true,
-          sequences: true,
-          leverage: true,
-          marginRatio: true,
-        }
-
-        const { result } = renderHook(() => useFormValidation(values, touched))
-
-        expect(result.current.isValid).toBe(true)
-        expect(result.current.errors.sequences).toBeUndefined()
-      }
-    })
-
-    it('should not validate sequences if not touched', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 0,
-        leverage: 1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: false,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.errors.sequences).toBeUndefined()
-    })
-  })
-
-  describe('Leverage validation', () => {
-    it('should reject leverage <= 0', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 1,
-        leverage: 0,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.leverage).toBe(
-        'Leverage must be greater than 0'
-      )
-    })
-
-    it('should reject negative leverage', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 1,
-        leverage: -1,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.leverage).toBe(
-        'Leverage must be greater than 0'
-      )
-    })
-
-    it('should not validate leverage if not touched', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 1,
-        leverage: 0,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: false,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.errors.leverage).toBeUndefined()
-    })
-  })
-
-  describe('Margin Ratio validation', () => {
-    it('should reject margin ratio < 0', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: -1,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.marginRatio).toContain('must be between 0 and')
-    })
-
-    it('should reject margin ratio >= 100', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 100,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.isValid).toBe(false)
-      expect(result.current.errors.marginRatio).toContain('must be between 0 and')
-    })
-
-    it('should accept margin ratio at boundaries', () => {
-      const { result: result1 } = renderHook(() =>
-        useFormValidation(
-          {
-            entryPrice: 100,
-            amounts: [100],
-            sequences: 1,
-            leverage: 1,
-            marginRatio: 0,
-          },
-          {
-            entryPrice: true,
-            amounts: true,
-            sequences: true,
-            leverage: true,
-            marginRatio: true,
-          }
-        )
-      )
-      expect(result1.current.isValid).toBe(true)
-
-      const { result: result2 } = renderHook(() =>
-        useFormValidation(
-          {
-            entryPrice: 100,
-            amounts: [100],
-            sequences: 1,
-            leverage: 1,
-            marginRatio: 99.99,
-          },
-          {
-            entryPrice: true,
-            amounts: true,
-            sequences: true,
-            leverage: true,
-            marginRatio: true,
-          }
-        )
-      )
-      expect(result2.current.isValid).toBe(true)
-    })
-
-    it('should not validate margin ratio if not touched', () => {
-      const values = {
-        entryPrice: 100,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: -1,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: false,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
-      expect(result.current.errors.marginRatio).toBeUndefined()
-    })
-  })
-
-  describe('Performance', () => {
-    it('should validate all fields within 100ms', () => {
-      const values = {
-        entryPrice: 50000,
-        amounts: [100, 200, 300],
-        sequences: 5,
-        leverage: 2,
-        marginRatio: 50,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const startTime = performance.now()
-      const { result } = renderHook(() => useFormValidation(values, touched))
-      const endTime = performance.now()
-
-      const executionTime = endTime - startTime
-      expect(executionTime).toBeLessThan(100)
+    it('should accept multiplier equal to 1 (lower boundary)', () => {
+      const values = { ...validValues, multiplier: '1' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(true)
     })
   })
 
-  describe('Multiple validation errors', () => {
-    it('should return multiple errors for invalid fields', () => {
-      const values = {
-        entryPrice: -100,
-        amounts: [],
-        sequences: 15,
-        leverage: -1,
-        marginRatio: 150,
-      }
-      const touched = {
-        entryPrice: true,
-        amounts: true,
-        sequences: true,
-        leverage: true,
-        marginRatio: true,
-      }
-
-      const { result } = renderHook(() => useFormValidation(values, touched))
-
+  describe('Invalid inputs', () => {
+    it('should return error for empty tradingPair when touched', () => {
+      const values = { ...validValues, tradingPair: '' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
       expect(result.current.isValid).toBe(false)
-      expect(Object.keys(result.current.errors).length).toBeGreaterThan(2)
-      expect(result.current.errors.entryPrice).toBeDefined()
-      expect(result.current.errors.amounts).toBeDefined()
-      expect(result.current.errors.sequences).toBeDefined()
-      expect(result.current.errors.leverage).toBeDefined()
-      expect(result.current.errors.marginRatio).toBeDefined()
+      expect(result.current.errors.tradingPair).toBeTruthy()
+    })
+
+    it('should return error for invalid startDate format', () => {
+      const values = { ...validValues, startDate: '01-01-2024' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.startDate).toBeTruthy()
+    })
+
+    it('should return error for invalid endDate format', () => {
+      const values = { ...validValues, endDate: '2024/01/31' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.endDate).toBeTruthy()
+    })
+
+    it('should return error for priceEntry <= 0', () => {
+      const values = { ...validValues, priceEntry: '-100' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.priceEntry).toBe('Price entry must be greater than 0')
+    })
+
+    it('should return error for priceEntry = 0', () => {
+      const values = { ...validValues, priceEntry: '0' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.priceEntry).toBeTruthy()
+    })
+
+    it('should return error for priceScale <= 0', () => {
+      const values = { ...validValues, priceScale: '0' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.priceScale).toBeTruthy()
+    })
+
+    it('should return error for amountScale <= 0', () => {
+      const values = { ...validValues, amountScale: '-1' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.amountScale).toBeTruthy()
+    })
+
+    it('should return error for numberOfOrders < 1', () => {
+      const values = { ...validValues, numberOfOrders: '0' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.numberOfOrders).toBeTruthy()
+    })
+
+    it('should return error for amountPerTrade > 1', () => {
+      const values = { ...validValues, amountPerTrade: '1.5' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.amountPerTrade).toBe('Amount per trade must be between 0 and 1')
+    })
+
+    it('should return error for amountPerTrade <= 0', () => {
+      const values = { ...validValues, amountPerTrade: '0' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.amountPerTrade).toBeTruthy()
+    })
+
+    it('should return error for multiplier < 1', () => {
+      const values = { ...validValues, multiplier: '0' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.multiplier).toBe('Multiplier must be >= 1')
+    })
+
+    it('should return error for takeProfitDistancePercent <= 0', () => {
+      const values = { ...validValues, takeProfitDistancePercent: '-5' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.takeProfitDistancePercent).toBeTruthy()
+    })
+
+    it('should return error for accountBalance <= 0', () => {
+      const values = { ...validValues, accountBalance: '0' }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.accountBalance).toBeTruthy()
+    })
+  })
+
+  describe('Untouched fields do not show errors', () => {
+    it('should not show error for untouched tradingPair even if empty', () => {
+      const values = { ...validValues, tradingPair: '' }
+      const touched = { ...allTouched, tradingPair: false }
+      const { result } = renderHook(() => useFormValidation(values, touched))
+      expect(result.current.errors.tradingPair).toBeUndefined()
+    })
+
+    it('should not show error for untouched priceEntry even if invalid', () => {
+      const values = { ...validValues, priceEntry: '-100' }
+      const touched = { ...allTouched, priceEntry: false }
+      const { result } = renderHook(() => useFormValidation(values, touched))
+      expect(result.current.errors.priceEntry).toBeUndefined()
+    })
+
+    it('should return isValid: true if no fields are touched', () => {
+      const { result } = renderHook(() =>
+        useFormValidation({}, {}),
+      )
+      expect(result.current.isValid).toBe(true)
+      expect(result.current.errors).toEqual({})
+    })
+  })
+
+  describe('Multiple errors', () => {
+    it('should collect errors for multiple invalid touched fields', () => {
+      const values = {
+        ...validValues,
+        priceEntry: '-1',
+        amountPerTrade: '2',
+        multiplier: '0',
+      }
+      const { result } = renderHook(() => useFormValidation(values, allTouched))
+      expect(result.current.isValid).toBe(false)
+      expect(result.current.errors.priceEntry).toBeTruthy()
+      expect(result.current.errors.amountPerTrade).toBeTruthy()
+      expect(result.current.errors.multiplier).toBeTruthy()
     })
   })
 })

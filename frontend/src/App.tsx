@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { BacktestConfiguration, BacktestResults } from './services/types'
+import type { BacktestFormState, BacktestResults } from './services/types'
 import { submitBacktest } from './services/backtest-api'
 import { ConfigurationPage } from './pages/ConfigurationPage'
 import { PollingPage } from './pages/PollingPage'
@@ -12,7 +12,7 @@ interface AppState {
   currentView: ViewType
   backtestId: string | null
   results: BacktestResults | null
-  submittedConfig: BacktestConfiguration | null
+  submittedConfig: BacktestFormState | null
   error: string | null
   isSubmitting: boolean
 }
@@ -27,7 +27,7 @@ export default function App() {
     isSubmitting: false
   })
 
-  const handleSubmitConfig = async (config: BacktestConfiguration) => {
+  const handleSubmitConfig = async (config: BacktestFormState) => {
     setState(prev => ({ ...prev, isSubmitting: true, error: null }))
     
     try {

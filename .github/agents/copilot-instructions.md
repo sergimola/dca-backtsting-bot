@@ -7,6 +7,10 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - N/A (PSM is stateless per candle; caller manages state persistence) (002-position-state-machine)
 - Go 1.21+ (matches core-engine/domain/position/go.mod) + `shopspring/decimal` (already used in PSM), `encoding/csv` (stdlib) (003-backtest-orchestrator)
 - In-memory (Event Bus), CSV file input (high-performance streaming) (003-backtest-orchestrator)
+- [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION] (006-sdd-params-integration)
+- [if applicable, e.g., PostgreSQL, CoreData, files or N/A] (006-sdd-params-integration)
+- Go 1.21 (core engine), TypeScript 5.x / Node.js 20 (API), React 18 / TypeScript 5 (frontend) + shopspring/decimal (Go), Decimal.js (Node.js), React + Tailwind CSS (frontend), Express 4 (API) (006-sdd-params-integration)
+- Flat files — OHLCV CSV files on disk (`MARKET_DATA_DIR`), JSON result files in `RESULTS_DIR` (006-sdd-params-integration)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -26,10 +30,10 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 006-sdd-params-integration: Added Go 1.21 (core engine), TypeScript 5.x / Node.js 20 (API), React 18 / TypeScript 5 (frontend) + shopspring/decimal (Go), Decimal.js (Node.js), React + Tailwind CSS (frontend), Express 4 (API)
+- 006-sdd-params-integration: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 - 003-backtest-orchestrator: Added Go 1.21+ (matches core-engine/domain/position/go.mod) + `shopspring/decimal` (already used in PSM), `encoding/csv` (stdlib)
-- 002-position-state-machine: Added Go 1.22+ (core-engine domain layer)
 
-- 001-core-domain-config: Added Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library)
 
 <!-- MANUAL ADDITIONS START -->
 <!-- MANUAL ADDITIONS END -->

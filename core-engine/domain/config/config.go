@@ -110,7 +110,8 @@ func (c *Config) Validate() error {
 	}
 	
 	// Date Validation
-	layout := time.DateTime // "2006-01-02 15:04:05"
+	// Accept RFC 3339 format (YYYY-MM-DDTHH:MM:SSZ) sent by the API
+	layout := time.RFC3339
 	start, errStart := time.Parse(layout, c.startDate)
 	end, errEnd := time.Parse(layout, c.endDate)
 
@@ -126,7 +127,7 @@ func (c *Config) Validate() error {
 		return &ValidationError{
 			Field:   "start_date/end_date",
 			Value:   fmt.Sprintf("%s / %s", c.startDate, c.endDate),
-			Message: "dates must be in 'YYYY-MM-DD HH:MM:SS' format",
+			Message: "dates must be in RFC 3339 format YYYY-MM-DDTHH:MM:SSZ",
 		}
 	}
 

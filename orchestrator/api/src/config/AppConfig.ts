@@ -30,6 +30,9 @@ export interface AppConfig {
 
   /** Environment (development, production) */
   environment: string;
+
+  /** Directory containing OHLCV market data CSV files */
+  marketDataDir: string;
 }
 
 /**
@@ -75,6 +78,7 @@ export async function loadAppConfig(): Promise<AppConfig> {
   }
 
   const environment = process.env.NODE_ENV || 'development';
+  const marketDataDir = process.env.MARKET_DATA_DIR || './data/market';
 
   return {
     port,
@@ -85,5 +89,6 @@ export async function loadAppConfig(): Promise<AppConfig> {
     resultsTtlDays,
     logLevel,
     environment,
+    marketDataDir,
   };
 }

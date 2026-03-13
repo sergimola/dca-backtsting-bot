@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { BacktestConfiguration, BacktestResults } from './types';
+import type { BacktestFormState, BacktestResults } from './types';
 
 const API_BASE_URL = 'http://localhost:4000';
 
@@ -10,17 +10,44 @@ function getHeaders() {
   return { 'Content-Type': 'application/json' };
 }
 
-export async function submitBacktest(config: BacktestConfiguration): Promise<{ backtestId: string }> {
+/**
+ * Formats a date string to RFC 3339 format (ISO 8601 with Z timezone).
+ * - YYYY-MM-DD → YYYY-MM-DDT00:00:00Z (start), YYYY-MM-DDT23:59:59Z (end)
+ * - YYYY-MM-DD HH:MM:SS → YYYY-MM-DDTHH:MM:SSZ
+ * 
+ * This format is expected by the Go engine's time.RFC3339 parser.
+ */
+function formatApiDate(dateStr: string, isEnd: boolean): string {
+  // Case 1: Short format YYYY-MM-DD (10 chars)
+  if (dateStr.length === 10) {
+    const time = isEnd ? '23:59:59' : '00:00:00';
+    return `${dateStr}T${time}Z`;
+  }
+  // Case 2: Datetime format YYYY-MM-DD HH:MM:SS (19 chars) — replace space with T, append Z
+  if (dateStr.length === 19 && dateStr[10] === ' ') {
+    return `${dateStr.substring(0, 10)}T${dateStr.substring(11)}Z`;
+  }
+  // Case 3: Already RFC 3339 or other format — pass through
+  return dateStr;
+}
+
+export async function submitBacktest(config: BacktestFormState): Promise<{ backtestId: string }> {
   try {
-    // 1. Translate Frontend camelCase to Backend strict snake_case
+    // Translate Frontend camelCase to Backend strict snake_case
     const apiPayload = {
-      entry_price: config.entryPrice.toFixed(8),
-      amounts: config.amounts.map(a => a.toFixed(8)),
-      // Backend expects sequences array to match amounts length (e.g., [0, 1, 2])
-      sequences: config.amounts.map((_, i) => i), 
-      leverage: config.leverage.toFixed(8),
-      margin_ratio: (config.marginRatio / 100).toFixed(8), // 5% becomes 0.05
-      market_data_csv_path: config.market_data_csv_path || './dummy_data.csv'
+      trading_pair: config.tradingPair,
+      start_date: formatApiDate(config.startDate, false),
+      end_date: formatApiDate(config.endDate, true),
+      price_entry: config.priceEntry,
+      price_scale: config.priceScale,
+      amount_scale: config.amountScale,
+      number_of_orders: parseInt(config.numberOfOrders, 10),
+      amount_per_trade: config.amountPerTrade,
+      margin_type: config.marginType,
+      multiplier: parseInt(config.multiplier, 10),
+      take_profit_distance_percent: config.takeProfitDistancePercent,
+      account_balance: config.accountBalance,
+      exit_on_last_order: config.exitOnLastOrder,
     };
 
     console.log('Sending payload to API:', apiPayload);
@@ -44,7 +71,7 @@ export async function submitBacktest(config: BacktestConfiguration): Promise<{ b
   }
 }
 
-export async function getStatus(backtestId: string): Promise<{ status: 'pending' | 'completed' | 'failed' }> {
+export async function getStatus(backtestId: string): Promise<{ status: 'pending' | 'completed' | 'failed'; error?: string }> {
   // Since the POST request blocks until completion, if we have the ID, we already have the result!
   if (resultCache.has(backtestId)) {
     return { status: 'completed' };

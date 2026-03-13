@@ -1,7 +1,25 @@
+import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { ConfigurationForm } from '../../components/ConfigurationForm'
-import type { BacktestConfiguration } from '../../services/types'
+import type { BacktestFormState } from '../../services/types'
+
+/** Fully-valid configuration used across submission and reset tests */
+const validValues: BacktestFormState = {
+  tradingPair: 'BTC/USDT',
+  startDate: '2024-01-01',
+  endDate: '2024-01-31',
+  priceEntry: '50000',
+  priceScale: '1.10',
+  amountScale: '2.0',
+  numberOfOrders: '5',
+  amountPerTrade: '0.10',
+  marginType: 'cross',
+  multiplier: '1',
+  takeProfitDistancePercent: '2.5',
+  accountBalance: '1000.00',
+  exitOnLastOrder: false,
+}
 
 describe('ConfigurationForm', () => {
   const mockOnSubmit = jest.fn()
@@ -10,15 +28,25 @@ describe('ConfigurationForm', () => {
     jest.clearAllMocks()
   })
 
+  // ─── Rendering ───────────────────────────────────────────────────────────────
+
   describe('Rendering', () => {
-    it('should render form with all 5 input fields', () => {
+    it('should render all 13 input fields', () => {
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      expect(screen.getByLabelText(/entry price/i)).toBeInTheDocument()
-      expect(screen.getByPlaceholderText(/e\.g\., 100/i)).toBeInTheDocument() // Amounts placeholder
-      expect(screen.getByLabelText(/sequences/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/leverage/i)).toBeInTheDocument()
-      expect(screen.getByLabelText(/margin ratio/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/trading pair/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/start date/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/end date/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/price entry/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/price scale/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/amount scale/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/number of orders/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/amount per trade/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/margin type/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/multiplier/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/take profit distance/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/account balance/i)).toBeInTheDocument()
+      expect(screen.getByLabelText(/exit on last order/i)).toBeInTheDocument()
     })
 
     it('should render Submit button', () => {
@@ -33,202 +61,179 @@ describe('ConfigurationForm', () => {
       expect(screen.getByRole('button', { name: /clear|reset/i })).toBeInTheDocument()
     })
 
-    it('should render +Add button for amounts array', () => {
+    it('should NOT render +Add or Remove buttons (amounts array deleted)', () => {
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const addButton = screen.getByRole('button', { name: /\+|add/i })
-      expect(addButton).toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^\+$|^add$/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole('button', { name: /^-$|^remove$/i })).not.toBeInTheDocument()
+    })
+
+    it('should render marginType as a <select> with cross/isolated options', () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const select = screen.getByLabelText(/margin type/i) as HTMLSelectElement
+      expect(select.tagName).toBe('SELECT')
+      expect(select).toContainElement(screen.getByRole('option', { name: /cross/i }))
+      expect(select).toContainElement(screen.getByRole('option', { name: /isolated/i }))
+    })
+
+    it('should render exitOnLastOrder as a checkbox', () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const checkbox = screen.getByLabelText(/exit on last order/i) as HTMLInputElement
+      expect(checkbox.type).toBe('checkbox')
     })
   })
+
+  // ─── Initial Values ───────────────────────────────────────────────────────────
 
   describe('Initial Values', () => {
-    it ('should pre-populate form with initialValues prop', () => {
-      const initialValues: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100, 200],
-        sequences: 5,
-        leverage: 2,
-        marginRatio: 50,
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      }
+    it('should pre-populate all text fields from initialValues prop', () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={validValues} />)
 
-      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
-
+      expect(screen.getByDisplayValue('BTC/USDT')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('2024-01-01')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('2024-01-31')).toBeInTheDocument()
       expect(screen.getByDisplayValue('50000')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('100')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('200')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('1.10')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('2.0')).toBeInTheDocument()
       expect(screen.getByDisplayValue('5')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('2')).toBeInTheDocument()
-      expect(screen.getByDisplayValue('50')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('0.10')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('1')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('2.5')).toBeInTheDocument()
+      expect(screen.getByDisplayValue('1000.00')).toBeInTheDocument()
+    })
+
+    it('should pre-populate marginType select', () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={validValues} />)
+
+      const select = screen.getByLabelText(/margin type/i) as HTMLSelectElement
+      expect(select.value).toBe('cross')
+    })
+
+    it('should pre-populate exitOnLastOrder checkbox', () => {
+      render(
+        <ConfigurationForm
+          onSubmit={mockOnSubmit}
+          initialValues={{ ...validValues, exitOnLastOrder: true }}
+        />,
+      )
+
+      const checkbox = screen.getByLabelText(/exit on last order/i) as HTMLInputElement
+      expect(checkbox.checked).toBe(true)
     })
   })
+
+  // ─── Input Changes & Validation ───────────────────────────────────────────────
 
   describe('Input Changes & Validation', () => {
-    it('should update entryPrice on input change', async () => {
+    it('should update priceEntry on text input', async () => {
       const user = userEvent.setup()
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const entryPriceInput = screen.getByLabelText(/entry price/i)
-      await user.type(entryPriceInput, '50000')
+      const input = screen.getByLabelText(/price entry/i)
+      await user.type(input, '50000')
 
-      expect(entryPriceInput).toHaveValue(50000)
+      expect(input).toHaveValue('50000')
     })
 
-    it('should show validation error for invalid entryPrice', async () => {
+    it('should show validation error for negative priceEntry on blur', async () => {
       const user = userEvent.setup()
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const entryPriceInput = screen.getByLabelText(/entry price/i) as HTMLInputElement
-      await user.type(entryPriceInput, '0')
-      fireEvent.blur(entryPriceInput)
+      const input = screen.getByLabelText(/price entry/i)
+      await user.type(input, '-5')
+      fireEvent.blur(input)
 
       await waitFor(() => {
-        expect(screen.getByText(/entry price must be greater than 0/i)).toBeInTheDocument()
-      })
-    })
-
-    it('should clear validation error when input becomes valid', async () => {
-      const user = userEvent.setup()
-      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
-
-      const entryPriceInput = screen.getByLabelText(/entry price/i) as HTMLInputElement
-      
-      // First make it invalid
-      await user.type(entryPriceInput, '0')
-      fireEvent.blur(entryPriceInput)
-
-      await waitFor(() => {
-        expect(screen.getByText(/entry price must be greater than 0/i)).toBeInTheDocument()
-      })
-
-      // Then fix it
-      await user.clear(entryPriceInput)
-      await user.type(entryPriceInput, '50000')
-      fireEvent.blur(entryPriceInput)
-
-      await waitFor(() => {
-        expect(screen.queryByText(/entry price must be greater than 0/i)).not.toBeInTheDocument()
+        expect(screen.getByText(/price entry must be greater than 0/i)).toBeInTheDocument()
       })
     })
 
-    it('should validate all fields on input', async () => {
+    it('should clear validation error when priceEntry becomes valid', async () => {
       const user = userEvent.setup()
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const sequencesInput = screen.getByLabelText(/sequences/i) as HTMLInputElement
-      await user.type(sequencesInput, '15')
-      fireEvent.blur(sequencesInput)
+      const input = screen.getByLabelText(/price entry/i)
+      await user.type(input, '-5')
+      fireEvent.blur(input)
 
       await waitFor(() => {
-        expect(screen.getByText(/sequences must be between 1 and 10/i)).toBeInTheDocument()
+        expect(screen.getByText(/price entry must be greater than 0/i)).toBeInTheDocument()
       })
+
+      await user.clear(input)
+      await user.type(input, '50000')
+      fireEvent.blur(input)
+
+      await waitFor(() => {
+        expect(screen.queryByText(/price entry must be greater than 0/i)).not.toBeInTheDocument()
+      })
+    })
+
+    it('should show error when amountPerTrade > 1', async () => {
+      const user = userEvent.setup()
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const input = screen.getByLabelText(/amount per trade/i)
+      await user.type(input, '1.5')
+      fireEvent.blur(input)
+
+      await waitFor(() => {
+        expect(screen.getByText(/amount per trade must be between 0 and 1/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should show error when multiplier < 1', async () => {
+      const user = userEvent.setup()
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const input = screen.getByLabelText(/multiplier/i)
+      await user.type(input, '0')
+      fireEvent.blur(input)
+
+      await waitFor(() => {
+        expect(screen.getByText(/multiplier must be >= 1/i)).toBeInTheDocument()
+      })
+    })
+
+    it('should update marginType select to isolated', async () => {
+      const user = userEvent.setup()
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const select = screen.getByLabelText(/margin type/i)
+      await user.selectOptions(select, 'isolated')
+
+      expect((select as HTMLSelectElement).value).toBe('isolated')
+    })
+
+    it('should toggle exitOnLastOrder checkbox', async () => {
+      const user = userEvent.setup()
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const checkbox = screen.getByLabelText(/exit on last order/i) as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
+
+      await user.click(checkbox)
+      expect(checkbox.checked).toBe(true)
+
+      await user.click(checkbox)
+      expect(checkbox.checked).toBe(false)
     })
   })
 
-  describe('Dynamic Amounts Array (T032)', () => {
-    it('should add new amount input when +Add button clicked', async () => {
-      const user = userEvent.setup()
-      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
-
-      const initialAmounts = screen.getAllByPlaceholderText(/e\.g\., 100/i)
-      const initialCount = initialAmounts.length
-
-      const addButton = screen.getByRole('button', { name: /\+|add/i })
-      await user.click(addButton)
-
-      await waitFor(() => {
-        const updatedAmounts = screen.getAllByPlaceholderText(/e\.g\., 100/i)
-        expect(updatedAmounts.length).toBe(initialCount + 1)
-      })
-    })
-
-    it('should have Remove button for each amount > 1', async () => {
-      const user = userEvent.setup()
-      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
-
-      const addButton = screen.getByRole('button', { name: /\+|add/i })
-      
-      // Add second amount
-      await user.click(addButton)
-
-      await waitFor(() => {
-        const removeButtons = screen.getAllByRole('button', { name: /-|remove/i })
-        expect(removeButtons.length).toBeGreaterThan(0)
-      })
-    })
-
-    it('should remove amount when Remove button clicked', async () => {
-      const user = userEvent.setup()
-      const initialValues: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100, 200],
-        sequences: 5,
-        leverage: 2,
-        marginRatio: 50,
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      }
-
-      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
-
-      const removeButtons = screen.getAllByRole('button', { name: /-|remove/i })
-      expect(removeButtons.length).toBeGreaterThan(0)
-
-      await user.click(removeButtons[0])
-
-      await waitFor(() => {
-        const amountInputs = screen.getAllByPlaceholderText(/e\.g\., 100/i)
-        expect(amountInputs.length).toBe(1)
-      })
-    })
-
-    it('should not allow removing the last amount', async () => {
-      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
-
-      const removeButtons = screen.queryAllByRole('button', { name: /-|remove/i })
-      expect(removeButtons.length).toBe(0) // No remove button if only 1 amount
-    })
-
-    it('should allow adding multiple amounts', async () => {
-      const user = userEvent.setup()
-      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
-
-      const addButton = screen.getByRole('button', { name: /\+|add/i })
-
-      for (let i = 0; i < 3; i++) {
-        await user.click(addButton)
-      }
-
-      await waitFor(() => {
-        const amountInputs = screen.getAllByPlaceholderText(/e\.g\., 100/i)
-        expect(amountInputs.length).toBe(4) // 1 original + 3 added
-      })
-    })
-  })
+  // ─── Form Submission ──────────────────────────────────────────────────────────
 
   describe('Form Submission', () => {
-    it('should disable Submit button when form is invalid', async () => {
-      const user = userEvent.setup()
+    it('should disable Submit button when form is empty', () => {
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const submitButton = screen.getByRole('button', { name: /submit|send/i })
-      expect(submitButton).toBeDisabled()
+      expect(screen.getByRole('button', { name: /submit|send/i })).toBeDisabled()
     })
 
-    it('should call onSubmit with correct configuration when form submitted', async () => {
+    it('should call onSubmit with correct BacktestFormState when all fields are valid', async () => {
       const user = userEvent.setup()
-      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
-
-      const entryPriceInput = screen.getByLabelText(/entry price/i)
-      const amountsInputs = screen.getAllByPlaceholderText(/e\.g\., 100/i) // Use placeholder for amounts
-      const sequencesInput = screen.getByLabelText(/sequences/i)
-      const leverageInput = screen.getByLabelText(/leverage/i)
-      const marginRatioInput = screen.getByLabelText(/margin ratio/i)
-
-      await user.type(entryPriceInput, '50000')
-      await user.type(amountsInputs[0], '100')
-      await user.type(sequencesInput, '5')
-      await user.type(leverageInput, '2')
-      await user.type(marginRatioInput, '50')
+      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={validValues} />)
 
       const submitButton = screen.getByRole('button', { name: /submit|send/i })
       await user.click(submitButton)
@@ -236,58 +241,85 @@ describe('ConfigurationForm', () => {
       await waitFor(() => {
         expect(mockOnSubmit).toHaveBeenCalledWith(
           expect.objectContaining({
-            entryPrice: 50000,
-            sequences: 5,
-            leverage: 2,
-            marginRatio: 50,
-          })
+            tradingPair: 'BTC/USDT',
+            startDate: '2024-01-01',
+            priceEntry: '50000',
+            priceScale: '1.10',
+            numberOfOrders: '5',
+            amountPerTrade: '0.10',
+            marginType: 'cross',
+            multiplier: '1',
+            exitOnLastOrder: false,
+          }),
         )
       })
     })
 
-    it('should disable Submit button while submitting', async () => {
-      const user = userEvent.setup()
+    it('should disable Submit button while isSubmitting is true', () => {
       render(<ConfigurationForm onSubmit={mockOnSubmit} isSubmitting={true} />)
 
-      const submitButton = screen.getByRole('button', { name: /submit|send/i })
-      expect(submitButton).toBeDisabled()
+      expect(screen.getByRole('button', { name: /submit|send/i })).toBeDisabled()
     })
 
-    it('should show spinner on Submit button during submission', () => {
+    it('should show "Submitting..." text on Submit button during submission', () => {
       render(<ConfigurationForm onSubmit={mockOnSubmit} isSubmitting={true} />)
 
-      const submitButton = screen.getByRole('button', { name: /submitting/i })
-      expect(submitButton).toBeInTheDocument()
-      expect(submitButton).toBeDisabled()
+      expect(screen.getByRole('button', { name: /submitting/i })).toBeInTheDocument()
+      expect(screen.getByRole('button', { name: /submitting/i })).toBeDisabled()
+    })
+
+    it('should show required-field errors when empty form is submitted', async () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const form = screen
+        .getByRole('button', { name: /submit|send/i })
+        .closest('form') as HTMLFormElement
+      fireEvent.submit(form)
+
+      await waitFor(() => {
+        expect(screen.getByText(/trading pair is required/i)).toBeInTheDocument()
+        expect(screen.getByText(/price entry is required/i)).toBeInTheDocument()
+        expect(screen.getByText(/account balance is required/i)).toBeInTheDocument()
+      })
     })
   })
 
+  // ─── Clear Button ─────────────────────────────────────────────────────────────
+
   describe('Clear Button', () => {
-    it('should reset form to initial values when Clear button clicked', async () => {
+    it('should reset form to empty state (no initialValues)', async () => {
       const user = userEvent.setup()
-      const initialValues: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100],
-        sequences: 5,
-        leverage: 2,
-        marginRatio: 50,
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      }
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
-
-      const entryPriceInput = screen.getByLabelText(/entry price/i) as HTMLInputElement
-      await user.clear(entryPriceInput)
-      await user.type(entryPriceInput, '60000')
+      const priceInput = screen.getByLabelText(/price entry/i) as HTMLInputElement
+      await user.type(priceInput, '50000')
 
       const clearButton = screen.getByRole('button', { name: /clear|reset/i })
       await user.click(clearButton)
 
       await waitFor(() => {
-        expect(entryPriceInput).toHaveValue(50000)
+        expect(priceInput).toHaveValue('')
+      })
+    })
+
+    it('should reset form to initialValues when Clear is clicked', async () => {
+      const user = userEvent.setup()
+      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={validValues} />)
+
+      const priceInput = screen.getByLabelText(/price entry/i) as HTMLInputElement
+      await user.clear(priceInput)
+      await user.type(priceInput, '99999')
+
+      const clearButton = screen.getByRole('button', { name: /clear|reset/i })
+      await user.click(clearButton)
+
+      await waitFor(() => {
+        expect(priceInput).toHaveValue('50000')
       })
     })
   })
+
+  // ─── TailwindCSS Styling ──────────────────────────────────────────────────────
 
   describe('TailwindCSS Styling', () => {
     it('should use TailwindCSS classes for form layout', () => {
@@ -297,60 +329,77 @@ describe('ConfigurationForm', () => {
       expect(form).toHaveClass(/p-|m-|border|rounded/i)
     })
 
-    it('should style error messages in red with TailwindCSS', async () => {
+    it('should render a 2-column grid layout', () => {
+      const { container } = render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const grid = container.querySelector('.grid')
+      expect(grid).toBeInTheDocument()
+      expect(grid).toHaveClass('grid-cols-2')
+    })
+
+    it('should style error messages in red', async () => {
       const user = userEvent.setup()
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const entryPriceInput = screen.getByLabelText(/entry price/i) as HTMLInputElement
-      await user.type(entryPriceInput, '0')
-      fireEvent.blur(entryPriceInput)
+      const input = screen.getByLabelText(/price entry/i)
+      await user.type(input, '-5')
+      fireEvent.blur(input)
 
       await waitFor(() => {
-        const errorElement = screen.getByText(/entry price must be greater than 0/i)
-        expect(errorElement).toHaveClass(/text-red|text-danger/i)
+        const errorEl = screen.getByText(/price entry must be greater than 0/i)
+        expect(errorEl).toHaveClass(/text-red/i)
       })
     })
 
-    it('should style inputs with TailwindCSS', () => {
+    it('should style text inputs with TailwindCSS border classes', () => {
       const { container } = render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const inputs = container.querySelectorAll('input')
-      inputs.forEach((input) => {
+      const textInputs = container.querySelectorAll('input[type="text"]')
+      textInputs.forEach((input) => {
         expect(input).toHaveClass(/border|rounded|px|py/i)
       })
     })
   })
 
+  // ─── Edge Cases ───────────────────────────────────────────────────────────────
+
   describe('Edge Cases', () => {
-    it('should handle decimal values for entryPrice', async () => {
+    it('should accept decimal values for priceEntry', async () => {
       const user = userEvent.setup()
       render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      const entryPriceInput = screen.getByLabelText(/entry price/i)
-      await user.type(entryPriceInput, '50000.99')
+      const input = screen.getByLabelText(/price entry/i)
+      await user.type(input, '50000.99')
 
-      expect(entryPriceInput).toHaveValue(50000.99)
+      expect(input).toHaveValue('50000.99')
     })
 
-    it('should handle form with only 1 amount (minimum)', async () => {
-      const initialValues: BacktestConfiguration = {
-        entryPrice: 50000,
-        amounts: [100],
-        sequences: 1,
-        leverage: 1,
-        marginRatio: 50,
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      }
+    it('should accept amountPerTrade exactly equal to 1 (boundary)', async () => {
+      const user = userEvent.setup()
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
 
-      render(<ConfigurationForm onSubmit={mockOnSubmit} initialValues={initialValues} />)
+      const input = screen.getByLabelText(/amount per trade/i)
+      await user.type(input, '1')
+      fireEvent.blur(input)
 
-      const amountInputs = screen.getAllByPlaceholderText(/e\.g\., 100/i)
-      expect(amountInputs.length).toBe(1)
+      await waitFor(() => {
+        expect(screen.queryByText(/amount per trade must be between 0 and 1/i)).not.toBeInTheDocument()
+      })
+    })
+
+    it('should default marginType to "cross"', () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const select = screen.getByLabelText(/margin type/i) as HTMLSelectElement
+      expect(select.value).toBe('cross')
+    })
+
+    it('should default exitOnLastOrder to false', () => {
+      render(<ConfigurationForm onSubmit={mockOnSubmit} />)
+
+      const checkbox = screen.getByLabelText(/exit on last order/i) as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
     })
   })
 })
 
-// Helper function (to be replaced with proper React Testing Library utilities)
-function renderConfigurationForm(component: React.ReactElement) {
-  return render(component)
-}

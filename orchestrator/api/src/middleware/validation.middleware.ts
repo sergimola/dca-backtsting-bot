@@ -1,11 +1,12 @@
 /**
- * Validation Middleware (T025)
+ * Validation Middleware (T003)
  *
- * Validates incoming BacktestRequest against schema:
- * - All required fields present
- * - Decimal.js precision (no floats, 8 decimal max)
- * - Bounds validation (entry_price > 0, margin_ratio ∈ [0,1), etc.)
- * - Sequences length matches amounts length
+ * Validates incoming ApiBacktestRequest against schema:
+ * - All 13 SDD §4.1 required fields present
+ * - Decimal.js precision (no floats, 8 decimal max) for monetary values
+ * - Integer validation for price_scale, amount_scale, number_of_orders, multiplier
+ * - Bounds validation (price_entry > 0, amount_per_trade ∈ (0,1], multiplier >= 1, etc.)
+ * - Date range validation (end_date >= start_date, same month MVP guard)
  *
  * On validation error: passes ValidationError to next(err)
  */
@@ -15,7 +16,7 @@ import { validateBacktestRequest } from '../types/configuration.js';
 import { ValidationError, ErrorCode } from '../types/errors.js';
 
 /**
- * Express middleware for validating BacktestRequest
+ * Express middleware for validating ApiBacktestRequest
  *
  * @param req Express Request with JSON body
  * @param res Express Response
@@ -23,7 +24,7 @@ import { ValidationError, ErrorCode } from '../types/errors.js';
  */
 export function validationMiddleware(req: Request, _res: Response, next: NextFunction): void {
   try {
-    // Validate body against BacktestRequest schema
+    // Validate body against ApiBacktestRequest schema
     const validatedRequest = validateBacktestRequest(req.body);
 
     // Attach validated request to Express request context
@@ -38,6 +39,10 @@ export function validationMiddleware(req: Request, _res: Response, next: NextFun
       required_field: ErrorCode.VALIDATION_MISSING_FIELD,
       decimal_error: ErrorCode.VALIDATION_FLOAT_PRECISION,
       empty_value: ErrorCode.VALIDATION_MISSING_FIELD,
+      invalid_format: ErrorCode.VALIDATION_TYPE_ERROR,
+      invalid_value: ErrorCode.VALIDATION_OUT_OF_BOUNDS,
+      same_month_guard: ErrorCode.VALIDATION_OUT_OF_BOUNDS,
+      length_mismatch: ErrorCode.VALIDATION_TYPE_ERROR,
     };
     // Preserve an explicit code if already set (e.g. errors.ValidationError),
     // otherwise derive from the constraint string, falling back to REQUEST_VALIDATION_FAILED
@@ -61,7 +66,7 @@ export function validationMiddleware(req: Request, _res: Response, next: NextFun
  * Helper to extract validated request from Express context
  *
  * @param req Express Request
- * @returns Validated BacktestRequest
+ * @returns Validated ApiBacktestRequest
  * @throws Error if validation middleware not called or validation failed
  */
 export function getValidatedBacktestRequest(req: any) {

@@ -15,6 +15,7 @@ import { BacktestService, BacktestExecutionResult } from '../services/BacktestSe
 import { ResultAggregator } from '../services/ResultAggregator.js';
 import { IdempotencyCache } from '../services/IdempotencyCache.js';
 import { getValidatedBacktestRequest, validationMiddleware } from '../middleware/validation.middleware.js';
+import { MarketDataResolver, SameMonthGuardError, MarketDataNotFoundError } from '../services/MarketDataResolver.js';
 import { validateIdempotencyKey, isValidUuid } from '../utils/RequestIdGenerator.js';
 import { BacktestResult } from '../types/index.js';
 import { StorageError } from '../types/errors.js';
@@ -28,6 +29,7 @@ export function createBacktestRouter(
   backtestService: BacktestService,
   resultAggregator: ResultAggregator,
   idempotencyCache: IdempotencyCache,
+  resolver: MarketDataResolver,
 ): Router {
   const router = Router();
 
@@ -59,6 +61,40 @@ export function createBacktestRouter(
         }
       }
 
+      // Resolve CSV path before enqueueing so missing/invalid data returns 400/404 synchronously
+      let csvPath = '';
+      try {
+        csvPath = resolver.resolve(
+          backtestReq.trading_pair,
+          backtestReq.start_date,
+          backtestReq.end_date,
+        );
+      } catch (resolveError: any) {
+        if (resolveError instanceof SameMonthGuardError) {
+          res.status(400).json({
+            error: {
+              code: 'VALIDATION_OUT_OF_BOUNDS',
+              http_status: 400,
+              message: resolveError.message,
+              timestamp: new Date().toISOString(),
+            },
+          });
+          return;
+        }
+        if (resolveError instanceof MarketDataNotFoundError) {
+          res.status(404).json({
+            error: {
+              code: 'CSV_FILE_NOT_FOUND',
+              http_status: 404,
+              message: resolveError.message,
+              timestamp: new Date().toISOString(),
+            },
+          });
+          return;
+        }
+        throw resolveError;
+      }
+
       // Generate unique request ID for backtest
       const backtestRequestId = crypto.randomUUID();
 
@@ -68,7 +104,7 @@ export function createBacktestRouter(
       // Queue backtest — the callback runs the Go binary
       console.log(`[${requestId}] Enqueuing backtest with ID ${backtestRequestId}`);
       await processManager.enqueue(backtestRequestId, async () => {
-        execResult = await backtestService.execute(backtestReq);
+        execResult = await backtestService.execute({ ...backtestReq, market_data_csv_path: csvPath });
       });
 
       // Poll for completion (max 35 seconds)
