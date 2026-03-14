@@ -598,4 +598,48 @@ describe('ResultAggregator', () => {
       expect(summary.roi_percent).toBe('0.00');
     });
   });
+
+  // ─── T002 / T003 / T004 ──────────────────────────────────────────────────
+  describe('✅ aggregateGoEvents — Safety Order Usage (FR-007, FR-008)', () => {
+    it('T002: PositionOpened must NOT contribute to safetyOrderUsageCounts', async () => {
+      // A trade that opens and immediately closes with no safety orders
+      const events = [
+        { type: 'PositionOpened', data: { entry_fee: '0.10' } },
+        { type: 'SellOrderExecuted', data: { fee: '0.08' } },
+        { type: 'PositionClosed', data: { profit: '-0.18' } },
+      ];
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      // No safety orders triggered — counts map must be completely empty
+      expect(summary.safety_order_usage_counts).toEqual({});
+      // Key "0" must not exist
+      expect((summary.safety_order_usage_counts as any)[0]).toBeUndefined();
+    });
+
+    it('T003: BuyOrderExecuted with order_number=2 maps to level 1 (not 0)', async () => {
+      const events = [
+        { type: 'PositionOpened',   data: { entry_fee: '0.10' } },
+        { type: 'BuyOrderExecuted', data: { fee: '0.05', order_number: 2, base_size: '0.001', price: '50000' } },
+        { type: 'SellOrderExecuted', data: { fee: '0.08' } },
+        { type: 'PositionClosed',   data: { profit: '2.00' } },
+      ];
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      // SO1 (order_number=2) should appear at key 1
+      expect(summary.safety_order_usage_counts[1]).toBe(1);
+      // Key 0 must NOT exist
+      expect((summary.safety_order_usage_counts as any)[0]).toBeUndefined();
+    });
+
+    it('T004: totalFills counts only BuyOrderExecuted, not PositionOpened', async () => {
+      const events = [
+        { type: 'PositionOpened',   data: { entry_fee: '0.10' } },
+        { type: 'BuyOrderExecuted', data: { fee: '0.05', order_number: 2, base_size: '0.001', price: '50000' } },
+        { type: 'BuyOrderExecuted', data: { fee: '0.06', order_number: 3, base_size: '0.002', price: '49000' } },
+        { type: 'SellOrderExecuted', data: { fee: '0.08' } },
+        { type: 'PositionClosed',   data: { profit: '5.00' } },
+      ];
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      // 2 safety orders, entry does NOT count
+      expect(summary.total_fills).toBe(2);
+    });
+  });
 });
