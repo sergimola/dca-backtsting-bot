@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"dca-bot/core-engine/application/orchestrator"
 	"dca-bot/core-engine/domain/config"
@@ -28,7 +29,10 @@ type EngineRequest struct {
 	TakeProfitDistancePercent     string `json:"take_profit_distance_percent"`    // Decimal string > 0
 	AccountBalance                string `json:"account_balance"`                 // Decimal string > 0 (total capital in USDT)
 	ExitOnLastOrder               bool   `json:"exit_on_last_order"`              // Boolean: end simulation when last order fills
-	MarketDataCSVPath             string `json:"market_data_csv_path"`             // Path to CSV file (derived/resolved by API)
+	ClickhouseAddr                string `json:"clickhouse_addr"`                 // ClickHouse native TCP address, e.g. "localhost:9000"
+	ClickhouseDb                  string `json:"clickhouse_db"`                   // ClickHouse database, e.g. "dca_bot"
+	ClickhouseUser                string `json:"clickhouse_user"`                 // ClickHouse username
+	ClickhousePassword            string `json:"clickhouse_password"`             // ClickHouse password
 	IdempotencyKey                string `json:"idempotency_key"`                 // Optional UUID
 }
 
@@ -59,8 +63,12 @@ func main() {
 	}
 
 	// Validate required fields
-	if request.PriceEntry == "" || request.MarketDataCSVPath == "" || request.TradingPair == "" {
-		fmt.Fprintf(os.Stderr, "Missing required fields: price_entry, market_data_csv_path, and trading_pair are required\n")
+	if request.PriceEntry == "" || request.ClickhouseAddr == "" || request.TradingPair == "" {
+		fmt.Fprintf(os.Stderr, "Missing required fields: price_entry, clickhouse_addr, and trading_pair are required\n")
+		os.Exit(1)
+	}
+	if request.ClickhouseDb == "" {
+		fmt.Fprintf(os.Stderr, "Missing required field: clickhouse_db is required\n")
 		os.Exit(1)
 	}
 
@@ -76,8 +84,7 @@ func main() {
 
 	// Create orchestrator config
 	orchConfig := &orchestrator.OrchestratorConfig{
-		DataSourcePath:       request.MarketDataCSVPath,
-		EstimatedCandleCount: 10000, // Reasonable estimate for backtest
+		EstimatedCandleCount: 10000, // Reasonable estimate; ClickHouse streams rows lazily
 		BacktestID:           request.IdempotencyKey,
 		DomainConfig:         cfg,
 	}
@@ -89,16 +96,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	// Open CSV file for backtest
-	csvFile, err := os.Open(request.MarketDataCSVPath)
+	// Build ClickHouse config from request fields
+	chCfg := orchestrator.ClickHouseConfig{
+		Addr:     request.ClickhouseAddr,
+		Database: request.ClickhouseDb,
+		User:     request.ClickhouseUser,
+		Password: request.ClickhousePassword,
+	}
+
+	// Normalise symbol: "BTC/USDT" → "BTCUSDT"
+	symbol := strings.ReplaceAll(request.TradingPair, "/", "")
+
+	// Create ClickHouse candle loader
+	loader, err := orchestrator.NewClickHouseCandleLoader(chCfg, symbol, request.StartDate, request.EndDate)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to open CSV file: %v\n", err)
+		fmt.Fprintf(os.Stderr, "Failed to open ClickHouse candle loader: %v\n", err)
 		os.Exit(1)
 	}
-	defer csvFile.Close()
 
 	// Run backtest
-	backtest, err := orch.RunBacktest(csvFile)
+	backtest, err := orch.RunBacktest(loader)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Backtest execution failed: %v\n", err)
 		os.Exit(1)
@@ -139,7 +156,8 @@ func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
 	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   TakeProfitDistancePercent  = %q\n", req.TakeProfitDistancePercent)
 	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   AccountBalance             = %q\n", req.AccountBalance)
 	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   ExitOnLastOrder            = %v\n", req.ExitOnLastOrder)
-	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   MarketDataCSVPath          = %q\n", req.MarketDataCSVPath)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   ClickhouseAddr             = %q\n", req.ClickhouseAddr)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   ClickhouseDb               = %q\n", req.ClickhouseDb)
 	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   IdempotencyKey             = %q\n", req.IdempotencyKey)
 
 	// Parse all decimal values using shopspring/decimal for precision

@@ -9,9 +9,6 @@ type OrchestratorConfig struct {
 	// PSM configuration (will accept position.Config when available)
 	PSMConfigPath string
 
-	// CSV input file path (or reader interface for testability)
-	DataSourcePath string
-
 	// Optional: expected total candles (if known; allows pre-allocation)
 	EstimatedCandleCount int
 

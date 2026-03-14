@@ -97,7 +97,12 @@ export class BacktestService {
    * }
    */
   async execute(
-    request: ApiBacktestRequest & { market_data_csv_path: string },
+    request: ApiBacktestRequest & {
+      clickhouse_addr: string;
+      clickhouse_db: string;
+      clickhouse_user: string;
+      clickhouse_password: string;
+    },
     timeoutMs?: number
   ): Promise<BacktestExecutionResult> {
     const timeout = timeoutMs ?? this.timeoutMs;
@@ -112,7 +117,12 @@ export class BacktestService {
    * @returns BacktestExecutionResult or throws with stderr attached
    */
   async executeWithStderr(
-    request: ApiBacktestRequest & { market_data_csv_path: string },
+    request: ApiBacktestRequest & {
+      clickhouse_addr: string;
+      clickhouse_db: string;
+      clickhouse_user: string;
+      clickhouse_password: string;
+    },
     flags: string[] = []
   ): Promise<BacktestExecutionResult> {
     return this.executeInternal(request, this.timeoutMs, flags);
@@ -122,7 +132,12 @@ export class BacktestService {
    * Internal implementation of execute with optional flags for testing
    */
   private async executeInternal(
-    request: ApiBacktestRequest & { market_data_csv_path: string },
+    request: ApiBacktestRequest & {
+      clickhouse_addr: string;
+      clickhouse_db: string;
+      clickhouse_user: string;
+      clickhouse_password: string;
+    },
     timeoutMs: number,
     flags: string[] = []
   ): Promise<BacktestExecutionResult> {

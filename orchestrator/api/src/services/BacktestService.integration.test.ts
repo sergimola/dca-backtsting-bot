@@ -21,7 +21,7 @@ const MOCK_BINARY_PATH = path.join(testdataDir, 'mock-core-engine.js');
 describe('BacktestService', () => {
   let service: BacktestService;
 
-  const validRequest: ApiBacktestRequest & { market_data_csv_path: string } = {
+  const validRequest: ApiBacktestRequest & { clickhouse_addr: string; clickhouse_db: string; clickhouse_user: string; clickhouse_password: string } = {
     trading_pair: 'BTC/USDT',
     start_date: '2025-01-01T00:00:00Z',
     end_date: '2025-01-31T23:59:59Z',
@@ -35,7 +35,10 @@ describe('BacktestService', () => {
     take_profit_distance_percent: '1.0',
     account_balance: '1000',
     exit_on_last_order: false,
-    market_data_csv_path: '/data/BTCUSDT_1m.csv',
+    clickhouse_addr: 'localhost:9000',
+    clickhouse_db: 'dca_bot',
+    clickhouse_user: 'default',
+    clickhouse_password: '',
   };
 
   beforeEach(() => {

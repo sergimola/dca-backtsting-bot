@@ -42,9 +42,11 @@ export function PollingPage({
   return (
     <div className="w-full">
       <PollingIndicator
-        status={status as 'pending' | 'timeout' | 'failed'}
+        status={status as 'pending' | 'downloading' | 'timeout' | 'failed'}
         statusMessage={
-          status === 'pending'
+          status === 'downloading'
+            ? 'Downloading missing market data\u2026 this may take a moment for large date ranges.'
+            : status === 'pending'
             ? 'Processing your backtest...'
             : status === 'timeout'
             ? 'Request timed out'

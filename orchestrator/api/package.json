@@ -25,6 +25,8 @@
   "author": "DCA Bot Team",
   "license": "ISC",
   "dependencies": {
+    "@clickhouse/client": "^1.18.2",
+    "ccxt": "^4.5.43",
     "cors": "^2.8.6",
     "decimal.js": "^10.4.3",
     "express": "^5.2.1",

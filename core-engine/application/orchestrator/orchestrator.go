@@ -2,7 +2,6 @@ package orchestrator
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"time"
 
@@ -55,19 +54,15 @@ func NewOrchestrator(psm position.PositionStateMachine, config *OrchestratorConf
 	return orchestrator, nil
 }
 
-// RunBacktest executes a complete backtest from CSV data
+// RunBacktest executes a complete backtest by streaming candles from the provided loader.
 // Parameters:
-//   - csvReader: io.Reader with CSV data (symbol,timestamp,open,high,low,close,volume)
+//   - loader: CandleLoader supplying candles in ascending timestamp order
 // Returns:
 //   - *BacktestRun: Completed backtest with all events captured, or nil on error
-//   - error: Parsing, validation, or PSM error
+//   - error: Loading, validation, or PSM error
 // T020-T028: Acceptance test entry point
-func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error) {
-	// Initialize CSV loader
-	csvLoader := NewCSVLoader(csvReader)
-	if err := csvLoader.ValidateHeader(); err != nil {
-		return nil, fmt.Errorf("CSV header validation failed: %w", err)
-	}
+func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error) {
+	defer loader.Close() //nolint:errcheck
 
 	// Record start time
 	startTime := time.Now().UTC()
@@ -84,10 +79,10 @@ func (orch *Orchestrator) RunBacktest(csvReader io.Reader) (*BacktestRun, error)
 
 	// Main processing loop: iterate through all candles
 	for {
-		// Load next candle from CSV (streaming)
-		candle, err := csvLoader.NextCandle()
+		// Load next candle
+		candle, err := loader.NextCandle()
 		if err != nil {
-			return nil, fmt.Errorf("CSV parsing failed at row %d: %w", candleCount+2, err)
+			return nil, fmt.Errorf("candle loader error at candle %d: %w", candleCount+1, err)
 		}
 
 		// EOF reached - processing complete

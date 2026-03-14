@@ -1,7 +1,9 @@
 package orchestrator
 
 import (
+	"encoding/csv"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -10,6 +12,67 @@ import (
 	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
+
+// MockCandleLoader implements CandleLoader backed by a pre-loaded slice.
+// Used in orchestrator and integration tests as a drop-in for ClickHouseCandleLoader.
+type MockCandleLoader struct {
+	candles  []*Candle
+	pos      int
+	closed   bool
+	// errAt: if >= 0, NextCandle returns nextErr when pos == errAt
+	errAt   int
+	nextErr error
+}
+
+// NewMockCandleLoader creates a loader that replays candles in ascending order.
+func NewMockCandleLoader(candles []*Candle) *MockCandleLoader {
+	return &MockCandleLoader{candles: candles, errAt: -1}
+}
+
+// NewMockCandleLoaderWithError creates a loader that returns err as the first NextCandle call.
+// Useful for testing how RunBacktest handles loader errors.
+func NewMockCandleLoaderWithError(err error) *MockCandleLoader {
+	return &MockCandleLoader{candles: nil, errAt: 0, nextErr: err}
+}
+
+// NextCandle satisfies CandleLoader.
+func (m *MockCandleLoader) NextCandle() (*Candle, error) {
+	if m.errAt >= 0 && m.pos == m.errAt {
+		return nil, m.nextErr
+	}
+	if m.pos >= len(m.candles) {
+		return nil, nil
+	}
+	c := m.candles[m.pos]
+	m.pos++
+	return c, nil
+}
+
+// Close marks the loader as closed; safe to call multiple times.
+func (m *MockCandleLoader) Close() error {
+	m.closed = true
+	return nil
+}
+
+// makeCandles creates n sequential 1-minute candles starting at 2025-01-01 00:00 UTC.
+// Used by clickhouse_loader_test.go and other test files.
+func makeCandles(n int) []*Candle {
+	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	candles := make([]*Candle, n)
+	for i := range candles {
+		price := decimal.NewFromInt(int64(50000 + i))
+		candles[i] = &Candle{
+			Symbol:    "BTCUSDT",
+			Timestamp: base.Add(time.Duration(i) * time.Minute),
+			Open:      price,
+			High:      price.Add(decimal.NewFromInt(1)),
+			Low:       price.Sub(decimal.NewFromInt(1)),
+			Close:     price,
+			Volume:    decimal.NewFromFloat(1.5),
+		}
+	}
+	return candles
+}
 
 // MakePSM creates a Position State Machine for testing
 func MakePSM() position.PositionStateMachine {
@@ -36,35 +99,103 @@ func MakeSampleCandle(symbol string, timestamp string, open, high, low, close, v
 	}
 }
 
-// LoadTestCSV loads a CSV file and returns all candles
-// Useful for integration tests that need to verify full dataset
-func LoadTestCSV(t *testing.T, filePath string) []*Candle {
-	t.Helper()
+// parseCandlesFromReader reads a CSV with header row and returns all candles.
+// Required columns: symbol, timestamp, open, high, low, close, volume.
+// tb.Fatal is called on any parse error.
+func parseCandlesFromReader(tb testing.TB, r interface{ Read() ([]string, error) }) []*Candle {
+	tb.Helper()
 
-	file, err := os.Open(filePath)
+	// Read header
+	header, err := r.Read()
 	if err != nil {
-		t.Fatalf("Failed to open test CSV: %v", err)
+		tb.Fatalf("parseCandlesFromReader: could not read header: %v", err)
 	}
-	defer file.Close()
+	idx := make(map[string]int)
+	for i, h := range header {
+		idx[strings.ToLower(strings.TrimSpace(h))] = i
+	}
+	required := []string{"symbol", "timestamp", "open", "high", "low", "close", "volume"}
+	for _, col := range required {
+		if _, ok := idx[col]; !ok {
+			tb.Fatalf("parseCandlesFromReader: missing required column %q", col)
+		}
+	}
 
-	loader := NewCSVLoader(file)
-	if err := loader.ValidateHeader(); err != nil {
-		t.Fatalf("CSV header validation failed: %v", err)
+	mustDecimal := func(s string, col string) decimal.Decimal {
+		d, e := decimal.NewFromString(s)
+		if e != nil {
+			tb.Fatalf("parseCandlesFromReader: invalid %s value %q: %v", col, s, e)
+		}
+		return d
 	}
 
 	var candles []*Candle
+	rowNum := 1
 	for {
-		candle, err := loader.NextCandle()
-		if err != nil {
-			t.Fatalf("CSV parsing failed: %v", err)
-		}
-		if candle == nil {
+		rec, e := r.Read()
+		rowNum++
+		if e != nil {
+			if e.Error() == "EOF" {
+				break
+			}
+			// encoding/csv returns io.EOF; we check via err string for compatibility
 			break
 		}
-		candles = append(candles, candle)
-	}
+		if len(rec) == 0 {
+			continue
+		}
 
+		tsStr := strings.TrimSpace(rec[idx["timestamp"]])
+		ts, pe := time.Parse(time.RFC3339, tsStr)
+		if pe != nil {
+			// Try without timezone suffix
+			ts, pe = time.Parse("2006-01-02T15:04:05", tsStr)
+		}
+		if pe != nil {
+			tb.Fatalf("parseCandlesFromReader: row %d: invalid timestamp %q: %v", rowNum, tsStr, pe)
+		}
+		candles = append(candles, &Candle{
+			Symbol:    strings.TrimSpace(rec[idx["symbol"]]),
+			Timestamp: ts.UTC(),
+			Open:      mustDecimal(strings.TrimSpace(rec[idx["open"]]), "open"),
+			High:      mustDecimal(strings.TrimSpace(rec[idx["high"]]), "high"),
+			Low:       mustDecimal(strings.TrimSpace(rec[idx["low"]]), "low"),
+			Close:     mustDecimal(strings.TrimSpace(rec[idx["close"]]), "close"),
+			Volume:    mustDecimal(strings.TrimSpace(rec[idx["volume"]]), "volume"),
+		})
+	}
 	return candles
+}
+
+// CandlesFromCSVString parses a raw CSV string and returns a MockCandleLoader.
+// This adapts existing CSV-string test fixtures to the CandleLoader interface
+// without removing the human-readable CSV from the test files.
+func CandlesFromCSVString(tb testing.TB, csvText string) *MockCandleLoader {
+	tb.Helper()
+	r := csv.NewReader(strings.NewReader(csvText))
+	return NewMockCandleLoader(parseCandlesFromReader(tb, r))
+}
+
+// LoadCSVFileAsLoader opens a CSV file and returns a MockCandleLoader with all its candles.
+// Calls tb.Fatal if the file cannot be opened or parsed.
+func LoadCSVFileAsLoader(tb testing.TB, filePath string) *MockCandleLoader {
+	tb.Helper()
+	return NewMockCandleLoader(LoadTestCSV(tb, filePath))
+}
+
+// LoadTestCSV loads a CSV file and returns all candles
+// Useful for integration tests that need to verify full dataset
+func LoadTestCSV(tb testing.TB, filePath string) []*Candle {
+	tb.Helper()
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		tb.Fatalf("Failed to open test CSV: %v", err)
+	}
+	defer file.Close()
+
+	r := csv.NewReader(file)
+	return parseCandlesFromReader(tb, r)
 }
 
 // AssertEventsEqual performs deep equality comparison on event slices

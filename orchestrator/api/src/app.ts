@@ -18,7 +18,8 @@ import { requestLoggerMiddleware } from './middleware/request-logger.middleware.
 import { errorHandlerMiddleware } from './middleware/error-handler.middleware.js';
 import { createBacktestRouter } from './routes/backtest.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
-import { MarketDataResolver } from './services/MarketDataResolver.js';
+import { GapResolver } from './services/GapResolver.js';
+import { BinanceDownloader } from './services/BinanceDownloader.js';
 
 /**
  * Create and configure Express app
@@ -34,7 +35,8 @@ export interface AppServices {
   idempotencyCache: IdempotencyCache;
   healthMonitor: HealthMonitor;
   coreEngineBinaryPath: string;
-  marketDataResolver: MarketDataResolver;
+  gapResolver: GapResolver;
+  downloader: BinanceDownloader;
 }
 
 export function createApp(services: AppServices): Express {
@@ -60,7 +62,8 @@ export function createApp(services: AppServices): Express {
     services.backtestService,
     services.resultAggregator,
     services.idempotencyCache,
-    services.marketDataResolver,
+    services.gapResolver,
+    services.downloader,
   ));
 
   app.use('/', createHealthRouter(services.healthMonitor));

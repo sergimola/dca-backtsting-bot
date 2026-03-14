@@ -109,6 +109,16 @@ export interface PnlSummary {
 
 // ============== BacktestResult Types ==============
 
+/**
+ * BacktestStatus represents the lifecycle state of an async backtest request.
+ * PENDING         → queued, not yet started
+ * DOWNLOADING_DATA→ GapResolver detected missing candles; BinanceDownloader is fetching
+ * RUNNING         → CH data is ready; Go engine is executing
+ * COMPLETE        → engine finished, results available
+ * FAILED          → any stage error (download failure, engine crash, timeout)
+ */
+export type BacktestStatus = 'PENDING' | 'DOWNLOADING_DATA' | 'RUNNING' | 'COMPLETE' | 'FAILED';
+
 export interface ErrorDetails {
   code: string;
   message: string;
