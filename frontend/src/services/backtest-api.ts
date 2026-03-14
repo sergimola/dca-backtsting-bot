@@ -109,78 +109,112 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
   // Extract number of orders for padding safety order usage
   const numberOfOrders = data._original_number_of_orders ?? 0;
 
-  // Filter to fill-only events and map Go types → frontend labels.
-  // All field access goes through e.data (the nested PSM payload).
-  const tradeEvents = (data.events as any[])
-    .filter((e) => FILL_EVENT_TYPES.has(e.type))
-    .map((e) => {
+  // Imperative loop: build trade events with sequential trade counter (US1).
+  // tradeCounter increments on each PositionOpened, assigning stable "1","2","3"... IDs
+  // independent of the Go engine's internal trade_id UUID (which is identical across all events).
+  const tradeEvents: Array<{
+    timestamp: string; rawTimestamp: string; eventType: string;
+    price: number; quantity: number; balance: number; trade_id: string; fee: number;
+  }> = [];
+  let tradeCounter = 0;
+  let currentTradeId = '0';
+  let lastExitEvent: (typeof tradeEvents)[number] | null = null;
+
+  for (const e of (data.events as any[])) {
+    // Advance the trade counter on each new position open (US1)
+    if (e.type === 'PositionOpened') {
+      tradeCounter++;
+      currentTradeId = String(tradeCounter);
+    }
+
+    // Patch exit fee from SellOrderExecuted that immediately follows PositionClosed (US2/T014)
+    if (e.type === 'SellOrderExecuted' && lastExitEvent !== null) {
       const d: any = e.data ?? {};
-      const rawIsoTimestamp = e.timestamp ?? '';
-      let price    = 0;
-      let quantity = 0;
-      let balance  = 0;  // quote currency amount relevant to the fill
-      let fee      = 0;
+      lastExitEvent.fee = parseFloat(d.fee ?? '0');
+      lastExitEvent = null;
+      continue;
+    }
 
-      switch (e.type as string) {
-        case 'PositionOpened': {
-          // PositionOpened carries the pre-calculated order grid.
-          // configured_orders[0] is always the entry market-buy order.
-          const entryOrder = d.configured_orders?.[0] ?? {};
-          const tradeCost = parseFloat(entryOrder.amount ?? '0');
-          price    = parseFloat(entryOrder.price  ?? '0');
-          // quantity = Trade Cost / Price (e.g., $32.25 / $50000 = 0.000645 BTC)
-          quantity = tradeCost / price || 0;
-          // balance = notional USDT value of the entry order
-          balance  = tradeCost;
-          fee      = parseFloat(d.entry_fee ?? '0');
-          break;
-        }
+    // Skip non-fill events (price.changed, LiquidationPriceUpdated, SellOrderExecuted, etc.)
+    if (!FILL_EVENT_TYPES.has(e.type)) {
+      continue;
+    }
 
-        case 'BuyOrderExecuted': {
-          // BuyOrderExecutedEvent:
-          //   price     = fill price (USDT/BTC)
-          //   base_size = BTC quantity purchased
-          //   size      = fractional amount from ComputeAmountSequence (NOT USDT — do not use)
-          const btcQty  = parseFloat(d.base_size ?? '0');
-          price    = parseFloat(d.price ?? '0');
-          quantity = btcQty;
-          // balance = USDT deployed = fill_price × BTC_qty
-          balance  = price * quantity;
-          fee      = parseFloat(d.fee ?? '0');
-          break;
-        }
+    const d: any = e.data ?? {};
+    const rawIsoTimestamp = e.timestamp ?? '';
+    let price    = 0;
+    let quantity = 0;
+    let balance  = 0;
+    let fee      = 0;
 
-        case 'PositionClosed': {
-          // TradeClosedEvent:
-          //   closing_price = exit price (USDT/BTC)
-          //   size          = total BTC in position at close
-          //   profit        = realized P&L (USDT)
-          price    = parseFloat(d.closing_price ?? '0');
-          quantity = parseFloat(d.size          ?? '0');
-          balance  = parseFloat(d.profit        ?? '0');
-          fee      = 0; // sell fee is captured via SellOrderExecuted (not in FILL_EVENT_TYPES)
-          break;
-        }
+    switch (e.type as string) {
+      case 'PositionOpened': {
+        // PositionOpened carries the pre-calculated order grid.
+        // configured_orders[0] is always the entry market-buy order.
+        const entryOrder = d.configured_orders?.[0] ?? {};
+        const tradeCost = parseFloat(entryOrder.amount ?? '0');
+        price    = parseFloat(entryOrder.price  ?? '0');
+        // quantity = Trade Cost / Price (e.g., $32.25 / $50000 = 0.000645 BTC)
+        quantity = tradeCost / price || 0;
+        // balance = notional USDT value of the entry order
+        balance  = tradeCost;
+        fee      = parseFloat(d.entry_fee ?? '0');
+        break;
       }
 
-      return {
-        timestamp: new Date(rawIsoTimestamp).toLocaleString(),
-        rawTimestamp: rawIsoTimestamp,
-        eventType: EVENT_TYPE_LABEL[e.type as string] ?? e.type,
-        price,
-        quantity,
-        balance,
-        trade_id: (d.trade_id as string) ?? '',
-        fee,
-      };
-    });
+      case 'BuyOrderExecuted': {
+        // BuyOrderExecutedEvent:
+        //   price     = fill price (USDT/BTC)
+        //   base_size = BTC quantity purchased
+        //   size      = fractional amount from ComputeAmountSequence (NOT USDT — do not use)
+        const btcQty  = parseFloat(d.base_size ?? '0');
+        price    = parseFloat(d.price ?? '0');
+        quantity = btcQty;
+        // balance = USDT deployed = fill_price × BTC_qty
+        balance  = price * quantity;
+        fee      = parseFloat(d.fee ?? '0');
+        break;
+      }
+
+      case 'PositionClosed': {
+        // TradeClosedEvent:
+        //   closing_price = exit price (USDT/BTC)
+        //   size          = total BTC in position at close
+        //   profit        = realized P&L (USDT)
+        price    = parseFloat(d.closing_price ?? '0');
+        quantity = parseFloat(d.size          ?? '0');
+        balance  = parseFloat(d.profit        ?? '0');
+        fee      = 0; // placeholder — patched by SellOrderExecuted handler above (US2/T014)
+        break;
+      }
+    }
+
+    const event = {
+      timestamp: new Date(rawIsoTimestamp).toLocaleString(),
+      rawTimestamp: rawIsoTimestamp,
+      eventType: EVENT_TYPE_LABEL[e.type as string] ?? e.type,
+      price,
+      quantity,
+      balance,
+      trade_id: currentTradeId,
+      fee,
+    };
+    tradeEvents.push(event);
+
+    // Hold reference to EXIT event so SellOrderExecuted can patch its fee (US2/T014)
+    if (e.type === 'PositionClosed') {
+      lastExitEvent = event;
+    }
+  }
 
   // Pad safety order usage with unused orders
   const countsByLevel = data.pnl_summary?.safety_order_usage_counts ?? {};
   const safetyOrderUsage: Array<{ level: string; count: number }> = [];
   
-  // Include all levels from 0 to numberOfOrders (entry is 0, SO#1 is 1, etc.)
-  for (let i = 0; i < numberOfOrders; i++) {
+  // Include SO levels 1 through numberOfOrders-1.
+  // Level 0 (entry) is excluded — it is not a safety order (US3/FR-008).
+  // Legacy stored results may contain key "0" from old builds — this loop naturally ignores it.
+  for (let i = 1; i < numberOfOrders; i++) {
     const count = (countsByLevel[i] ?? 0) as number;
     safetyOrderUsage.push({
       level: String(i),

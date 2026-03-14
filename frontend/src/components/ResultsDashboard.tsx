@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import Decimal from 'decimal.js'
 import { SafetyOrderChart } from './SafetyOrderChart'
 import type { BacktestResults, TradeEvent } from '../services/types'
 
@@ -10,9 +11,9 @@ export interface ResultsDashboardProps {
 
 // --- Event type pill styles ---
 const EVENT_PILL: Record<string, string> = {
-  ENTRY:        'bg-emerald-500/20 text-emerald-400 px-2 py-1 rounded-full text-xs font-bold',
-  SAFETY_ORDER: 'bg-slate-500/20 text-slate-400 px-2 py-1 rounded-full text-xs font-bold',
-  EXIT:         'bg-rose-500/20 text-rose-400 px-2 py-1 rounded-full text-xs font-bold',
+  ENTRY:        'bg-emerald-900/40 text-emerald-300 px-2 py-1 rounded-full text-xs font-bold',
+  SAFETY_ORDER: 'bg-slate-600/40 text-slate-200 px-2 py-1 rounded-full text-xs font-bold',
+  EXIT:         'bg-rose-900/40 text-rose-300 px-2 py-1 rounded-full text-xs font-bold',
 }
 
 // --- Group trade events by trade_id ---
@@ -32,31 +33,50 @@ function TradeAccordion({ tradeId, events }: { tradeId: string; events: TradeEve
 
   const exitEvent = events.find(e => e.eventType === 'EXIT')
   const netProfit = exitEvent ? exitEvent.balance : null
-  const feesPaid  = events.reduce((sum, e) => sum + (e.fee ?? 0), 0)
   const status    = exitEvent ? 'CLOSED' : 'OPEN'
 
-  // Short trade ID: last 8 chars
-  const shortId = tradeId.length > 12 ? `${tradeId.slice(0, 6)}…${tradeId.slice(-6)}` : tradeId
+  // Compute total fees with Decimal precision (US2)
+  const tradeTotalFees = events
+    .reduce((acc, e) => acc.plus(new Decimal(e.fee ?? 0)), new Decimal(0))
+    .toNumber()
 
-  const profitPositive = netProfit !== null && netProfit >= 0
-  const profitColor    = netProfit === null ? 'text-gray-400' : profitPositive ? 'text-emerald-400' : 'text-rose-400'
+  // Gross = Net + Fees; null for open trades (US2)
+  const grossProfit = netProfit !== null
+    ? new Decimal(netProfit).plus(tradeTotalFees).toNumber()
+    : null
+
+  const grossStr = grossProfit !== null
+    ? `${grossProfit >= 0 ? '+' : ''}$${grossProfit.toFixed(2)}`
+    : '—'
+  const feesStr  = `-$${tradeTotalFees.toFixed(2)}`
+  const netStr   = netProfit !== null
+    ? `${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(2)}`
+    : '—'
+
+  const grossColor = grossProfit !== null
+    ? (grossProfit >= 0 ? 'text-emerald-400' : 'text-rose-400')
+    : 'text-slate-400'
+  const netColor = netProfit !== null
+    ? (netProfit > 0 ? 'text-emerald-400' : 'text-rose-400')
+    : 'text-slate-400'
 
   return (
     <div className="border border-gray-700 rounded-lg overflow-hidden">
       {/* Collapsed header */}
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-5 py-3.5 bg-gray-800 hover:bg-gray-750 transition-colors text-left"
+        className="w-full flex items-center justify-between px-5 py-3.5 bg-slate-800 hover:bg-slate-700 transition-colors text-left"
       >
-        <div className="flex items-center gap-6 min-w-0">
-          <span className="font-mono text-gray-500 text-xs truncate max-w-[160px]" title={tradeId}>{shortId}</span>
-          <span className={`text-sm font-semibold tabular-nums ${profitColor}`}>
-            {netProfit !== null
-              ? `${netProfit >= 0 ? '+' : ''}$${netProfit.toFixed(4)}`
-              : '—'}
+        <div className="flex items-center gap-5 min-w-0 flex-wrap">
+          <span className="text-gray-200 text-sm font-semibold">Trade #{tradeId}</span>
+          <span className="text-gray-500 text-xs">
+            Gross: <span className={`font-semibold tabular-nums ${grossColor}`}>{grossStr}</span>
           </span>
-          <span className="text-xs text-red-400 tabular-nums">
-            {feesPaid > 0 ? `-$${feesPaid.toFixed(4)} fees` : ''}
+          <span className="text-gray-500 text-xs">
+            Fees: <span className="font-semibold tabular-nums text-rose-400">{feesStr}</span>
+          </span>
+          <span className="text-gray-500 text-xs">
+            Net: <span className={`font-semibold tabular-nums ${netColor}`}>{netStr}</span>
           </span>
         </div>
         <div className="flex items-center gap-3 shrink-0">
@@ -125,6 +145,15 @@ export function ResultsDashboard({ results, onReset, onModify }: ResultsDashboar
 
   const roiPositive = pnlSummary.roi >= 0
 
+  // Compute Total Net P&L in dollar terms from closed trade profits (US4/T023)
+  const totalNetPnL = useMemo(() =>
+    results.tradeEvents
+      .filter(e => e.eventType === 'EXIT')
+      .reduce((sum, e) => sum + e.balance, 0),
+    [results.tradeEvents]
+  )
+  const pnlPositive = totalNetPnL >= 0
+
   return (
     <div className="space-y-6 text-gray-200">
       {/* Header */}
@@ -150,7 +179,13 @@ export function ResultsDashboard({ results, onReset, onModify }: ResultsDashboar
       </div>
 
       {/* Metrics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
+          <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Total Net P&L</p>
+          <p className={`text-2xl font-bold tabular-nums ${pnlPositive ? 'text-emerald-400' : 'text-rose-400'}`}>
+            {pnlPositive ? '+' : ''}${totalNetPnL.toFixed(2)}
+          </p>
+        </div>
         <div className="bg-gray-800 rounded-lg p-5 border border-gray-700">
           <p className="text-gray-500 text-xs uppercase tracking-wide mb-1">Return on Investment</p>
           <p className={`text-2xl font-bold tabular-nums ${roiPositive ? 'text-emerald-400' : 'text-rose-400'}`}>

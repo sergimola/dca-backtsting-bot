@@ -406,6 +406,116 @@ describe('backtest-api', () => {
       await expect(getResults(backtestId)).rejects.toThrow()
     })
 
+    it('T011: EXIT event.fee equals SellOrderExecuted.fee (not 0)', async () => {
+      const backtestId = 'sell-fee-011'
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: {
+          request_id: backtestId,
+          pnl_summary: { roi_percent: '5.0', total_fees: '0.75', safety_order_usage_counts: {} },
+          events: [
+            { type: 'PositionOpened',    data: { trade_id: 'uuid', entry_fee: '0.30', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T10:00:00Z' },
+            { type: 'BuyOrderExecuted',  data: { trade_id: 'uuid', fee: '0.25', order_number: 2, base_size: '0.001', price: '49000' }, timestamp: '2024-01-01T10:30:00Z' },
+            { type: 'PositionClosed',    data: { trade_id: 'uuid', closing_price: '51000', size: '0.002', profit: '2.50' }, timestamp: '2024-01-01T11:00:00Z' },
+            { type: 'SellOrderExecuted', data: { trade_id: 'uuid', fee: '0.20' }, timestamp: '2024-01-01T11:00:00Z' },
+          ],
+        },
+      })
+
+      const submitConfig: BacktestFormState = {
+        tradingPair: 'BTC/USDT', startDate: '2024-01-01', endDate: '2024-01-31',
+        priceEntry: '50000', priceScale: '1.10', amountScale: '2.0', numberOfOrders: '3',
+        amountPerTrade: '100', marginType: 'cross', multiplier: '1',
+        takeProfitDistancePercent: '2.5', accountBalance: '1000', exitOnLastOrder: false,
+      }
+      await submitBacktest(submitConfig)
+      const result = await getResults(backtestId)
+
+      const exitEvent = result.tradeEvents.find(e => e.eventType === 'EXIT')
+      expect(exitEvent).toBeDefined()
+      // Must be 0.20 from SellOrderExecuted — NOT the default 0
+      expect(exitEvent!.fee).toBeCloseTo(0.20, 5)
+    })
+
+    it('T007: assigns sequential trade_id "1","2","3" ignoring engine trade_id', async () => {
+      const backtestId = 'trade-counter-007'
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: {
+          request_id: backtestId,
+          pnl_summary: { roi_percent: '5.0', total_fees: '0.30', safety_order_usage_counts: {} },
+          events: [
+            // Trade 1
+            { type: 'PositionOpened', data: { trade_id: 'engine-uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T10:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'engine-uuid', closing_price: '50100', size: '0.001', profit: '0.10' }, timestamp: '2024-01-01T11:00:00Z' },
+            // Trade 2
+            { type: 'PositionOpened', data: { trade_id: 'engine-uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T12:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'engine-uuid', closing_price: '50200', size: '0.001', profit: '0.20' }, timestamp: '2024-01-01T13:00:00Z' },
+            // Trade 3
+            { type: 'PositionOpened', data: { trade_id: 'engine-uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T14:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'engine-uuid', closing_price: '50300', size: '0.001', profit: '0.30' }, timestamp: '2024-01-01T15:00:00Z' },
+          ],
+        },
+      })
+
+      const submitConfig: BacktestFormState = {
+        tradingPair: 'BTC/USDT', startDate: '2024-01-01', endDate: '2024-01-31',
+        priceEntry: '50000', priceScale: '1.10', amountScale: '2.0', numberOfOrders: '3',
+        amountPerTrade: '100', marginType: 'cross', multiplier: '1',
+        takeProfitDistancePercent: '2.5', accountBalance: '1000', exitOnLastOrder: false,
+      }
+      await submitBacktest(submitConfig)
+      const result = await getResults(backtestId)
+
+      const entryEvents = result.tradeEvents.filter(e => e.eventType === 'ENTRY')
+      const exitEvents  = result.tradeEvents.filter(e => e.eventType === 'EXIT')
+
+      expect(entryEvents).toHaveLength(3)
+      expect(entryEvents[0].trade_id).toBe('1')
+      expect(entryEvents[1].trade_id).toBe('2')
+      expect(entryEvents[2].trade_id).toBe('3')
+      expect(exitEvents[0].trade_id).toBe('1')
+      expect(exitEvents[1].trade_id).toBe('2')
+      expect(exitEvents[2].trade_id).toBe('3')
+      // Engine UUID must NOT appear
+      result.tradeEvents.forEach(e => {
+        expect(e.trade_id).not.toBe('engine-uuid')
+      })
+    })
+
+    it('T008: tradeCounter resets to 1 on each getResults() call', async () => {
+      const backtestId = 'trade-counter-008'
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: {
+          request_id: backtestId,
+          pnl_summary: { roi_percent: '2.0', total_fees: '0.10', safety_order_usage_counts: {} },
+          events: [
+            { type: 'PositionOpened', data: { trade_id: 'engine-uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T10:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'engine-uuid', closing_price: '50100', size: '0.001', profit: '0.10' }, timestamp: '2024-01-01T11:00:00Z' },
+            { type: 'PositionOpened', data: { trade_id: 'engine-uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T12:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'engine-uuid', closing_price: '50200', size: '0.001', profit: '0.20' }, timestamp: '2024-01-01T13:00:00Z' },
+          ],
+        },
+      })
+
+      const submitConfig: BacktestFormState = {
+        tradingPair: 'BTC/USDT', startDate: '2024-01-01', endDate: '2024-01-31',
+        priceEntry: '50000', priceScale: '1.10', amountScale: '2.0', numberOfOrders: '3',
+        amountPerTrade: '100', marginType: 'cross', multiplier: '1',
+        takeProfitDistancePercent: '2.5', accountBalance: '1000', exitOnLastOrder: false,
+      }
+      await submitBacktest(submitConfig)
+
+      const result1 = await getResults(backtestId)
+      const result2 = await getResults(backtestId)
+
+      const first1 = result1.tradeEvents.filter(e => e.eventType === 'ENTRY')[0]
+      const first2 = result2.tradeEvents.filter(e => e.eventType === 'ENTRY')[0]
+      expect(first1.trade_id).toBe('1')
+      expect(first2.trade_id).toBe('1')
+    })
+
     it('should handle complete BacktestResults structure', async () => {
       const backtestId = 'test-123'
 
@@ -451,5 +561,78 @@ describe('backtest-api', () => {
       expect(result.safetyOrderUsage.length).toBe(3)
       expect(result.tradeEvents.length).toBe(2)
     })
+
+    it('T017: safetyOrderUsage array starts at level "1" when numberOfOrders=5', async () => {
+      const backtestId = 'so-chart-017'
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: {
+          request_id: backtestId,
+          pnl_summary: {
+            roi_percent: '3.0',
+            total_fees: '0.10',
+            // SO1 used 2×, SO2 used 1×, SO3-4 unused
+            safety_order_usage_counts: { '1': 2, '2': 1 },
+          },
+          events: [
+            { type: 'PositionOpened', data: { trade_id: 'uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T10:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'uuid', closing_price: '51000', size: '0.001', profit: '1.00' }, timestamp: '2024-01-01T11:00:00Z' },
+          ],
+        },
+      })
+
+      const submitConfig: BacktestFormState = {
+        tradingPair: 'BTC/USDT', startDate: '2024-01-01', endDate: '2024-01-31',
+        priceEntry: '50000', priceScale: '1.10', amountScale: '2.0', numberOfOrders: '5',
+        amountPerTrade: '100', marginType: 'cross', multiplier: '1',
+        takeProfitDistancePercent: '2.5', accountBalance: '1000', exitOnLastOrder: false,
+      }
+      await submitBacktest(submitConfig)
+      const result = await getResults(backtestId)
+
+      // First level must be "1", never "0"
+      expect(result.safetyOrderUsage[0].level).toBe('1')
+      // No level "0" in the array
+      const hasLevelZero = result.safetyOrderUsage.some(x => x.level === '0')
+      expect(hasLevelZero).toBe(false)
+    })
+
+    it('T018: no level "0" entry in safetyOrderUsage even when pnl_summary contains legacy key "0"', async () => {
+      const backtestId = 'so-chart-018'
+      mockedAxios.post.mockResolvedValue({
+        status: 201,
+        data: {
+          request_id: backtestId,
+          pnl_summary: {
+            roi_percent: '1.0',
+            total_fees: '0.05',
+            // Legacy key "0" present — must be ignored by the loop
+            safety_order_usage_counts: { '0': 3, '1': 2 },
+          },
+          events: [
+            { type: 'PositionOpened', data: { trade_id: 'uuid', entry_fee: '0.05', configured_orders: [{ price: '50000', amount: '50' }] }, timestamp: '2024-01-01T10:00:00Z' },
+            { type: 'PositionClosed', data: { trade_id: 'uuid', closing_price: '50500', size: '0.001', profit: '0.50' }, timestamp: '2024-01-01T11:00:00Z' },
+          ],
+        },
+      })
+
+      const submitConfig: BacktestFormState = {
+        tradingPair: 'BTC/USDT', startDate: '2024-01-01', endDate: '2024-01-31',
+        priceEntry: '50000', priceScale: '1.10', amountScale: '2.0', numberOfOrders: '3',
+        amountPerTrade: '100', marginType: 'cross', multiplier: '1',
+        takeProfitDistancePercent: '2.5', accountBalance: '1000', exitOnLastOrder: false,
+      }
+      await submitBacktest(submitConfig)
+      const result = await getResults(backtestId)
+
+      // Legacy "0" key from pnl_summary must NOT produce a level "0" bar
+      const hasLevelZero = result.safetyOrderUsage.some(x => x.level === '0')
+      expect(hasLevelZero).toBe(false)
+      // Levels start at 1
+      if (result.safetyOrderUsage.length > 0) {
+        expect(result.safetyOrderUsage[0].level).toBe('1')
+      }
+    })
   })
 })
+

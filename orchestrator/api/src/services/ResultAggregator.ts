@@ -263,10 +263,7 @@ export class ResultAggregator {
         // Entry buy fee is now emitted in the TradeOpenedEvent as entry_fee
         const fee = new Decimal(d.entry_fee ?? '0');
         entryFee = entryFee.plus(fee);
-
-        totalFills++;
-        // Entry = order index 0
-        safetyOrderUsageCounts[0] = (safetyOrderUsageCounts[0] ?? 0) + 1;
+        // NOTE: PositionOpened is NOT counted in totalFills or safetyOrderUsageCounts (FR-007)
 
       } else if (type === 'BuyOrderExecuted') {
         // Safety order fees (order_number >= 2)
