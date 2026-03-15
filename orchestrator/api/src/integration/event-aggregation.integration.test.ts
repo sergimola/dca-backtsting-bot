@@ -7,7 +7,7 @@
 
 import { BacktestService } from '../services/BacktestService';
 import { ResultAggregator } from '../services/ResultAggregator';
-import { BacktestRequest } from '../types';
+import { ApiBacktestRequest } from '../types';
 import * as path from 'path';
 import Decimal from 'decimal.js';
 import * as PrecisionFormatter from '../utils/PrecisionFormatter';
@@ -19,6 +19,28 @@ describe('Event Aggregation Integration', () => {
   const testdataDir = path.join(__dirname, '../../testdata');
   const MOCK_BINARY_PATH = path.join(testdataDir, 'mock-core-engine.js');
 
+  // Shared request using the new ClickHouse-param format required by BacktestService.execute()
+  type ChRequest = ApiBacktestRequest & { clickhouse_addr: string; clickhouse_db: string; clickhouse_user: string; clickhouse_password: string };
+  const baseRequest: ChRequest = {
+    trading_pair: 'BTC/USDT',
+    start_date: '2024-01-01T00:00:00Z',
+    end_date: '2024-01-31T23:59:59Z',
+    price_entry: '100.50',
+    price_scale: '1.05',
+    amount_scale: '1.0',
+    number_of_orders: 3,
+    amount_per_trade: '10.25',
+    margin_type: 'cross',
+    multiplier: 1,
+    take_profit_distance_percent: '1.0',
+    account_balance: '1000',
+    exit_on_last_order: false,
+    clickhouse_addr: 'localhost:9000',
+    clickhouse_db: 'dca_bot',
+    clickhouse_user: 'default',
+    clickhouse_password: '',
+  };
+
   beforeEach(() => {
     service = new BacktestService(MOCK_BINARY_PATH);
     aggregator = new ResultAggregator();
@@ -26,14 +48,7 @@ describe('Event Aggregation Integration', () => {
 
   describe('✅ End-to-end workflow', () => {
     it('should execute backtest and aggregate events into PnlSummary', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       // Step 1: Execute backtest with mock binary
       const result = await service.execute(request);
@@ -52,14 +67,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should preserve decimal precision through full pipeline', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
       const summary = await aggregator.aggregateEvents(result.events);
@@ -80,14 +88,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should correctly count fills in safety_order_usage_counts', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
       const summary = await aggregator.aggregateEvents(result.events);
@@ -109,14 +110,7 @@ describe('Event Aggregation Integration', () => {
 
   describe('✅ Event structure validation', () => {
     it('should handle all 5 event types in canonical sequence', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
 
@@ -129,14 +123,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should have valid PositionState in each event', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
 
@@ -152,14 +139,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should maintain chronological timestamp ordering', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
 
@@ -173,14 +153,7 @@ describe('Event Aggregation Integration', () => {
 
   describe('✅ PnLSummary calculations', () => {
     it('should compute meaningful P&L and ROI from mock events', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
       const summary = await aggregator.aggregateEvents(result.events);
@@ -198,14 +171,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should format all outputs with proper precision', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
       const summary = await aggregator.aggregateEvents(result.events);
@@ -235,14 +201,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should match canonical test expectations', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       const result = await service.execute(request);
       const summary = await aggregator.aggregateEvents(result.events);
@@ -269,14 +228,7 @@ describe('Event Aggregation Integration', () => {
         timeoutMs: 100,
       });
 
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       try {
         await fastTimeoutService.executeWithStderr(request, ['--timeout']);
@@ -287,14 +239,7 @@ describe('Event Aggregation Integration', () => {
     });
 
     it('should handle binary crash gracefully', async () => {
-      const request: BacktestRequest = {
-        entry_price: '100.50',
-        amounts: ['10.25', '10.25', '10.25'],
-        sequences: [0, 1, 2],
-        leverage: '2.00',
-        margin_ratio: '0.50',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
-      };
+      const request = baseRequest;
 
       try {
         await service.executeWithStderr(request, ['--fail']);

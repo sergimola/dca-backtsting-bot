@@ -15,7 +15,8 @@ import { BacktestService, BacktestExecutionResult } from '../services/BacktestSe
 import { ResultAggregator } from '../services/ResultAggregator.js';
 import { IdempotencyCache } from '../services/IdempotencyCache.js';
 import { getValidatedBacktestRequest, validationMiddleware } from '../middleware/validation.middleware.js';
-import { MarketDataResolver, SameMonthGuardError, MarketDataNotFoundError } from '../services/MarketDataResolver.js';
+import { GapResolver } from '../services/GapResolver.js';
+import { BinanceDownloader } from '../services/BinanceDownloader.js';
 import { validateIdempotencyKey, isValidUuid } from '../utils/RequestIdGenerator.js';
 import { BacktestResult, TradeEvent, PnlSummary } from '../types/index.js';
 import { StorageError } from '../types/errors.js';
@@ -40,7 +41,8 @@ export function createBacktestRouter(
   backtestService: BacktestService,
   resultAggregator: ResultAggregator,
   idempotencyCache: IdempotencyCache,
-  resolver: MarketDataResolver,
+  gapResolver: GapResolver,
+  downloader: BinanceDownloader,
 ): Router {
   const router = Router();
 
@@ -72,39 +74,11 @@ export function createBacktestRouter(
         }
       }
 
-      // Resolve CSV path before enqueueing so missing/invalid data returns 400/404 synchronously
-      let csvPath = '';
-      try {
-        csvPath = resolver.resolve(
-          backtestReq.trading_pair,
-          backtestReq.start_date,
-          backtestReq.end_date,
-        );
-      } catch (resolveError: any) {
-        if (resolveError instanceof SameMonthGuardError) {
-          res.status(400).json({
-            error: {
-              code: 'VALIDATION_OUT_OF_BOUNDS',
-              http_status: 400,
-              message: resolveError.message,
-              timestamp: new Date().toISOString(),
-            },
-          });
-          return;
-        }
-        if (resolveError instanceof MarketDataNotFoundError) {
-          res.status(404).json({
-            error: {
-              code: 'CSV_FILE_NOT_FOUND',
-              http_status: 404,
-              message: resolveError.message,
-              timestamp: new Date().toISOString(),
-            },
-          });
-          return;
-        }
-        throw resolveError;
-      }
+      // ClickHouse connection params (native TCP port 9000 for Go engine)
+      const chAddr = `${process.env.CLICKHOUSE_HOST ?? 'localhost'}:${process.env.CLICKHOUSE_NATIVE_PORT ?? '9000'}`;
+      const chDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
+      const chUser = process.env.CLICKHOUSE_USER ?? 'default';
+      const chPassword = process.env.CLICKHOUSE_PASSWORD ?? '';
 
       // Generate unique request ID for backtest
       const backtestRequestId = crypto.randomUUID();
@@ -112,10 +86,34 @@ export function createBacktestRouter(
       // Capture execution result via closure so the poll loop can access it
       let execResult: BacktestExecutionResult | null = null;
 
-      // Queue backtest — the callback runs the Go binary
+      // Queue backtest — the callback handles gap detection, optional download, and engine run
       console.log(`[${requestId}] Enqueuing backtest with ID ${backtestRequestId}`);
       await processManager.enqueue(backtestRequestId, async () => {
-        execResult = await backtestService.execute({ ...backtestReq, market_data_csv_path: csvPath });
+        // Step 1: Check for missing candles (COUNT(*) FINAL — swiss-cheese prevention)
+        const gapResult = await gapResolver.check(
+          backtestReq.trading_pair.replace('/', '').toUpperCase(),
+          new Date(backtestReq.start_date),
+          new Date(backtestReq.end_date),
+        );
+
+        if (gapResult.hasGap) {
+          // Step 2: Download missing data from Binance (rate-limited + open-candle discard)
+          console.log(`[${backtestRequestId}] Gap detected (${gapResult.actualCount}/${gapResult.expectedCount}). Downloading from Binance...`);
+          await downloader.downloadAndStore(
+            backtestReq.trading_pair,
+            new Date(backtestReq.start_date),
+            new Date(backtestReq.end_date),
+          );
+        }
+
+        // Step 3: Run the Go engine (connects to ClickHouse directly via native TCP)
+        execResult = await backtestService.execute({
+          ...backtestReq,
+          clickhouse_addr: chAddr,
+          clickhouse_db: chDb,
+          clickhouse_user: chUser,
+          clickhouse_password: chPassword,
+        });
       });
 
       // Poll for completion (max 35 seconds)

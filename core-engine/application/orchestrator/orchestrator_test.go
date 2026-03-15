@@ -16,7 +16,6 @@ func TestOrchestrator_Initialization_Creates_Valid_Backtest_Run(t *testing.T) {
 	// Arrange
 	smock := position.NewStateMachine()
 	config := &OrchestratorConfig{
-		DataSourcePath:       "test.csv",
 		EstimatedCandleCount: 100,
 		BacktestID:           "test-backtest-001",
 	}
@@ -34,7 +33,7 @@ func TestOrchestrator_Initialization_Creates_Valid_Backtest_Run(t *testing.T) {
 func TestOrchestrator_Initialization_PSM_Ready_To_Accept_Candles(t *testing.T) {
 	// Arrange
 	smock := position.NewStateMachine()
-	config := &OrchestratorConfig{DataSourcePath: "test.csv"}
+	config := &OrchestratorConfig{}
 
 	// Act
 	orchestrator, err := NewOrchestrator(smock, config)
@@ -47,7 +46,7 @@ func TestOrchestrator_Initialization_PSM_Ready_To_Accept_Candles(t *testing.T) {
 func TestOrchestrator_Initialization_EventBus_Empty_Before_Backtest(t *testing.T) {
 	// Arrange
 	smock := position.NewStateMachine()
-	config := &OrchestratorConfig{DataSourcePath: "test.csv"}
+	config := &OrchestratorConfig{}
 
 	// Act
 	orchestrator, err := NewOrchestrator(smock, config)
@@ -68,11 +67,10 @@ BTC,2024-01-01T00:02:00Z,41000,41500,40500,40800,1.8
 BTC,2024-01-01T00:03:00Z,40800,41200,40200,40700,1.9
 BTC,2024-01-01T00:04:00Z,40700,41300,40300,41000,2.1`
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err, "backtest should complete without error")
@@ -90,11 +88,10 @@ BTC,2024-01-01T00:00:00Z,40000,41000,39000,40500,1.5
 BTC,2024-01-01T00:01:00Z,40500,41500,40000,41000,2.0
 BTC,2024-01-01T00:02:00Z,41000,41500,40500,40800,1.8`
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err)
@@ -119,11 +116,10 @@ func TestAcceptance_P1_S3_Events_Captured_With_Full_Fidelity(t *testing.T) {
 	csvData := `symbol,timestamp,open,high,low,close,volume
 BTC,2024-01-01T00:00:00Z,40000.50,41000.75,39000.25,40500.00,1.5`
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err)
@@ -148,10 +144,10 @@ BTC,2024-01-01T00:02:00Z,41000,41500,40500,40800,1.8`
 
 	// Act: Run backtest twice
 	orchestrator1 := createTestOrchestrator(t)
-	run1, err1 := orchestrator1.RunBacktest(strings.NewReader(csvData))
+	run1, err1 := orchestrator1.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	orchestrator2 := createTestOrchestrator(t)
-	run2, err2 := orchestrator2.RunBacktest(strings.NewReader(csvData))
+	run2, err2 := orchestrator2.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err1)
@@ -180,11 +176,10 @@ BTC,2024-01-01T00:02:00Z,41000,41500,40500,40800,1.8
 BTC,2024-01-01T00:03:00Z,40800,41200,40200,40700,1.9
 BTC,2024-01-01T00:04:00Z,40700,41300,40300,41000,2.1`
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err)
@@ -202,11 +197,10 @@ BTC,2024-01-01T00:01:00Z,40500,41500,40000,41000,2.0
 ETH,2024-01-01T00:02:00Z,2000,2100,1900,2050,10.0
 ETH,2024-01-01T00:03:00Z,2050,2150,2000,2100,12.0`
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err)
@@ -218,15 +212,15 @@ ETH,2024-01-01T00:03:00Z,2050,2150,2000,2100,12.0`
 
 // T027: Acceptance - Error handling and recovery
 func TestAcceptance_P3_Error_Handling_Malformed_CSV(t *testing.T) {
-	// Arrange: Malformed CSV with invalid decimal
-	csvData := `symbol,timestamp,open,high,low,close,volume
-BTC,2024-01-01T00:00:00Z,invalid-price,41000,39000,40500,1.5`
+	// Arrange: loader that returns a parse/validation error on first call,
+	// simulating what a real loader would do when source data is malformed.
+	loaderErr := fmt.Errorf("invalid decimal value for open price: \"invalid-price\"")
+	loader := NewMockCandleLoaderWithError(loaderErr)
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(loader)
 
 	// Assert
 	assert.Error(t, err, "should error on malformed data")
@@ -238,11 +232,10 @@ func TestAcceptance_P3_Error_Handling_Empty_CSV(t *testing.T) {
 	// Arrange: Header-only CSV
 	csvData := "symbol,timestamp,open,high,low,close,volume\n"
 
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err, "empty CSV should not error")
@@ -270,11 +263,10 @@ func TestAcceptance_P3_Memory_Efficiency_Large_Event_Count(t *testing.T) {
 	}
 
 	csvData := csvBuilder.String()
-	reader := strings.NewReader(csvData)
 	orchestrator := createTestOrchestrator(t)
 
 	// Act
-	runResult, err := orchestrator.RunBacktest(reader)
+	runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(t, csvData))
 
 	// Assert
 	assert.NoError(t, err)
@@ -318,8 +310,7 @@ func BenchmarkOrchestrator_RunBacktest_250K_Candles(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		orchestrator := createTestOrchestrator(b)
-		reader := strings.NewReader(csvData)
-		runResult, err := orchestrator.RunBacktest(reader)
+		runResult, err := orchestrator.RunBacktest(CandlesFromCSVString(b, csvData))
 		if err != nil {
 			b.Fatalf("RunBacktest failed: %v", err)
 		}
@@ -342,7 +333,6 @@ func createTestOrchestrator(tb testing.TB) *Orchestrator {
 
 	// Create config
 	config := &OrchestratorConfig{
-		DataSourcePath:       "test.csv",
 		EstimatedCandleCount: 1000,
 		BacktestID:           fmt.Sprintf("test-%d", time.Now().UnixNano()),
 	}

@@ -50,3 +50,20 @@ type BacktestRun struct {
 	EventBus      *EventBus          // In-memory event log
 	FinalPosition *position.Position // Live position state at end of backtest (nil if no position opened)
 }
+
+// CandleLoader is the abstraction over any candle source (ClickHouse, mock, etc.).
+// NextCandle returns the next candle in ascending timestamp order.
+// It returns (nil, nil) to signal end of stream, and (nil, err) on error.
+// Close must be called to release the underlying connection or resources.
+type CandleLoader interface {
+	NextCandle() (*Candle, error)
+	Close() error
+}
+
+// ClickHouseConfig holds the connection parameters for the ClickHouse native TCP driver.
+type ClickHouseConfig struct {
+	Addr     string // host:port, e.g. "localhost:9000"
+	Database string // e.g. "dca_bot"
+	User     string
+	Password string
+}

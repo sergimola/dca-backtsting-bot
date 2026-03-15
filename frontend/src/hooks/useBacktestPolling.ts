@@ -101,6 +101,20 @@ export function useBacktestPolling({
             clearInterval(intervalRef.current)
             intervalRef.current = null
           }
+        } else if (statusResponse.status === 'downloading') {
+          // Data fetch from Binance in progress — keep polling, surface distinct status
+          const progress = Math.min(
+            Math.floor((elapsedSeconds / Math.floor(timeoutThreshold / 1000)) * 100),
+            99
+          )
+          setState(prev => ({
+            ...prev,
+            status: 'downloading',
+            elapsedSeconds,
+            progress,
+            retryAttempt: 0
+          }))
+          retryCountRef.current = 0
         } else if (statusResponse.status === 'pending') {
           // Continue polling
           const progress = Math.min(

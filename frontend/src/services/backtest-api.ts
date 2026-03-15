@@ -75,12 +75,35 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
   }
 }
 
-export async function getStatus(backtestId: string): Promise<{ status: 'pending' | 'completed' | 'failed'; error?: string }> {
-  // Since the POST request blocks until completion, if we have the ID, we already have the result!
+export async function getStatus(backtestId: string): Promise<{ status: 'pending' | 'downloading' | 'completed' | 'failed'; error?: string }> {
+  // If the result is already cached (POST completed), return completed immediately.
   if (resultCache.has(backtestId)) {
     return { status: 'completed' };
   }
-  return { status: 'pending' };
+
+  // For in-flight backtests, poll the status endpoint so the UI can reflect
+  // intermediate states like DOWNLOADING_DATA.
+  try {
+    const response = await axios.get(`${API_BASE_URL}/backtest/${backtestId}/status`, { headers: getHeaders() });
+    const apiStatus: string = response.data?.status ?? 'PENDING';
+
+    switch (apiStatus) {
+      case 'COMPLETE':
+        return { status: 'completed' };
+      case 'DOWNLOADING_DATA':
+        return { status: 'downloading' };
+      case 'RUNNING':
+        return { status: 'pending' };
+      case 'FAILED':
+        return { status: 'failed', error: response.data?.error ?? 'Backtest failed' };
+      case 'PENDING':
+      default:
+        return { status: 'pending' };
+    }
+  } catch {
+    // Status endpoint not available (e.g. blocking-POST architecture) — treat as pending.
+    return { status: 'pending' };
+  }
 }
 
 // Go engine EventType values that represent actual fills to show in the trade table.

@@ -97,7 +97,12 @@ export class BacktestService {
    * }
    */
   async execute(
-    request: ApiBacktestRequest & { market_data_csv_path: string },
+    request: ApiBacktestRequest & {
+      clickhouse_addr: string;
+      clickhouse_db: string;
+      clickhouse_user: string;
+      clickhouse_password: string;
+    },
     timeoutMs?: number
   ): Promise<BacktestExecutionResult> {
     const timeout = timeoutMs ?? this.timeoutMs;
@@ -112,7 +117,12 @@ export class BacktestService {
    * @returns BacktestExecutionResult or throws with stderr attached
    */
   async executeWithStderr(
-    request: ApiBacktestRequest & { market_data_csv_path: string },
+    request: ApiBacktestRequest & {
+      clickhouse_addr: string;
+      clickhouse_db: string;
+      clickhouse_user: string;
+      clickhouse_password: string;
+    },
     flags: string[] = []
   ): Promise<BacktestExecutionResult> {
     return this.executeInternal(request, this.timeoutMs, flags);
@@ -122,7 +132,12 @@ export class BacktestService {
    * Internal implementation of execute with optional flags for testing
    */
   private async executeInternal(
-    request: ApiBacktestRequest & { market_data_csv_path: string },
+    request: ApiBacktestRequest & {
+      clickhouse_addr: string;
+      clickhouse_db: string;
+      clickhouse_user: string;
+      clickhouse_password: string;
+    },
     timeoutMs: number,
     flags: string[] = []
   ): Promise<BacktestExecutionResult> {
@@ -267,8 +282,34 @@ export class BacktestService {
         reject(new ProcessError(null, null, error.message, `Failed to spawn Core Engine: ${error.message}`));
       });
 
-      // Write configuration to stdin
-      const configJson = JSON.stringify(request) + '\n';
+      // Build an explicit engine payload — guarantees field presence and correct types.
+      // Go's EngineRequest expects string decimals (price_entry, price_scale, etc.) and
+      // integer JSON numbers (number_of_orders, multiplier). Spread of the full request
+      // object is avoided so the ClickHouse credentials are always present even if the
+      // caller omits optional fields.
+      const enginePayload: Record<string, unknown> = {
+        trading_pair:                 String(request.trading_pair),
+        start_date:                   String(request.start_date),
+        end_date:                     String(request.end_date),
+        price_entry:                  String(request.price_entry),
+        price_scale:                  String(request.price_scale),
+        amount_scale:                 String(request.amount_scale),
+        number_of_orders:             Number(request.number_of_orders),
+        amount_per_trade:             String(request.amount_per_trade),
+        margin_type:                  String(request.margin_type),
+        multiplier:                   Number(request.multiplier),
+        take_profit_distance_percent: String(request.take_profit_distance_percent),
+        account_balance:              String(request.account_balance),
+        exit_on_last_order:           Boolean(request.exit_on_last_order),
+        clickhouse_addr:              String(request.clickhouse_addr),
+        clickhouse_db:                String(request.clickhouse_db),
+        clickhouse_user:              String(request.clickhouse_user),
+        clickhouse_password:          String(request.clickhouse_password),
+      };
+      if (request.idempotency_key) {
+        enginePayload.idempotency_key = String(request.idempotency_key);
+      }
+      const configJson = JSON.stringify(enginePayload) + '\n';
       child.stdin!.write(configJson, (err) => {
         if (err) {
           clearTimeouts();

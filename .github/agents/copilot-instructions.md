@@ -13,6 +13,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - Flat files — OHLCV CSV files on disk (`MARKET_DATA_DIR`), JSON result files in `RESULTS_DIR` (006-sdd-params-integration)
 - TypeScript 5 (orchestrator/api, frontend); React 18; Vite 5; Node.js 20 + `decimal.js` (precision math), `recharts` (bar chart), `axios` (HTTP), `jest`/`ts-jest` (orchestrator tests), `vitest` (frontend tests), Tailwind CSS v3 (007-result-aggregator-overhaul)
 - Filesystem JSON via `ResultStore` (`orchestrator/api/storage/results/`) (007-result-aggregator-overhaul)
+- Go 1.26.1 (core engine), TypeScript 5.x / Node.js 20 (API), React 18 (frontend) (008-clickhouse-market-data)
+- ClickHouse — `ReplacingMergeTree`, ordered on `(symbol, timestamp)`, 1-minute OHLCV candles (008-clickhouse-market-data)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -32,9 +34,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 008-clickhouse-market-data: Added Go 1.26.1 (core engine), TypeScript 5.x / Node.js 20 (API), React 18 (frontend)
 - 007-result-aggregator-overhaul: Added TypeScript 5 (orchestrator/api, frontend); React 18; Vite 5; Node.js 20 + `decimal.js` (precision math), `recharts` (bar chart), `axios` (HTTP), `jest`/`ts-jest` (orchestrator tests), `vitest` (frontend tests), Tailwind CSS v3
 - 006-sdd-params-integration: Added Go 1.21 (core engine), TypeScript 5.x / Node.js 20 (API), React 18 / TypeScript 5 (frontend) + shopspring/decimal (Go), Decimal.js (Node.js), React + Tailwind CSS (frontend), Express 4 (API)
-- 006-sdd-params-integration: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -1,7 +1,7 @@
 import React from 'react'
 
 interface PollingIndicatorProps {
-  status: 'pending' | 'timeout' | 'failed'
+  status: 'pending' | 'downloading' | 'timeout' | 'failed'
   statusMessage: string
   elapsedSeconds: number
   totalSeconds?: number
@@ -28,6 +28,7 @@ export function PollingIndicator({
 
   const getStatusColor = () => {
     if (status === 'pending') return 'text-blue-600'
+    if (status === 'downloading') return 'text-blue-600'
     if (status === 'timeout') return 'text-yellow-600'
     if (status === 'failed') return 'text-red-600'
     return 'text-gray-600'
@@ -35,6 +36,7 @@ export function PollingIndicator({
 
   const getProgressBarColor = () => {
     if (status === 'pending') return 'from-blue-400 to-indigo-600'
+    if (status === 'downloading') return 'from-blue-400 to-indigo-600'
     if (status === 'timeout') return 'from-yellow-400 to-orange-600'
     if (status === 'failed') return 'from-red-400 to-red-600'
     return 'from-gray-400 to-gray-600'

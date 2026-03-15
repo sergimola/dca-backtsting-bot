@@ -1,0 +1,28 @@
+services:
+  # ----------------------------------------
+  # 1. ClickHouse (Market Data Database)
+  # ----------------------------------------
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    container_name: quant-clickhouse
+    ports:
+      - "18123:8123" # HTTP Port (Used by Node.js API)
+      - "19000:9000" # Native TCP Port (Used by Go Engine)
+    environment:
+      CLICKHOUSE_DB: data
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: admin
+    volumes:
+      # Persists your downloaded Binance data between restarts
+      - clickhouse_data:/var/lib/clickhouse
+      
+      # THE MIGRATION MAGIC: 
+      # Maps your local SQL file into the auto-init folder
+      - ./orchestrator/api/migrations/001_market_data.sql:/docker-entrypoint-initdb.d/001_market_data.sql
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+
+volumes:
+  clickhouse_data:
