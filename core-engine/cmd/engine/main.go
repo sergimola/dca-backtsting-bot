@@ -62,6 +62,13 @@ func main() {
 		os.Exit(1)
 	}
 
+	// [ENGINE-DEBUG] Log raw decoded values immediately after JSON decode
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Decoded request:\n")
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   trading_pair    = %q\n", request.TradingPair)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   price_entry     = %q\n", request.PriceEntry)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   clickhouse_addr = %q\n", request.ClickhouseAddr)
+	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   clickhouse_db   = %q\n", request.ClickhouseDb)
+
 	// Validate required fields
 	if request.PriceEntry == "" || request.ClickhouseAddr == "" || request.TradingPair == "" {
 		fmt.Fprintf(os.Stderr, "Missing required fields: price_entry, clickhouse_addr, and trading_pair are required\n")

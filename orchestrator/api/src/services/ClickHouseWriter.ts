@@ -1,8 +1,8 @@
-import { chClient } from './ClickHouseClient.js';
+import { chClient, database } from './ClickHouseClient.js';
 
 export interface OHLCVRow {
   symbol: string;
-  timestamp: string; // ISO-8601 string, e.g. "2025-01-01T00:00:00.000Z"
+  timestamp: string; // ClickHouse DateTime64 format: "YYYY-MM-DD HH:MM:SS.mmm" (no T, no Z)
   open: number;
   high: number;
   low: number;
@@ -19,7 +19,7 @@ export interface OHLCVRow {
  */
 export class ClickHouseWriter {
   /**
-   * Inserts a batch of OHLCV rows into dca_bot.market_data.
+   * Inserts a batch of OHLCV rows into {database}.market_data.
    * @throws Error if rows is empty — callers must never call with an empty array.
    */
   async insertBatch(rows: OHLCVRow[]): Promise<void> {
@@ -28,7 +28,7 @@ export class ClickHouseWriter {
     }
 
     await chClient.insert<OHLCVRow>({
-      table: 'dca_bot.market_data',
+      table: `${database}.market_data`,
       values: rows,
       format: 'JSONEachRow',
     });

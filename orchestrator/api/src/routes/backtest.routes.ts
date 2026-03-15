@@ -76,7 +76,7 @@ export function createBacktestRouter(
 
       // ClickHouse connection params (native TCP port 9000 for Go engine)
       const chAddr = `${process.env.CLICKHOUSE_HOST ?? 'localhost'}:${process.env.CLICKHOUSE_NATIVE_PORT ?? '9000'}`;
-      const chDb = process.env.CLICKHOUSE_DATABASE ?? 'dca_bot';
+      const chDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
       const chUser = process.env.CLICKHOUSE_USER ?? 'default';
       const chPassword = process.env.CLICKHOUSE_PASSWORD ?? '';
 

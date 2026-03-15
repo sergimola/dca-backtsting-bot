@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "ts-node-esm src/main.ts",
-    "start": "node dist/main.js",
+    "dev": "node --env-file=.env --loader ts-node/esm src/main.ts",
+    "start": "node --env-file=.env dist/main.js",
     "test": "jest --passWithNoTests",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

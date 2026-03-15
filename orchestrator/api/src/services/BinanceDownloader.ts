@@ -1,5 +1,6 @@
 import ccxt from 'ccxt';
 import { ClickHouseWriter, OHLCVRow } from './ClickHouseWriter.js';
+import { chClient, database } from './ClickHouseClient.js';
 import { sleep } from '../utils/sleep.js';
 
 /**
@@ -23,9 +24,11 @@ export class BinanceDownloader {
 
   /**
    * Downloads all 1-minute candles for [start, end] and persists them.
+   * On success (including empty ranges), writes a sync receipt to
+   * market_data_syncs so GapResolver skips re-downloading on future runs.
    * @returns Total number of candle rows stored.
    */
-  async downloadAndStore(symbol: string, start: Date, _end: Date): Promise<number> {
+  async downloadAndStore(symbol: string, start: Date, end: Date): Promise<number> {
     let since = start.getTime();
     let totalStored = 0;
     let isFirstPage = true;
@@ -33,7 +36,7 @@ export class BinanceDownloader {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       if (!isFirstPage) {
-        await sleep(250); // 250ms pacing between pages (constitution gate)
+        await sleep(50); // 50ms pacing between pages (constitution gate)
       }
       isFirstPage = false;
 
@@ -52,7 +55,7 @@ export class BinanceDownloader {
       if (filtered.length > 0) {
         const rows: OHLCVRow[] = filtered.map((c) => ({
           symbol: symbol.replace('/', '').toUpperCase(),
-          timestamp: new Date(c[0]).toISOString(),
+          timestamp: new Date(c[0]).toISOString().replace('T', ' ').replace('Z', ''),
           open: c[1],
           high: c[2],
           low: c[3],
@@ -68,6 +71,21 @@ export class BinanceDownloader {
       const lastTs = ohlcv[ohlcv.length - 1][0];
       since = lastTs + 60_000;
     }
+
+    // Write sync receipt so GapResolver trusts this range on future requests.
+    // Written unconditionally on success — even empty ranges count as "synced"
+    // (Binance genuinely had no data), preventing infinite re-download loops.
+    const symbolNormalized = symbol.replace('/', '').toUpperCase();
+    await chClient.insert({
+      table: `${database}.market_data_syncs`,
+      values: [{
+        symbol:      symbolNormalized,
+        synced_from: start.toISOString().replace('T', ' ').replace('Z', ''),
+        synced_to:   end.toISOString().replace('T', ' ').replace('Z', ''),
+        synced_at:   new Date().toISOString().replace('T', ' ').replace('Z', ''),
+      }],
+      format: 'JSONEachRow',
+    });
 
     return totalStored;
   }

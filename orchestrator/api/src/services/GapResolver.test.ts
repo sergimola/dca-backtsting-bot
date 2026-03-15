@@ -18,6 +18,7 @@ jest.mock('./ClickHouseClient', () => ({
   chClient: {
     query: jest.fn(),
   },
+  database: process.env.CLICKHOUSE_DATABASE ?? 'data',
 }));
 
 import { chClient } from './ClickHouseClient';
@@ -47,7 +48,9 @@ describe('GapResolver', () => {
   });
 
   it('GT1: full coverage returns { hasGap: false }', async () => {
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: expectedCount.toString() }]));
+    mockedQuery
+      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
+      .mockResolvedValueOnce(fakeResultSet([{ cnt: expectedCount.toString() }]));        // count: full
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
@@ -58,7 +61,9 @@ describe('GapResolver', () => {
 
   it('GT2: under-count (swiss-cheese gap) returns { hasGap: true }', async () => {
     const actualCount = expectedCount - 500;
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: actualCount.toString() }]));
+    mockedQuery
+      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
+      .mockResolvedValueOnce(fakeResultSet([{ cnt: actualCount.toString() }]));          // count: partial
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
@@ -68,7 +73,9 @@ describe('GapResolver', () => {
   });
 
   it('GT3: empty table (actualCount = 0) returns { hasGap: true }', async () => {
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: '0' }]));
+    mockedQuery
+      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
+      .mockResolvedValueOnce(fakeResultSet([{ cnt: '0' }]));                            // count: empty
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
@@ -82,7 +89,9 @@ describe('GapResolver', () => {
     const e = new Date(120_000);
     const expected = Math.floor((e.getTime() - s.getTime()) / 60_000) + 1; // 3
 
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: expected.toString() }]));
+    mockedQuery
+      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
+      .mockResolvedValueOnce(fakeResultSet([{ cnt: expected.toString() }]));             // count: exact
 
     const result = await resolver.check('ETHUSDT', s, e);
 
@@ -90,15 +99,30 @@ describe('GapResolver', () => {
     expect(result.hasGap).toBe(false);
   });
 
-  it('GT5: query uses COUNT(*) FINAL — not MIN/MAX', async () => {
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: '1' }]));
+  it('GT5: COUNT(*) FINAL query is used — not MIN/MAX', async () => {
+    mockedQuery
+      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
+      .mockResolvedValueOnce(fakeResultSet([{ cnt: '1' }]));                            // count query
 
     await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
-    const queryArg = mockedQuery.mock.calls[0][0] as { query: string };
-    expect(queryArg.query).toMatch(/COUNT\(\*\)/i);
-    expect(queryArg.query).toMatch(/FINAL/i);
-    expect(queryArg.query).not.toMatch(/MIN\s*\(/i);
-    expect(queryArg.query).not.toMatch(/MAX\s*\(/i);
+    // The COUNT(*) FINAL check is the second query call (index 1)
+    const countQueryArg = mockedQuery.mock.calls[1][0] as { query: string };
+    expect(countQueryArg.query).toMatch(/COUNT\(\*\)/i);
+    expect(countQueryArg.query).toMatch(/FINAL/i);
+    expect(countQueryArg.query).not.toMatch(/MIN\s*\(/i);
+    expect(countQueryArg.query).not.toMatch(/MAX\s*\(/i);
+  });
+
+  it('GT6: ledger hit skips COUNT query and returns { hasGap: false }', async () => {
+    // Range was previously synced — ledger returns a row
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ '1': 1 }]));                     // ledger: hit
+
+    const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
+
+    expect(result.hasGap).toBe(false);
+    expect(result.actualCount).toBe(expectedCount);  // echoes expectedCount
+    // Only one query was made — the COUNT(*) FINAL call was skipped
+    expect(mockedQuery).toHaveBeenCalledTimes(1);
   });
 });

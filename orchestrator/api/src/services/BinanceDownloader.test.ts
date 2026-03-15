@@ -28,6 +28,14 @@ jest.mock('ccxt', () => {
 // Mock ClickHouseWriter
 jest.mock('./ClickHouseWriter');
 
+// Mock ClickHouseClient so the sync-receipt insert doesn't hit a real DB
+jest.mock('./ClickHouseClient', () => ({
+  chClient: {
+    insert: jest.fn().mockResolvedValue(undefined),
+  },
+  database: process.env.CLICKHOUSE_DATABASE ?? 'data',
+}));
+
 // Mock the sleep utility used between pages
 jest.mock('../utils/sleep', () => ({
   sleep: jest.fn().mockResolvedValue(undefined),
@@ -35,8 +43,10 @@ jest.mock('../utils/sleep', () => ({
 
 import { sleep } from '../utils/sleep';
 import ccxt from 'ccxt';
+import { chClient } from './ClickHouseClient';
 
 const mockedSleep = jest.mocked(sleep);
+const mockedChInsert = jest.mocked(chClient.insert);
 
 /**
  * Build fake OHLCV rows: [timestamp_ms, open, high, low, close, volume]
@@ -154,5 +164,37 @@ describe('BinanceDownloader', () => {
 
     // sleep(250) must be called at least once between the pages
     expect(mockedSleep).toHaveBeenCalledWith(250);
+  });
+
+  it('BD6: sync receipt is written to market_data_syncs on completion', async () => {
+    const historicalStart = new Date('2025-01-01T00:00:00Z').getTime();
+    mockExchange.fetchOHLCV
+      .mockResolvedValueOnce(makeOHLCV(100, historicalStart))
+      .mockResolvedValueOnce([]);
+
+    await downloader.downloadAndStore(symbol, startDate, endDate);
+
+    expect(mockedChInsert).toHaveBeenCalledTimes(1);
+    const insertCall = mockedChInsert.mock.calls[0][0] as any;
+    const expectedDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
+    expect(insertCall.table).toBe(`${expectedDb}.market_data_syncs`);
+    const receipt = insertCall.values[0];
+    expect(receipt.symbol).toBe('BTCUSDT');               // '/' stripped, uppercased
+    expect(receipt.synced_from).toBe(startDate.toISOString().replace('T', ' ').replace('Z', ''));
+    expect(receipt.synced_to).toBe(endDate.toISOString().replace('T', ' ').replace('Z', ''));
+    expect(receipt.synced_at).toBeDefined();
+  });
+
+  it('BD7: sync receipt is written even when no candles are fetched (empty range)', async () => {
+    mockExchange.fetchOHLCV.mockResolvedValueOnce([]);
+
+    await downloader.downloadAndStore(symbol, startDate, endDate);
+
+    // No data inserted into market_data, but sync receipt must still be written
+    expect(mockWriter.insertBatch).not.toHaveBeenCalled();
+    expect(mockedChInsert).toHaveBeenCalledTimes(1);
+    const insertCall = mockedChInsert.mock.calls[0][0] as any;
+    const expectedDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
+    expect(insertCall.table).toBe(`${expectedDb}.market_data_syncs`);
   });
 });

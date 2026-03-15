@@ -18,6 +18,7 @@ jest.mock('./ClickHouseClient', () => ({
   chClient: {
     insert: jest.fn(),
   },
+  database: process.env.CLICKHOUSE_DATABASE ?? 'data',
 }));
 
 import { chClient } from './ClickHouseClient';
@@ -63,11 +64,13 @@ describe('ClickHouseWriter', () => {
     expect(callArg.format).toBe('JSONEachRow');
   });
 
-  it('CW4: insert targets the dca_bot.market_data table', async () => {
+  it('CW4: insert targets the {database}.market_data table from env', async () => {
     const rows = makeRows(100);
     await writer.insertBatch(rows);
     const callArg = mockedInsert.mock.calls[0][0] as any;
-    expect(callArg.table).toBe('dca_bot.market_data');
+    // Table name uses CLICKHOUSE_DATABASE env var (defaults to 'data')
+    const expectedDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
+    expect(callArg.table).toBe(`${expectedDb}.market_data`);
   });
 
   it('CW5: batch of 2,500 rows (two separate calls from caller) each trigger one insert each', async () => {
