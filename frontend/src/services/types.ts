@@ -87,3 +87,45 @@ export interface BacktestStatus {
   status: 'pending' | 'completed' | 'failed'
   error?: string
 }
+
+// ---------------------------------------------------------------------------
+// Multi-run state model (009-pro-quant-terminal-ui)
+// ---------------------------------------------------------------------------
+
+export type RunStatus = 'running' | 'completed' | 'failed'
+
+export interface Run {
+  backtestId: string          // backend-assigned, used as stable React key
+  shortId: string             // first 8 chars of backtestId for display
+  status: RunStatus
+  config: BacktestFormState   // original 13-field parameter set
+  results?: BacktestResults   // populated on completion; undefined while running/failed
+  logs: string[]              // status messages accumulated during polling; append-only
+  progress: number            // 0–100; owned by App.tsx, updated by RunPollingController
+  createdAt: string           // ISO timestamp, set at run creation
+}
+
+export interface TradeGroupMetrics {
+  tradeId: string
+  events: TradeEvent[]
+  status: 'CLOSED' | 'OPEN'
+  grossProfit: number
+  totalFees: number
+  netProfit: number
+  durationHours: number
+  mae: number                  // Max Adverse Excursion (negative = adverse move during trade)
+  maxCapitalDeployed: number
+}
+
+export interface DashboardMetrics {
+  netProfit: number
+  totalFees: number
+  roi: number
+  winRate: number
+  profitFactor: number
+  capitalUtilized: number
+  maxDrawdown: number          // pass-through from pnlSummary
+  accountEquity: number        // accountBalance + netProfit
+  tradeGroups: TradeGroupMetrics[]
+  safetyOrderUsage: SafetyOrderUsage[]
+}

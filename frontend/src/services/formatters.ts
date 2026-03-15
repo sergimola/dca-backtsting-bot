@@ -51,3 +51,15 @@ export function formatPercentage(value: number, decimals: number = 2): string {
   const prefix = isNegative ? '-' : ''
   return prefix + formatted + '%'
 }
+
+/**
+ * Return a Tailwind class string for a trade event action pill.
+ */
+export function getEventPillClass(eventType: string): string {
+  switch (eventType.toUpperCase()) {
+    case 'ENTRY':        return 'text-emerald-300 bg-emerald-900/40'
+    case 'SAFETY_ORDER': return 'text-slate-200 bg-slate-600/40'
+    case 'EXIT':         return 'text-rose-300 bg-rose-900/40'
+    default:             return 'text-slate-400 bg-slate-800/40'
+  }
+}
