@@ -150,7 +150,7 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
 
       // Make a backtest request
       const backtest = await request(getTestApp())
-        .post('/backtest')
+        .post('/backtests')
         .send({
           entry_price: '100.50000000',
           amounts: ['10.25000000'],

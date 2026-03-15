@@ -21,6 +21,23 @@ export function RunCard({ run, isSelected, isExpanded, onSelect, onViewDashboard
   
   // Calculate net metrics using shared utility
   const metrics = completedResults ? calculateNetMetrics(completedResults, run.config) : null
+
+  // Net profit and ROI: deduct fees from gross so sidebar matches the dashboard.
+  // When tradeEvents are present, use the event-derived metrics directly.
+  // When list-view returns tradeEvents:[] (select omission), estimate from pnlSummary.
+  const { displayNetProfit, displayNetRoi } = (() => {
+    if (!completedResults) return { displayNetProfit: 0, displayNetRoi: 0 };
+    if (completedResults.tradeEvents.length > 0) {
+      const np = metrics?.netProfit ?? 0;
+      const balance = parseFloat(run.config.accountBalance) || 1;
+      return { displayNetProfit: np, displayNetRoi: (np / balance) * 100 };
+    }
+    const balance = parseFloat(run.config.accountBalance) || 1;
+    const grossProfit = (completedResults.pnlSummary.roi / 100) * balance;
+    const netProfit = grossProfit - completedResults.pnlSummary.totalFees;
+    const netRoi = (netProfit / balance) * 100;
+    return { displayNetProfit: netProfit, displayNetRoi: netRoi };
+  })();
   
   // Unused safety orders: numberOfOrders is the TOTAL safety orders allowed (including initial entry)
   // So we need numberOfOrders - 1 = max possible safety order levels, then subtract actual usage
@@ -64,12 +81,12 @@ export function RunCard({ run, isSelected, isExpanded, onSelect, onViewDashboard
         </div>
       )}
 
-      {run.status === 'completed' && metrics && (
+      {run.status === 'completed' && completedResults && (
         <div className="flex items-center gap-2 text-xs">
-          <span className={metrics.roi >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
-            ROI {formatPercentage(metrics.roi)}
+          <span className={displayNetRoi >= 0 ? 'text-emerald-400' : 'text-rose-400'}>
+            ROI {formatPercentage(displayNetRoi)}
           </span>
-          <span className="text-slate-400">/ {formatCurrency(metrics.netProfit)}</span>
+          <span className="text-slate-400">/ {formatCurrency(displayNetProfit)}</span>
         </div>
       )}
 

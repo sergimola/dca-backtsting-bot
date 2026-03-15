@@ -39,7 +39,7 @@ describe('backtest-api', () => {
       const result = await submitBacktest(config)
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/backtest'),
+        expect.stringContaining('/backtests'),
         expect.objectContaining({
           trading_pair: 'BTC/USDT',
           price_entry: '50000',
@@ -181,7 +181,7 @@ describe('backtest-api', () => {
       await submitBacktest(config)
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/backtest'),
+        expect.stringContaining('/backtests'),
         expect.objectContaining({
           start_date: '2025-01-01T00:00:00Z',
           end_date: '2025-01-31T23:59:59Z',
@@ -215,7 +215,7 @@ describe('backtest-api', () => {
       await submitBacktest(config)
 
       expect(mockedAxios.post).toHaveBeenCalledWith(
-        expect.stringContaining('/backtest'),
+        expect.stringContaining('/backtests'),
         expect.objectContaining({
           start_date: '2025-01-01T00:00:00Z',
           end_date: '2025-01-31T23:59:59Z',
@@ -226,7 +226,7 @@ describe('backtest-api', () => {
   })
 
   describe('getStatus', () => {
-    it('should GET /backtest/{backtestId}/status and return status', async () => {
+    it('should GET /backtests/{backtestId}/status and return status', async () => {
       const backtestId = 'test-123'
 
       mockedAxios.get.mockResolvedValue({
@@ -237,7 +237,7 @@ describe('backtest-api', () => {
       const result = await getStatus(backtestId)
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining(`/backtest/${backtestId}/status`),
+        expect.stringContaining(`/backtests/${backtestId}/status`),
         expect.any(Object)
       )
       expect(result).toEqual({ status: 'pending' })
@@ -307,7 +307,7 @@ describe('backtest-api', () => {
   })
 
   describe('getResults', () => {
-    it('should GET /backtest/{backtestId}/results and return BacktestResults', async () => {
+    it('should GET /backtests/{backtestId}/results and return BacktestResults', async () => {
       const backtestId = 'test-123'
 
       const mockResults: BacktestResults = {
@@ -330,6 +330,7 @@ describe('backtest-api', () => {
             balance: 9900,
           },
         ],
+        executionTimeMs: 0,
       }
 
       mockedAxios.get.mockResolvedValue({
@@ -340,7 +341,7 @@ describe('backtest-api', () => {
       const result = await getResults(backtestId)
 
       expect(mockedAxios.get).toHaveBeenCalledWith(
-        expect.stringContaining(`/backtest/${backtestId}/results`),
+        expect.stringContaining(`/backtests/${backtestId}/results`),
         expect.any(Object)
       )
       expect(result).toEqual(mockResults)

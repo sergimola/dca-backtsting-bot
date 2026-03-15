@@ -78,6 +78,7 @@ export interface BacktestResults {
   pnlSummary: PnlSummary
   safetyOrderUsage: SafetyOrderUsage[]
   tradeEvents: TradeEvent[]
+  executionTimeMs?: number
 }
 
 /**

@@ -216,7 +216,7 @@ export interface ValidationErrorResponse extends ErrorResponse {
  *
  * 200 OK - Backtest executed successfully
  * 400 Bad Request - Request syntax invalid or validation failed (field missing, type wrong)
- * 404 Not Found - Result with given request_id not found (for GET /backtest/:id)
+ * 404 Not Found - Result with given request_id not found (for GET /backtests/:id)
  * 422 Unprocessable Entity - Request valid but data semantically invalid (e.g., negative price)
  * 500 Internal Server Error - API or Core Engine crash, temporary failure
  * 503 Service Unavailable - Resource exhaustion (OOM, too many concurrent requests)

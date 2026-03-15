@@ -5,6 +5,7 @@ import App from '../../App'
 jest.mock('../../services/backtest-api', () => ({
   submitBacktest: jest.fn(),
   getStatus: jest.fn(),
+  listBacktests: jest.fn().mockResolvedValue([]),
   getResults: jest.fn(),
 }))
 

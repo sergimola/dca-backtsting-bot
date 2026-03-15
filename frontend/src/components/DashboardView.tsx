@@ -16,7 +16,7 @@ export function DashboardView({ run }: DashboardViewProps) {
 
   return (
     <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
-      <DashboardHeader run={run} />
+      <DashboardHeader run={run} executionMs={run.results?.executionTimeMs} />
       <KpiGrid metrics={metrics} />
 
       <div className="flex gap-4 px-6 pb-6">

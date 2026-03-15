@@ -31,7 +31,7 @@ export class IdempotencyCache {
   /**
    * Constructor
    *
-   * @param ttlDays Time-to-live in days (default 7, matching ResultStore)
+   * @param ttlDays Time-to-live in days (default 7)
    */
   constructor(ttlDays: number = 7) {
     this.ttlMs = ttlDays * 24 * 60 * 60 * 1000;

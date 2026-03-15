@@ -115,11 +115,16 @@ describe('RunCard', () => {
   })
 
   it('completed negative ROI has red text class', () => {
+    // tradeEvents must also produce a negative net profit so displayNetRoi < 0
     const negativeRun = {
       ...completedRun,
       results: {
         ...completedRun.results!,
         pnlSummary: { ...completedRun.results!.pnlSummary, roi: -5.3 },
+        tradeEvents: [
+          completedRun.results!.tradeEvents[0],
+          { ...completedRun.results!.tradeEvents[1], balance: -10 }, // exit at a loss
+        ],
       },
     }
     const { container } = render(

@@ -24,5 +24,44 @@ services:
         soft: 262144
         hard: 262144
 
+  # ----------------------------------------
+  # 2. PostgreSQL (Job Queue & Sync Ledger)
+  # ----------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    ports:
+      - "5532:5432"
+    environment:
+      POSTGRES_DB: dca_bot
+      POSTGRES_USER: dca_user
+      POSTGRES_PASSWORD: dca_pass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dca_user -d dca_bot"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ----------------------------------------
+  # 3. pgAdmin (PostgreSQL GUI)
+  # ----------------------------------------
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@dca.bot
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
 volumes:
   clickhouse_data:
+  postgres_data:
+  pgadmin_data:

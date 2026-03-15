@@ -2,16 +2,19 @@
  * GapResolver Unit Tests (T007)
  *
  * Verifies the COUNT(*) FINAL gap-detection logic — the "swiss cheese" prevention layer.
- * All ClickHouse interactions are mocked; no real DB connection required.
+ * Stage 1 checks Postgres SyncLedgerRepository (mocked); Stage 2 queries ClickHouse (mocked).
  *
  * Test matrix:
- *   GT1 - Full coverage returns { hasGap: false }
+ *   GT1 - Full coverage after ledger miss (CH count exact) → { hasGap: false }
  *   GT2 - Under-count returns { hasGap: true }
  *   GT3 - Empty table (actualCount = 0) returns { hasGap: true }
  *   GT4 - expectedCount formula: floor((end - start) / 60_000) + 1
+ *   GT5 - COUNT(*) FINAL query is used — not MIN/MAX
+ *   GT6 - Ledger hit skips COUNT query and returns { hasGap: false }
  */
 
 import { GapResolver } from './GapResolver';
+import type { SyncLedgerRepository } from './SyncLedgerRepository';
 
 // Mock the ClickHouseClient module so no real connection is made
 jest.mock('./ClickHouseClient', () => ({
@@ -34,6 +37,7 @@ function fakeResultSet(rows: object[]) {
 
 describe('GapResolver', () => {
   let resolver: GapResolver;
+  let mockSyncLedger: jest.Mocked<Pick<SyncLedgerRepository, 'checkCoverage'>>;
 
   // 30-day range: 2025-01-01T00:00:00Z → 2025-01-31T00:00:00Z
   const symbol = 'BTCUSDT';
@@ -43,14 +47,14 @@ describe('GapResolver', () => {
   const expectedCount = Math.floor((endMs - startMs) / 60_000) + 1; // 43201
 
   beforeEach(() => {
-    resolver = new GapResolver();
-    mockedQuery.mockClear();
+    jest.clearAllMocks();
+    mockSyncLedger = { checkCoverage: jest.fn() };
+    resolver = new GapResolver(mockSyncLedger as unknown as SyncLedgerRepository);
   });
 
   it('GT1: full coverage returns { hasGap: false }', async () => {
-    mockedQuery
-      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
-      .mockResolvedValueOnce(fakeResultSet([{ cnt: expectedCount.toString() }]));        // count: full
+    mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: expectedCount.toString() }])); // count: full
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
@@ -61,9 +65,8 @@ describe('GapResolver', () => {
 
   it('GT2: under-count (swiss-cheese gap) returns { hasGap: true }', async () => {
     const actualCount = expectedCount - 500;
-    mockedQuery
-      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
-      .mockResolvedValueOnce(fakeResultSet([{ cnt: actualCount.toString() }]));          // count: partial
+    mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: actualCount.toString() }])); // count: partial
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
@@ -73,9 +76,8 @@ describe('GapResolver', () => {
   });
 
   it('GT3: empty table (actualCount = 0) returns { hasGap: true }', async () => {
-    mockedQuery
-      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
-      .mockResolvedValueOnce(fakeResultSet([{ cnt: '0' }]));                            // count: empty
+    mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: '0' }]));   // count: empty
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
@@ -89,9 +91,8 @@ describe('GapResolver', () => {
     const e = new Date(120_000);
     const expected = Math.floor((e.getTime() - s.getTime()) / 60_000) + 1; // 3
 
-    mockedQuery
-      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
-      .mockResolvedValueOnce(fakeResultSet([{ cnt: expected.toString() }]));             // count: exact
+    mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: expected.toString() }])); // count: exact
 
     const result = await resolver.check('ETHUSDT', s, e);
 
@@ -100,14 +101,12 @@ describe('GapResolver', () => {
   });
 
   it('GT5: COUNT(*) FINAL query is used — not MIN/MAX', async () => {
-    mockedQuery
-      .mockResolvedValueOnce(fakeResultSet([]))                                          // ledger: miss
-      .mockResolvedValueOnce(fakeResultSet([{ cnt: '1' }]));                            // count query
+    mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: '1' }]));   // count query
 
     await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
-    // The COUNT(*) FINAL check is the second query call (index 1)
-    const countQueryArg = mockedQuery.mock.calls[1][0] as { query: string };
+    const countQueryArg = mockedQuery.mock.calls[0][0] as { query: string };
     expect(countQueryArg.query).toMatch(/COUNT\(\*\)/i);
     expect(countQueryArg.query).toMatch(/FINAL/i);
     expect(countQueryArg.query).not.toMatch(/MIN\s*\(/i);
@@ -115,14 +114,13 @@ describe('GapResolver', () => {
   });
 
   it('GT6: ledger hit skips COUNT query and returns { hasGap: false }', async () => {
-    // Range was previously synced — ledger returns a row
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ '1': 1 }]));                     // ledger: hit
+    mockSyncLedger.checkCoverage.mockResolvedValueOnce(true);           // ledger: hit
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
     expect(result.hasGap).toBe(false);
     expect(result.actualCount).toBe(expectedCount);  // echoes expectedCount
-    // Only one query was made — the COUNT(*) FINAL call was skipped
-    expect(mockedQuery).toHaveBeenCalledTimes(1);
+    // ClickHouse COUNT(*) FINAL must NOT be called when ledger reports coverage
+    expect(mockedQuery).not.toHaveBeenCalled();
   });
 });

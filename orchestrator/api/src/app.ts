@@ -8,18 +8,13 @@
 
 import express, { Express } from 'express';
 import cors from 'cors';
-import { ResultStore } from './services/ResultStore.js';
-import { ProcessManager } from './services/ProcessManager.js';
-import { BacktestService } from './services/BacktestService.js';
-import { ResultAggregator } from './services/ResultAggregator.js';
-import { IdempotencyCache } from './services/IdempotencyCache.js';
 import { HealthMonitor } from './services/HealthMonitor.js';
+import { BacktestJobRepository } from './services/BacktestJobRepository.js';
+import { SyncLedgerRepository } from './services/SyncLedgerRepository.js';
 import { requestLoggerMiddleware } from './middleware/request-logger.middleware.js';
 import { errorHandlerMiddleware } from './middleware/error-handler.middleware.js';
 import { createBacktestRouter } from './routes/backtest.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
-import { GapResolver } from './services/GapResolver.js';
-import { BinanceDownloader } from './services/BinanceDownloader.js';
 
 /**
  * Create and configure Express app
@@ -28,15 +23,9 @@ import { BinanceDownloader } from './services/BinanceDownloader.js';
  * @returns Configured Express application
  */
 export interface AppServices {
-  resultStore: ResultStore;
-  processManager: ProcessManager;
-  backtestService: BacktestService;
-  resultAggregator: ResultAggregator;
-  idempotencyCache: IdempotencyCache;
+  backtestJobRepository: BacktestJobRepository;
+  syncLedgerRepository: SyncLedgerRepository;
   healthMonitor: HealthMonitor;
-  coreEngineBinaryPath: string;
-  gapResolver: GapResolver;
-  downloader: BinanceDownloader;
 }
 
 export function createApp(services: AppServices): Express {
@@ -56,15 +45,7 @@ export function createApp(services: AppServices): Express {
   // Note: validationMiddleware is applied per-route in backtest.routes.ts
 
   // 4. Mount routes
-  app.use('/', createBacktestRouter(
-    services.resultStore,
-    services.processManager,
-    services.backtestService,
-    services.resultAggregator,
-    services.idempotencyCache,
-    services.gapResolver,
-    services.downloader,
-  ));
+  app.use('/', createBacktestRouter(services.backtestJobRepository));
 
   app.use('/', createHealthRouter(services.healthMonitor));
 

@@ -1,4 +1,5 @@
 import { chClient, database } from './ClickHouseClient.js';
+import { SyncLedgerRepository } from './SyncLedgerRepository.js';
 
 export interface GapResult {
   hasGap: boolean;
@@ -22,6 +23,13 @@ export interface GapResult {
  *    prior sync receipt exists.
  */
 export class GapResolver {
+  private readonly syncLedger: SyncLedgerRepository;
+
+  constructor(syncLedger?: SyncLedgerRepository) {
+    // Allow injecting a custom SyncLedgerRepository for testing; fall back to default instance
+    this.syncLedger = syncLedger ?? new SyncLedgerRepository();
+  }
+
   /**
    * Returns { hasGap: true } if the stored candle count is less than the
    * expected 1-minute count for the range [start, end] AND no sync receipt
@@ -32,22 +40,9 @@ export class GapResolver {
     const endMs = end.getTime();
     const expectedCount = Math.floor((endMs - startMs) / 60_000) + 1;
 
-    // Stage 1: Check sync ledger — if the range was previously downloaded,
-    // trust it and skip the COUNT math to avoid re-downloading Binance downtime gaps.
-    const ledgerSet = await chClient.query({
-      query: `
-        SELECT 1
-        FROM ${database}.market_data_syncs FINAL
-        WHERE symbol = {symbol:String}
-          AND synced_from <= {start:DateTime64(3)}
-          AND synced_to >= {end:DateTime64(3)}
-        LIMIT 1
-      `,
-      query_params: { symbol, start: startMs, end: endMs },
-      format: 'JSONEachRow',
-    });
-    const ledgerRows = await ledgerSet.json<Record<string, number>>();
-    if (ledgerRows.length > 0) {
+    // Stage 1: Check Postgres sync ledger (replaces ClickHouse market_data_syncs query)
+    const covered = await this.syncLedger.checkCoverage(symbol, start, end);
+    if (covered) {
       return { hasGap: false, expectedCount, actualCount: expectedCount };
     }
 

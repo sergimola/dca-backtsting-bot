@@ -26,10 +26,11 @@ export function DashboardHeader({ run, executionMs }: DashboardHeaderProps) {
         <span>{startFormatted} – {endFormatted}</span>
         <span className="text-slate-500">({durationDays} days)</span>
       </div>
-      {executionMs != null && (
+      {executionMs != null && executionMs > 0 && (
         <div className="flex items-center gap-1.5 text-slate-400 text-xs">
           <Clock className="w-3.5 h-3.5" />
-          <span>{executionMs} ms</span>
+          <span className="text-slate-500">Engine</span>
+          <span>{executionMs >= 1000 ? `${(executionMs / 1000).toFixed(1)}s` : `${executionMs}ms`}</span>
         </div>
       )}
     </div>

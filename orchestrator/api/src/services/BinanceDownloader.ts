@@ -1,6 +1,6 @@
 import ccxt from 'ccxt';
 import { ClickHouseWriter, OHLCVRow } from './ClickHouseWriter.js';
-import { chClient, database } from './ClickHouseClient.js';
+import { SyncLedgerRepository } from './SyncLedgerRepository.js';
 import { sleep } from '../utils/sleep.js';
 
 /**
@@ -16,9 +16,11 @@ import { sleep } from '../utils/sleep.js';
 export class BinanceDownloader {
   private exchange: InstanceType<typeof ccxt.binance>;
   private writer: ClickHouseWriter;
+  private syncLedger: SyncLedgerRepository;
 
-  constructor(writer: ClickHouseWriter) {
+  constructor(writer: ClickHouseWriter, syncLedger?: SyncLedgerRepository) {
     this.writer = writer;
+    this.syncLedger = syncLedger ?? new SyncLedgerRepository();
     this.exchange = new ccxt.binance({ enableRateLimit: true });
   }
 
@@ -28,10 +30,12 @@ export class BinanceDownloader {
    * market_data_syncs so GapResolver skips re-downloading on future runs.
    * @returns Total number of candle rows stored.
    */
-  async downloadAndStore(symbol: string, start: Date, end: Date): Promise<number> {
-    let since = start.getTime();
-    let totalStored = 0;
-    let isFirstPage = true;
+  async downloadAndStore(symbol: string, start: Date, _end: Date): Promise<number> {
+    let since        = start.getTime();
+    let totalStored  = 0;
+    let isFirstPage  = true;
+    // Track the ACTUAL last-candle timestamp (not the user's end_date param)
+    let lastCandleTs = start.getTime();
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -67,25 +71,16 @@ export class BinanceDownloader {
         totalStored += rows.length;
       }
 
-      // Advance cursor: next page starts immediately after the last candle's timestamp
+      // Advance cursor + update lastCandleTs to the actual last-fetched candle
       const lastTs = ohlcv[ohlcv.length - 1][0];
+      lastCandleTs = lastTs;
       since = lastTs + 60_000;
     }
 
-    // Write sync receipt so GapResolver trusts this range on future requests.
-    // Written unconditionally on success — even empty ranges count as "synced"
-    // (Binance genuinely had no data), preventing infinite re-download loops.
+    // Write sync receipt to Postgres so GapResolver trusts this range on future requests.
+    // Uses lastCandleTs (actual last downloaded candle) NOT user's end param.
     const symbolNormalized = symbol.replace('/', '').toUpperCase();
-    await chClient.insert({
-      table: `${database}.market_data_syncs`,
-      values: [{
-        symbol:      symbolNormalized,
-        synced_from: start.toISOString().replace('T', ' ').replace('Z', ''),
-        synced_to:   end.toISOString().replace('T', ' ').replace('Z', ''),
-        synced_at:   new Date().toISOString().replace('T', ' ').replace('Z', ''),
-      }],
-      format: 'JSONEachRow',
-    });
+    await this.syncLedger.upsert(symbolNormalized, start, new Date(lastCandleTs));
 
     return totalStored;
   }

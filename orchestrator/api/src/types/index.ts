@@ -91,6 +91,26 @@ export type TradeEvent =
   | LiquidationEvent
   | GapDownEvent;
 
+// ============== Stored DB Summary / Trade Types ==============
+// These are the shapes written to Postgres JSONB columns by BackgroundWorker.
+
+export interface StoredPnlSummary {
+  roi: number;
+  maxDrawdown: number;
+  totalFees: number;
+}
+
+export interface StoredTradeEvent {
+  timestamp: string;
+  rawTimestamp: string;
+  eventType: string;
+  price: number;
+  quantity: number;
+  balance: number;
+  trade_id: string;
+  fee: number;
+}
+
 // ============== PnlSummary Types ==============
 
 export interface PnlSummary {

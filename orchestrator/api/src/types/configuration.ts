@@ -177,17 +177,6 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
     );
   }
 
-  // MVP: Validate start_date and end_date are same month (YYYY-MM)
-  const startMonth = request.start_date.substring(0, 7); // YYYY-MM
-  const endMonth = request.end_date.substring(0, 7);
-  if (startMonth !== endMonth) {
-    throw new ValidationError(
-      'date_range',
-      'same_month_guard',
-      `start_date and end_date must be in the same month (MVP limitation). Got ${startMonth} and ${endMonth}`
-    );
-  }
-
   // Validate price_entry
   if (request.price_entry === undefined) {
     throw new ValidationError('price_entry', 'required_field', 'Missing required field: price_entry');
