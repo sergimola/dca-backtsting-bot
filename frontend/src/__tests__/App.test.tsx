@@ -1,37 +1,21 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import App from '../../App'
+import App from '../App'
 
-// Mock API + polling at module boundary
-jest.mock('../../services/backtest-api', () => ({
+// Mock submitBacktest at module boundary (constitution requirement)
+jest.mock('../services/backtest-api', () => ({
   submitBacktest: jest.fn(),
   getStatus: jest.fn(),
   getResults: jest.fn(),
 }))
 
-jest.mock('../../hooks/useRunPolling', () => ({
+// Ensure RunPollingController never actually polls in unit tests
+jest.mock('../hooks/useRunPolling', () => ({
   useRunPolling: jest.fn(),
 }))
 
-jest.mock('../../hooks/useResultsMetrics', () => ({
-  useResultsMetrics: jest.fn(() => ({
-    netProfit: 60,
-    totalFees: 6,
-    roi: 6,
-    winRate: 80,
-    profitFactor: 2.5,
-    capitalUtilized: 45,
-    maxDrawdown: -2,
-    accountEquity: 1060,
-    tradeGroups: [],
-    safetyOrderUsage: [],
-  })),
-}))
-
-import { submitBacktest } from '../../services/backtest-api'
-import { useRunPolling } from '../../hooks/useRunPolling'
+import { submitBacktest } from '../services/backtest-api'
 const mockSubmit = submitBacktest as jest.MockedFunction<typeof submitBacktest>
-const mockUseRunPolling = useRunPolling as jest.MockedFunction<typeof useRunPolling>
 
 const fillForm = () => {
   fireEvent.change(screen.getByLabelText(/trading pair/i), { target: { value: 'BTC/USDT' } })
@@ -47,49 +31,69 @@ const fillForm = () => {
   fireEvent.change(screen.getByLabelText(/account balance/i), { target: { value: '1000' } })
 }
 
-describe('App state machine — sidebar navigation (T033)', () => {
+describe('App shell state machine', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockUseRunPolling.mockReturnValue(undefined as any)
   })
 
-  it('initial state shows ConfigFormView (no runs)', () => {
+  it('shows ConfigFormView on initial render (no runs)', () => {
     render(<App />)
     expect(screen.getByText(/new backtest/i)).toBeInTheDocument()
   })
 
-  it('sidebar shows QuantDCA header', () => {
+  it('shows QuantDCA sidebar header', () => {
     render(<App />)
     expect(screen.getByText(/quantdca/i)).toBeInTheDocument()
   })
 
-  it('clicking + from any view shows ConfigFormView', async () => {
-    mockSubmit.mockResolvedValue({ backtestId: 'nav-run-001' })
+  it('clicking + when a run is running shows ConfigFormView without clearing runs', async () => {
+    mockSubmit.mockResolvedValue({ backtestId: 'abc-123-def-456' })
     render(<App />)
+
     fillForm()
     fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
 
     await waitFor(() => {
-      expect(screen.queryAllByText(/nav-run-/i).length).toBeGreaterThan(0)
+      // After submit, sidebar should have one RunCard
+      expect(screen.queryAllByText(/abc-123/i).length).toBeGreaterThan(0)
     })
 
+    // Click + again
     const plusBtn = screen.getByRole('button', { name: /\+|new backtest/i })
     fireEvent.click(plusBtn)
+
+    // ConfigFormView should be visible again
     expect(screen.getByText(/new backtest/i)).toBeInTheDocument()
+
+    // Run card still in sidebar
+    expect(screen.queryAllByText(/abc-123/i).length).toBeGreaterThan(0)
   })
 
-  it('runs remain in sidebar when clicking +', async () => {
-    mockSubmit.mockResolvedValue({ backtestId: 'persist-run-001' })
+  it('selectedRunId is set to new run after successful submit', async () => {
+    mockSubmit.mockResolvedValue({ backtestId: 'run-id-001' })
     render(<App />)
+
     fillForm()
     fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
 
     await waitFor(() => {
-      expect(screen.queryAllByText(/persist-/i).length).toBeGreaterThan(0)
+      // run.shortId = 'run-id-0' (first 8 chars), shown in RunCard sidebar
+      expect(screen.queryAllByText(/run-id-0/i).length).toBeGreaterThan(0)
+    })
+  })
+
+  it('when submitBacktest rejects, runs[] stays empty and error is shown', async () => {
+    mockSubmit.mockRejectedValue(new Error('Network error'))
+    render(<App />)
+
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
+
+    await waitFor(() => {
+      expect(screen.getByText(/network error/i)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByRole('button', { name: /\+|new backtest/i }))
-    // Run card still in sidebar
-    expect(screen.queryAllByText(/persist-/i).length).toBeGreaterThan(0)
+    // No run cards should appear
+    expect(screen.queryByText(/processing/i)).not.toBeInTheDocument()
   })
 })

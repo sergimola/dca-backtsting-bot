@@ -73,7 +73,7 @@ export function useFormValidation(
     if (touched.amountPerTrade) {
       const n = parseFloat(values.amountPerTrade || '')
       if (!values.amountPerTrade || isNaN(n) || n <= 0 || n > 1) {
-        errors.amountPerTrade = 'Amount per trade must be between 0 and 1'
+        errors.amountPerTrade = 'Amount per trade must be greater than 0 and less than or equal to 1'
       }
     }
 

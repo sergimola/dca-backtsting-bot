@@ -1,158 +1,166 @@
 import React, { useState } from 'react'
-import type { BacktestFormState, BacktestResults } from './services/types'
+import type { BacktestFormState, BacktestResults, Run } from './services/types'
 import { submitBacktest } from './services/backtest-api'
-import { ConfigurationPage } from './pages/ConfigurationPage'
-import { PollingPage } from './pages/PollingPage'
-import { ResultsPage } from './pages/ResultsPage'
 import { ErrorBoundary } from './components/ErrorBoundary'
-
-type ViewType = 'configuration' | 'polling' | 'results'
-
-interface AppState {
-  currentView: ViewType
-  backtestId: string | null
-  results: BacktestResults | null
-  submittedConfig: BacktestFormState | null
-  error: string | null
-  isSubmitting: boolean
-}
+import { LeftSidebar } from './components/LeftSidebar'
+import { ConfigFormView } from './components/ConfigFormView'
+import { LiveTerminalView } from './components/LiveTerminalView'
+import { DashboardView } from './components/DashboardView'
+import { RunPollingController } from './components/RunPollingController'
 
 export default function App() {
-  const [state, setState] = useState<AppState>({
-    currentView: 'configuration',
-    backtestId: null,
-    results: null,
-    submittedConfig: null,
-    error: null,
-    isSubmitting: false
-  })
+  const [runs, setRuns] = useState<Run[]>([])
+  const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'history' | 'config'>('config')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
-  const handleSubmitConfig = async (config: BacktestFormState) => {
-    setState(prev => ({ ...prev, isSubmitting: true, error: null }))
-    
+  // ── State mutators ────────────────────────────────────────────────────────
+
+  const handleNewBacktest = () => {
+    setActiveView('config')
+    setSelectedRunId(null)
+    setSubmitError(null)
+  }
+
+  const handleSubmit = async (config: BacktestFormState) => {
+    setIsSubmitting(true)
+    setSubmitError(null)
     try {
-      const response = await submitBacktest(config)
-      setState(prev => ({
-        ...prev,
-        currentView: 'polling',
-        backtestId: response.backtestId,
-        submittedConfig: config,
-        isSubmitting: false
-      }))
+      const { backtestId } = await submitBacktest(config)
+      const shortId = backtestId.slice(0, 8)
+      const newRun: Run = {
+        backtestId,
+        shortId,
+        status: 'running',
+        config,
+        logs: [],
+        progress: 0,
+        createdAt: new Date().toISOString(),
+      }
+      setRuns(prev => [newRun, ...prev])
+      setSelectedRunId(backtestId)
+      setActiveView('history')
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to submit configuration'
-      setState(prev => ({
-        ...prev,
-        error: errorMessage,
-        isSubmitting: false
-      }))
+      setSubmitError(err instanceof Error ? err.message : 'Failed to submit backtest')
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
-  const handlePollingComplete = (results: BacktestResults) => {
-    setState(prev => ({
-      ...prev,
-      currentView: 'results',
-      results
-    }))
+  const handleRunComplete = (backtestId: string, results: BacktestResults) => {
+    setRuns(prev =>
+      prev.map(r =>
+        r.backtestId === backtestId
+          ? { ...r, status: 'completed' as const, results, progress: 100 }
+          : r
+      )
+    )
   }
 
-  const handlePollingError = (error: Error) => {
-    setState(prev => ({
-      ...prev,
-      error: error.message,
-      currentView: 'configuration'
-    }))
+  const handleRunFail = (backtestId: string, errorMsg: string) => {
+    setRuns(prev =>
+      prev.map(r =>
+        r.backtestId === backtestId
+          ? { ...r, status: 'failed' as const, logs: [...r.logs, errorMsg] }
+          : r
+      )
+    )
   }
 
-  const handlePollingTimeout = () => {
-    setState(prev => ({
-      ...prev,
-      error: 'Polling timeout: Backtest took longer than 5 minutes'
-    }))
+  const handleLogsUpdate = (backtestId: string, newLog: string) => {
+    setRuns(prev =>
+      prev.map(r =>
+        r.backtestId === backtestId ? { ...r, logs: [...r.logs, newLog] } : r
+      )
+    )
   }
 
-  const handleResetForm = () => {
-    setState(prev => ({
-      ...prev,
-      currentView: 'configuration',
-      backtestId: null,
-      results: null,
-      submittedConfig: null,
-      error: null
-    }))
+  const handleProgressUpdate = (backtestId: string, progress: number) => {
+    setRuns(prev =>
+      prev.map(r =>
+        r.backtestId === backtestId ? { ...r, progress } : r
+      )
+    )
   }
 
-  const handleModifyConfig = () => {
-    setState(prev => ({
-      ...prev,
-      currentView: 'configuration'
-    }))
+  const handleSelectRun = (backtestId: string) => {
+    setSelectedRunId(backtestId)
+    setActiveView('history')
+  }
+
+  const handleViewDashboard = (backtestId: string) => {
+    setSelectedRunId(backtestId)
+    setActiveView('history')
+  }
+
+  // ── Render helpers ────────────────────────────────────────────────────────
+
+  const selectedRun = runs.find(r => r.backtestId === selectedRunId) ?? null
+
+  const renderMainPane = () => {
+    if (activeView === 'config') {
+      return (
+        <ConfigFormView
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          error={submitError}
+        />
+      )
+    }
+    if (!selectedRun) {
+      return (
+        <ConfigFormView
+          onSubmit={handleSubmit}
+          isSubmitting={isSubmitting}
+          error={submitError}
+        />
+      )
+    }
+    if (selectedRun.status === 'running' || selectedRun.status === 'failed') {
+      return <LiveTerminalView run={selectedRun} />
+    }
+    return <DashboardView run={selectedRun} />
   }
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
-        <div className={state.currentView === 'results' ? 'max-w-6xl mx-auto' : 'max-w-2xl mx-auto'}>
-          <header className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-100 mb-2">DCA Backtesting Bot</h1>
-            <p className="text-lg text-gray-400">Configure your Dollar-Cost Averaging strategy</p>
-          </header>
+      {/* Invisible polling controllers — one per running run */}
+      {runs.filter(r => r.status === 'running').map(r => (
+        <RunPollingController
+          key={r.backtestId}
+          backtestId={r.backtestId}
+          onComplete={handleRunComplete}
+          onFail={handleRunFail}
+          onLogsUpdate={handleLogsUpdate}
+          onProgressUpdate={handleProgressUpdate}
+        />
+      ))}
 
-          {/* Error Alert - App-level error display */}
-          {state.error && (
-            <div className="bg-red-900/50 border-l-4 border-red-500 p-4 mb-6 rounded">
-              <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-red-300 font-semibold">Error</p>
-                  <p className="text-red-400 mt-1">{state.error}</p>
-                </div>
-                <button
-                  onClick={() => setState(prev => ({ ...prev, error: null }))}
-                  className="text-red-400 hover:text-red-200 font-bold text-xl"
-                  aria-label="Dismiss error"
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-          )}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+        @keyframes shimmer {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      `}</style>
 
-          {state.currentView !== 'results' ? (
-            <div className="bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-700">
-              {state.currentView === 'configuration' && (
-                <ConfigurationPage
-                  onSubmit={handleSubmitConfig}
-                  initialValues={state.submittedConfig || undefined}
-                  error={state.error || undefined}
-                  isSubmitting={state.isSubmitting}
-                />
-              )}
+      <div className="h-screen overflow-hidden bg-[#050810] text-slate-200 font-sans flex">
+        <LeftSidebar
+          runs={runs}
+          selectedRunId={selectedRunId}
+          onNewBacktest={handleNewBacktest}
+          onSelectRun={handleSelectRun}
+          onViewDashboard={handleViewDashboard}
+        />
 
-              {state.currentView === 'polling' && state.backtestId && (
-                <PollingPage
-                  backtestId={state.backtestId}
-                  onComplete={handlePollingComplete}
-                  onError={handlePollingError}
-                  onTimeout={handlePollingTimeout}
-                />
-              )}
-            </div>
-          ) : (
-            state.results && (
-              <ResultsPage
-                results={state.results}
-                onReset={handleResetForm}
-                onModify={handleModifyConfig}
-              />
-            )
-          )}
-
-          <footer className="text-center mt-8 text-sm text-gray-500">
-            <p>DCA Backtesting Engine</p>
-          </footer>
-        </div>
+        <main className="flex-1 overflow-y-auto custom-scrollbar">
+          {renderMainPane()}
+        </main>
       </div>
     </ErrorBoundary>
   )
 }
+

@@ -55,11 +55,14 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
     // This POST request will block until the Go engine finishes (max 35s)
     const response = await axios.post(`${API_BASE_URL}/backtest`, apiPayload, { headers: getHeaders() });
 
-    if (response.status !== 200 && response.status !== 201 && response.status !== 202) {
-      throw new Error(`Expected success status, received ${response.status}`);
+    if (response.status >= 202) {
+      throw new Error(`Expected status 201, received ${response.status}`);
     }
 
-    const backtestId = response.data.request_id;
+    const backtestId = response.data.backtestId || response.data.request_id;
+    if (!backtestId) {
+      throw new Error('Missing backtestId in response');
+    }
     
     // Store the full result in memory along with original config for padding
     // Number of orders is needed for padding safety order usage array
@@ -70,39 +73,45 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
 
     return { backtestId };
   } catch (error: any) {
+    if (error.message === 'Missing backtestId in response' || error.message?.startsWith('Expected status')) {
+      throw error;
+    }
     console.error('Submission error:', error.response?.data || error.message);
-    throw new Error(error.response?.data?.error?.message || 'Failed to submit backtest');
+    const specificMsg = error.response?.data?.error?.message;
+    throw specificMsg ? new Error(specificMsg) : error;
   }
 }
 
 export async function getStatus(backtestId: string): Promise<{ status: 'pending' | 'downloading' | 'completed' | 'failed'; error?: string }> {
-  // If the result is already cached (POST completed), return completed immediately.
-  if (resultCache.has(backtestId)) {
+  // If the result is already cached with full event data (POST completed), return completed immediately.
+  const cached = resultCache.get(backtestId);
+  if (cached && Array.isArray(cached.events)) {
     return { status: 'completed' };
   }
 
   // For in-flight backtests, poll the status endpoint so the UI can reflect
   // intermediate states like DOWNLOADING_DATA.
-  try {
-    const response = await axios.get(`${API_BASE_URL}/backtest/${backtestId}/status`, { headers: getHeaders() });
-    const apiStatus: string = response.data?.status ?? 'PENDING';
+  const response = await axios.get(`${API_BASE_URL}/backtest/${backtestId}/status`, { headers: getHeaders() });
 
-    switch (apiStatus) {
-      case 'COMPLETE':
-        return { status: 'completed' };
-      case 'DOWNLOADING_DATA':
-        return { status: 'downloading' };
-      case 'RUNNING':
-        return { status: 'pending' };
-      case 'FAILED':
-        return { status: 'failed', error: response.data?.error ?? 'Backtest failed' };
-      case 'PENDING':
-      default:
-        return { status: 'pending' };
-    }
-  } catch {
-    // Status endpoint not available (e.g. blocking-POST architecture) — treat as pending.
-    return { status: 'pending' };
+  if (response.status !== 200) {
+    throw new Error(`Expected status 200, received ${response.status}`);
+  }
+
+  const apiStatus: string = (response.data?.status ?? 'PENDING').toUpperCase();
+
+  switch (apiStatus) {
+    case 'COMPLETE':
+    case 'COMPLETED':
+      return { status: 'completed' };
+    case 'DOWNLOADING_DATA':
+      return { status: 'downloading' };
+    case 'RUNNING':
+      return { status: 'pending' };
+    case 'FAILED':
+      return { status: 'failed', error: response.data?.error ?? 'Backtest failed' };
+    case 'PENDING':
+    default:
+      return { status: 'pending' };
   }
 }
 
@@ -123,10 +132,23 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   PositionClosed:   'EXIT',
 };
 
+async function getResultsFromHttp(backtestId: string): Promise<BacktestResults> {
+  const response = await axios.get(`${API_BASE_URL}/backtest/${backtestId}/results`, { headers: getHeaders() });
+  if (response.status !== 200) {
+    throw new Error(`Expected status 200, received ${response.status}`);
+  }
+  const data = response.data as BacktestResults;
+  if (!data || !data.pnlSummary) {
+    throw new Error('Malformed results response');
+  }
+  return data;
+}
+
 export async function getResults(backtestId: string): Promise<BacktestResults> {
   const data = resultCache.get(backtestId);
-  if (!data) {
-    throw new Error('Results not found in local cache');
+  if (!data || !Array.isArray(data.events)) {
+    // Fallback: try HTTP GET when not in cache or incomplete cache entry
+    return getResultsFromHttp(backtestId);
   }
 
   // Extract number of orders for padding safety order usage

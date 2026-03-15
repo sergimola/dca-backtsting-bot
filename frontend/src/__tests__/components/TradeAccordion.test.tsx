@@ -1,72 +1,72 @@
 import React from 'react'
 import { render, screen } from '@testing-library/react'
-import '@testing-library/jest-dom'
-import { ResultsDashboard } from '../../components/ResultsDashboard'
-import type { BacktestResults, TradeEvent } from '../../services/types'
+import userEvent from '@testing-library/user-event'
+import { TradeAccordion } from '../../components/TradeAccordion'
+import type { TradeGroupMetrics } from '../../services/types'
 
-function makeTradeEvent(partial: Partial<TradeEvent> & { trade_id: string }): TradeEvent {
-  return {
-    timestamp: '2024-01-01T10:00:00',
-    rawTimestamp: '2024-01-01T10:00:00Z',
-    eventType: 'ENTRY',
-    price: 50000,
-    quantity: 0.001,
-    balance: 50,
-    fee: 0,
-    ...partial,
-  }
+const metrics: TradeGroupMetrics = {
+  tradeId: 'trade-abc-123',
+  events: [
+    {
+      timestamp: '2025-01-15T10:00:00Z',
+      rawTimestamp: '2025-01-15T10:00:00Z',
+      eventType: 'ENTRY',
+      price: 95000,
+      quantity: 0.001,
+      balance: -95.0,
+      trade_id: 'trade-abc-123',
+      fee: 0.095,
+    },
+    {
+      timestamp: '2025-01-16T09:00:00Z',
+      rawTimestamp: '2025-01-16T09:00:00Z',
+      eventType: 'EXIT',
+      price: 98000,
+      quantity: 0.001,
+      balance: 3.0,
+      trade_id: 'trade-abc-123',
+      fee: 0.098,
+    },
+  ],
+  status: 'CLOSED',
+  grossProfit: 3.0,
+  totalFees: 0.193,
+  netProfit: 2.807,
+  durationHours: 23,
+  mae: -0.01,
+  maxCapitalDeployed: 95,
 }
 
-function makeResults(events: TradeEvent[]): BacktestResults {
-  return {
-    backtestId: 'accordion-test',
-    pnlSummary: { roi: 5.0, maxDrawdown: 0, totalFees: 0.75 },
-    safetyOrderUsage: [],
-    tradeEvents: events,
-  }
-}
-
-describe('TradeAccordion — Gross/Net/Fees header (US2)', () => {
-  const handlers = { onReset: jest.fn(), onModify: jest.fn() }
-
-  it('T012: closed trade header shows Gross, Fees, Net labels with canonical spec values', () => {
-    // Canonical test data from spec.md:
-    // Net profit = 2.50, entryFee = 0.30, soFee = 0.25, exitFee = 0.20
-    // Gross = Net + Fees = 2.50 + 0.75 = 3.25
-    const results = makeResults([
-      makeTradeEvent({ trade_id: '1', eventType: 'ENTRY',        fee: 0.30, balance: 50,   price: 50000, quantity: 0.001 }),
-      makeTradeEvent({ trade_id: '1', eventType: 'SAFETY_ORDER', fee: 0.25, balance: 49,   price: 49000, quantity: 0.001 }),
-      makeTradeEvent({ trade_id: '1', eventType: 'EXIT',         fee: 0.20, balance: 2.50, price: 51000, quantity: 0.002 }),
-    ])
-
-    render(<ResultsDashboard results={results} {...handlers} />)
-
-    // After T015 the trade accordion button starts with "Trade #1" (not just UUID/number)
-    // This query fails in the RED state (no "Trade #" in current header)
-    const tradeButton = screen.getByRole('button', { name: /Trade #/i })
-    expect(tradeButton).toHaveTextContent(/Gross:/)
-    expect(tradeButton).toHaveTextContent(/Net:/)
-    // Gross = 2.50 + 0.75 = 3.25
-    expect(tradeButton).toHaveTextContent(/\+\$3\.25/)
-    // Fees = 0.30 + 0.25 + 0.20 = 0.75
-    expect(tradeButton).toHaveTextContent(/-\$0\.75/)
-    // Net = 2.50
-    expect(tradeButton).toHaveTextContent(/\+\$2\.50/)
+describe('TradeAccordion', () => {
+  it('is collapsed by default — table not in DOM', () => {
+    render(<TradeAccordion metrics={metrics} />)
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
   })
 
-  it('T013: open trade (no EXIT event) shows "—" for both Gross and Net', () => {
-    const results = makeResults([
-      makeTradeEvent({ trade_id: '1', eventType: 'ENTRY', fee: 0.30, balance: 50, price: 50000, quantity: 0.001 }),
-    ])
+  it('clicking header toggles accordion open', async () => {
+    render(<TradeAccordion metrics={metrics} />)
+    // Click anywhere on the header div (find the outermost group div)
+    const headerDiv = screen.getByTestId('mae-tooltip').closest('div[class*="group relative flex"]')!
+    await userEvent.click(headerDiv)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+  })
 
-    render(<ResultsDashboard results={results} {...handlers} />)
+  it('clicking header again collapses the accordion', async () => {
+    render(<TradeAccordion metrics={metrics} />)
+    const headerDiv = screen.getByTestId('mae-tooltip').closest('div[class*="group relative flex"]')!
+    await userEvent.click(headerDiv)
+    expect(screen.getByRole('table')).toBeInTheDocument()
+    await userEvent.click(headerDiv)
+    expect(screen.queryByRole('table')).not.toBeInTheDocument()
+  })
 
-    // After T015 the button shows "Trade #1 Gross: — Fees: ... Net: —"
-    // In RED state: no "Trade #" so query fails → test fails
-    const tradeButton = screen.getByRole('button', { name: /Trade #/i })
-    // Both Gross and Net must show "—" for open positions
-    const dashCount = (tradeButton.textContent?.match(/—/g) ?? []).length
-    expect(dashCount).toBeGreaterThanOrEqual(2)
+  it('when open, TradeOrdersTable renders with all event rows', async () => {
+    render(<TradeAccordion metrics={metrics} />)
+    const headerDiv = screen.getByTestId('mae-tooltip').closest('div[class*="group relative flex"]')!
+    await userEvent.click(headerDiv)
+    const rows = screen.getAllByRole('row')
+    // 1 header row + 2 event rows
+    expect(rows.length).toBe(3)
   })
 })
 

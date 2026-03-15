@@ -1,111 +1,140 @@
 import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import App from '../../App'
-import * as backtestAPI from '../../services/backtest-api'
 
-// Mock the API
-jest.mock('../../services/backtest-api')
+// Mock API + polling at module boundary
+jest.mock('../../services/backtest-api', () => ({
+  submitBacktest: jest.fn(),
+  getStatus: jest.fn(),
+  getResults: jest.fn(),
+}))
 
-const mockBacktestAPI = backtestAPI as jest.Mocked<typeof backtestAPI>
+jest.mock('../../hooks/useRunPolling', () => ({
+  useRunPolling: jest.fn(),
+}))
 
-describe('Error Handling Integration Tests', () => {
+import { submitBacktest } from '../../services/backtest-api'
+import { useRunPolling } from '../../hooks/useRunPolling'
+const mockSubmit = submitBacktest as jest.MockedFunction<typeof submitBacktest>
+const mockUseRunPolling = useRunPolling as jest.MockedFunction<typeof useRunPolling>
+
+const fillForm = () => {
+  fireEvent.change(screen.getByLabelText(/trading pair/i), { target: { value: 'BTC/USDT' } })
+  fireEvent.change(screen.getByLabelText(/start date/i), { target: { value: '2024-01-01T00:00' } })
+  fireEvent.change(screen.getByLabelText(/end date/i), { target: { value: '2024-06-01T00:00' } })
+  fireEvent.change(screen.getByLabelText(/entry price/i), { target: { value: '50000' } })
+  fireEvent.change(screen.getByLabelText(/price scale/i), { target: { value: '1.1' } })
+  fireEvent.change(screen.getByLabelText(/amount scale/i), { target: { value: '2' } })
+  fireEvent.change(screen.getByLabelText(/number of orders/i), { target: { value: '5' } })
+  fireEvent.change(screen.getByLabelText(/amount per trade/i), { target: { value: '0.1' } })
+  fireEvent.change(screen.getByLabelText(/multiplier/i), { target: { value: '1' } })
+  fireEvent.change(screen.getByLabelText(/take profit/i), { target: { value: '2.5' } })
+  fireEvent.change(screen.getByLabelText(/account balance/i), { target: { value: '1000' } })
+}
+
+describe('Error handling integration (T035 / T037)', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    mockUseRunPolling.mockReturnValue(undefined as any)
   })
 
-  describe('T077.1: Network timeout handling', () => {
-    test('T077.1: Timeout error displays user-friendly message', async () => {
-      const timeoutError = new Error('Request timeout: No response within 10 seconds')
-      mockBacktestAPI.submitBacktest.mockRejectedValue(timeoutError)
+  // ── T035: submission error flow ─────────────────────────────────────────
+  it('T035: when submitBacktest rejects, runs[] length stays 0', async () => {
+    mockSubmit.mockRejectedValue(new Error('Server unavailable'))
+    render(<App />)
 
-      render(<App />)
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
 
-      expect(screen.getByText('Configure your Dollar-Cost Averaging strategy')).toBeInTheDocument()
+    await waitFor(() => {
+      // No RunCard should appear in sidebar
+      expect(screen.queryAllByRole('listitem').length).toBe(0)
     })
   })
 
-  describe('T077.2: Validation error handling', () => {
-    test('T077.2: 400 validation error displays error message', async () => {
-      const validationError = new Error('Validation failed: Invalid entry price')
-      mockBacktestAPI.submitBacktest.mockRejectedValue(validationError)
+  it('T035: when submitBacktest rejects, ConfigFormView still shows', async () => {
+    mockSubmit.mockRejectedValue(new Error('Network error'))
+    render(<App />)
 
-      render(<App />)
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
 
-      expect(screen.getByText('Configure your Dollar-Cost Averaging strategy')).toBeInTheDocument()
+    await waitFor(() => {
+      // ConfigFormView should still be visible (form stays on screen)
+      expect(screen.getByText(/new backtest/i)).toBeInTheDocument()
     })
   })
 
-  describe('T077.3: Server error handling', () => {
-    test('T077.3: 500 server error shows generic message', async () => {
-      const serverError = new Error('Server error: Internal server error')
-      mockBacktestAPI.submitBacktest.mockRejectedValue(serverError)
+  it('T035: when submitBacktest rejects, error message is shown in ConfigFormView', async () => {
+    mockSubmit.mockRejectedValue(new Error('Server unavailable'))
+    render(<App />)
 
-      render(<App />)
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
 
-      expect(screen.getByText('Configure your Dollar-Cost Averaging strategy')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/server unavailable/i)).toBeInTheDocument()
     })
   })
 
-  describe('T077.4: Malformed API response', () => {
-    test('T077.4: Malformed response shows data error', async () => {
-      const dataError = new Error('Response parse error: Invalid JSON response')
-      mockBacktestAPI.submitBacktest.mockRejectedValue(dataError)
+  // ── T037: polling failure → failed run card ──────────────────────────────
+  it('T037: onFail callback updates run status to failed', async () => {
+    // Capture the onFail callback passed to useRunPolling
+    let capturedOnFail: ((backtestId: string, msg: string) => void) | undefined
+    mockUseRunPolling.mockImplementation(({ onFail }) => {
+      capturedOnFail = onFail
+      return undefined as any
+    })
 
-      render(<App />)
+    mockSubmit.mockResolvedValue({ backtestId: 'fail-run-001' })
+    render(<App />)
 
-      expect(screen.getByText('Configure your Dollar-Cost Averaging strategy')).toBeInTheDocument()
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
+
+    await waitFor(() => {
+      expect(screen.queryAllByText(/fail-run/i).length).toBeGreaterThan(0)
+    })
+
+    // Trigger failure
+    expect(capturedOnFail).toBeDefined()
+    capturedOnFail!('fail-run-001', 'Connection lost')
+
+    await waitFor(() => {
+      // RunCard should show failed indicator
+      expect(screen.getByText(/failed/i)).toBeInTheDocument()
     })
   })
 
-  describe('T077.5: Error alert styling', () => {
-    test('T077.5: Error alert is properly styled with red border', async () => {
-      render(<App />)
-
-      // Component renders successfully
-      expect(screen.getByText('DCA Backtesting Bot')).toBeInTheDocument()
+  it('T037: after failure, RunPollingController is no longer rendered (no useRunPolling call with that id)', async () => {
+    let onFailRef: ((backtestId: string, msg: string) => void) | undefined
+    mockUseRunPolling.mockImplementation(({ onFail }) => {
+      onFailRef = onFail
+      return undefined as any
     })
-  })
 
-  describe('T077.6: Multiple error scenarios', () => {
-    test('T077.6: Different error types can occur independently', async () => {
-      const errors = [
-        new Error('Network error'),
-        new Error('Validation error'),
-        new Error('Server error'),
-        new Error('Timeout error'),
-        new Error('Data error')
-      ]
+    mockSubmit.mockResolvedValue({ backtestId: 'fail-run-002' })
+    render(<App />)
 
-      for (const error of errors) {
-        jest.clearAllMocks()
-        mockBacktestAPI.submitBacktest.mockRejectedValue(error)
-
-        const { unmount } = render(<App />)
-        expect(screen.getByText('Configure your Dollar-Cost Averaging strategy')).toBeInTheDocument()
-        unmount()
-      }
+    fillForm()
+    fireEvent.click(screen.getByRole('button', { name: /run backtest|start|submit/i }))
+    await waitFor(() => {
+      expect(screen.queryAllByText(/fail-run/i).length).toBeGreaterThan(0)
     })
-  })
 
-  describe('T077.7: Error recovery', () => {
-    test('T077.7: User can attempt to recover from error', async () => {
-      mockBacktestAPI.submitBacktest.mockRejectedValue(new Error('Test error'))
+    const callCountBefore = mockUseRunPolling.mock.calls.length
+    onFailRef!('fail-run-002', 'Error')
 
-      render(<App />)
-
-      // User should be able to retry or go back
-      expect(screen.getByText('Configure your Dollar-Cost Averaging strategy')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText(/failed/i)).toBeInTheDocument()
     })
-  })
 
-  describe('T077.8: Error boundary catches render errors', () => {
-    test('T077.8: ComponentDidCatch lifecycle method implemented', async () => {
-      // Verify App is wrapped with ErrorBoundary
-      render(<App />)
-
-      expect(screen.getByText('DCA Backtesting Bot')).toBeInTheDocument()
-      expect(screen.getByText(/configure your dollar-cost averaging/i)).toBeInTheDocument()
-    })
+    // After fail, the RunPollingController for this run should be unmounted
+    // (no new calls to useRunPolling for that backtestId)
+    const callsAfter = mockUseRunPolling.mock.calls.filter(
+      c => c[0].backtestId === 'fail-run-002'
+    )
+    // All existing calls should have been from before the failure
+    expect(callsAfter.length).toBeLessThanOrEqual(callCountBefore)
   })
 })
