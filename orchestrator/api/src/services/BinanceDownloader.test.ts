@@ -28,12 +28,12 @@ jest.mock('ccxt', () => {
 // Mock ClickHouseWriter
 jest.mock('./ClickHouseWriter');
 
-// Mock ClickHouseClient so the sync-receipt insert doesn't hit a real DB
-jest.mock('./ClickHouseClient', () => ({
-  chClient: {
-    insert: jest.fn().mockResolvedValue(undefined),
-  },
-  database: process.env.CLICKHOUSE_DATABASE ?? 'data',
+// Mock SyncLedgerRepository so no real Postgres connection is made
+jest.mock('./SyncLedgerRepository', () => ({
+  SyncLedgerRepository: jest.fn().mockImplementation(() => ({
+    upsert: jest.fn().mockResolvedValue(undefined),
+    checkCoverage: jest.fn().mockResolvedValue(false),
+  })),
 }));
 
 // Mock the sleep utility used between pages
@@ -43,10 +43,8 @@ jest.mock('../utils/sleep', () => ({
 
 import { sleep } from '../utils/sleep';
 import ccxt from 'ccxt';
-import { chClient } from './ClickHouseClient';
 
 const mockedSleep = jest.mocked(sleep);
-const mockedChInsert = jest.mocked(chClient.insert);
 
 /**
  * Build fake OHLCV rows: [timestamp_ms, open, high, low, close, volume]
@@ -97,6 +95,11 @@ describe('BinanceDownloader', () => {
 
     downloader = new BinanceDownloader(mockWriter);
     (downloader as any).exchange = mockExchange;
+    // Reset the SyncLedgerRepository mock on the downloader instance
+    (downloader as any).syncLedger = {
+      upsert: jest.fn().mockResolvedValue(undefined),
+      checkCoverage: jest.fn().mockResolvedValue(false),
+    };
   });
 
   it('BD1: single full page (1,000 candles) → 1× insertBatch', async () => {
@@ -153,7 +156,7 @@ describe('BinanceDownloader', () => {
     }
   });
 
-  it('BD5: sleep(250) is called between pages', async () => {
+  it('BD5: sleep(50) is called between pages', async () => {
     const start = new Date('2025-01-01T00:00:00Z').getTime();
     mockExchange.fetchOHLCV
       .mockResolvedValueOnce(makeOHLCV(1000, start))
@@ -162,27 +165,26 @@ describe('BinanceDownloader', () => {
 
     await downloader.downloadAndStore(symbol, startDate, endDate);
 
-    // sleep(250) must be called at least once between the pages
-    expect(mockedSleep).toHaveBeenCalledWith(250);
+    // sleep(50) must be called at least once between the pages
+    expect(mockedSleep).toHaveBeenCalledWith(50);
   });
 
-  it('BD6: sync receipt is written to market_data_syncs on completion', async () => {
+  it('BD6: sync receipt is written to Postgres market_data_syncs on completion', async () => {
     const historicalStart = new Date('2025-01-01T00:00:00Z').getTime();
+    const lastCandleTs = historicalStart + 99 * 60_000;
     mockExchange.fetchOHLCV
       .mockResolvedValueOnce(makeOHLCV(100, historicalStart))
       .mockResolvedValueOnce([]);
 
     await downloader.downloadAndStore(symbol, startDate, endDate);
 
-    expect(mockedChInsert).toHaveBeenCalledTimes(1);
-    const insertCall = mockedChInsert.mock.calls[0][0] as any;
-    const expectedDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
-    expect(insertCall.table).toBe(`${expectedDb}.market_data_syncs`);
-    const receipt = insertCall.values[0];
-    expect(receipt.symbol).toBe('BTCUSDT');               // '/' stripped, uppercased
-    expect(receipt.synced_from).toBe(startDate.toISOString().replace('T', ' ').replace('Z', ''));
-    expect(receipt.synced_to).toBe(endDate.toISOString().replace('T', ' ').replace('Z', ''));
-    expect(receipt.synced_at).toBeDefined();
+    const mockSyncLedger = (downloader as any).syncLedger;
+    expect(mockSyncLedger.upsert).toHaveBeenCalledTimes(1);
+    const [upsertSymbol, upsertStart, upsertEnd] = mockSyncLedger.upsert.mock.calls[0];
+    expect(upsertSymbol).toBe('BTCUSDT');              // '/' stripped, uppercased
+    expect(upsertStart).toEqual(startDate);            // actual start date
+    // upsertEnd should be new Date(lastCandleTs) — the last fetched candle
+    expect(upsertEnd.getTime()).toBe(lastCandleTs);
   });
 
   it('BD7: sync receipt is written even when no candles are fetched (empty range)', async () => {
@@ -190,11 +192,12 @@ describe('BinanceDownloader', () => {
 
     await downloader.downloadAndStore(symbol, startDate, endDate);
 
-    // No data inserted into market_data, but sync receipt must still be written
+    // No data inserted into market_data, but Postgres sync receipt must still be written
     expect(mockWriter.insertBatch).not.toHaveBeenCalled();
-    expect(mockedChInsert).toHaveBeenCalledTimes(1);
-    const insertCall = mockedChInsert.mock.calls[0][0] as any;
-    const expectedDb = process.env.CLICKHOUSE_DATABASE ?? 'data';
-    expect(insertCall.table).toBe(`${expectedDb}.market_data_syncs`);
+    const mockSyncLedger = (downloader as any).syncLedger;
+    expect(mockSyncLedger.upsert).toHaveBeenCalledTimes(1);
+    const [upsertSymbol, upsertStart] = mockSyncLedger.upsert.mock.calls[0];
+    expect(upsertSymbol).toBe('BTCUSDT');
+    expect(upsertStart).toEqual(startDate);
   });
 });

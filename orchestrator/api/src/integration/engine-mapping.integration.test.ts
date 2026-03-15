@@ -37,8 +37,11 @@ const BINARY_EXISTS =
   fs.existsSync(BINARY_PATH) ||
   fs.existsSync(BINARY_PATH.replace('.exe', '') + '.exe');
 
-/** Conditionally skip test if binary is unavailable */
-const itIfBinary = BINARY_EXISTS ? it : it.skip;
+// Direct binary invocation tests also need ClickHouse (binary writes results to CH)
+const CLICKHOUSE_AVAILABLE = !!(process.env.CLICKHOUSE_HOST);
+
+/** Conditionally skip test if binary or ClickHouse is unavailable */
+const itIfBinary = (BINARY_EXISTS && CLICKHOUSE_AVAILABLE) ? it : it.skip;
 
 // ─── CSV Fixture ─────────────────────────────────────────────────────────────
 
@@ -171,7 +174,7 @@ describe('T005 — Canonical Integration Tests', () => {
      *   → A_0 = 1000*3/7 ≈ 428.57
      */
     beforeAll(async () => {
-      if (!BINARY_EXISTS) return;
+      if (!BINARY_EXISTS || !CLICKHOUSE_AVAILABLE) return;
 
       sddResult = await invokeEngine({
         trading_pair: 'LTC/USDT',
@@ -339,29 +342,27 @@ describe('T005 — Canonical Integration Tests', () => {
     };
 
     /**
-     * IT-007: 404 for non-existent trading pair CSV
-     * MarketDataResolver cannot find NONEXISTENTUSDT-1m-2024-01.csv
+     * IT-007: 202 accepted for any trading pair (CSV check is async — happens in BackgroundWorker)
+     * The HTTP layer is decoupled from market data resolution.
      */
-    it('IT-007: returns 404 when market data CSV does not exist', async () => {
+    it('IT-007: returns 202 for any trading_pair (async architecture — no sync CSV check)', async () => {
       const app = getTestApp();
       const res = await request(app)
-        .post('/backtest')
+        .post('/backtests')
         .set('Content-Type', 'application/json')
         .send({ ...basePayload, trading_pair: 'NONEXISTENT/USDT' });
 
-      expect(res.status).toBe(404);
-      expect(res.body.error).toBeDefined();
-      expect(res.body.error.code).toBe('CSV_FILE_NOT_FOUND');
+      expect(res.status).toBe(202);
+      expect(res.body.backtestId).toBeDefined();
     });
 
     /**
-     * IT-008: 400 for cross-month date range
-     * Validation middleware rejects start_date and end_date in different months
+     * IT-008: 202 accepted for cross-month date ranges (same_month_guard was removed per spec 010)
      */
-    it('IT-008: returns 400 when start_date and end_date span different months', async () => {
+    it('IT-008: returns 202 for multi-month range (same_month_guard removed)', async () => {
       const app = getTestApp();
       const res = await request(app)
-        .post('/backtest')
+        .post('/backtests')
         .set('Content-Type', 'application/json')
         .send({
           ...basePayload,
@@ -369,9 +370,8 @@ describe('T005 — Canonical Integration Tests', () => {
           end_date: '2024-02-10T23:59:59Z',
         });
 
-      expect(res.status).toBe(400);
-      expect(res.body.error).toBeDefined();
-      expect(res.body.error.code).toBe('VALIDATION_OUT_OF_BOUNDS');
+      expect(res.status).toBe(202);
+      expect(res.body.backtestId).toBeDefined();
     });
   });
 });

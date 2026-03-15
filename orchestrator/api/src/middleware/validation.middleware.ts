@@ -41,7 +41,6 @@ export function validationMiddleware(req: Request, _res: Response, next: NextFun
       empty_value: ErrorCode.VALIDATION_MISSING_FIELD,
       invalid_format: ErrorCode.VALIDATION_TYPE_ERROR,
       invalid_value: ErrorCode.VALIDATION_OUT_OF_BOUNDS,
-      same_month_guard: ErrorCode.VALIDATION_OUT_OF_BOUNDS,
       length_mismatch: ErrorCode.VALIDATION_TYPE_ERROR,
     };
     // Preserve an explicit code if already set (e.g. errors.ValidationError),

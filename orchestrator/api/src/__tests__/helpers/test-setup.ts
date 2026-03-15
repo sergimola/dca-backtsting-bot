@@ -4,18 +4,11 @@
  */
 
 import { Express } from 'express';
-import * as fsPromises from 'fs/promises';
 import * as path from 'path';
 import { createApp } from '../../app.js';
-import { ResultStore } from '../../services/ResultStore.js';
-import { ProcessManager } from '../../services/ProcessManager.js';
-import { BacktestService } from '../../services/BacktestService.js';
-import { ResultAggregator } from '../../services/ResultAggregator.js';
-import { IdempotencyCache } from '../../services/IdempotencyCache.js';
+import { BacktestJobRepository } from '../../services/BacktestJobRepository.js';
+import { SyncLedgerRepository } from '../../services/SyncLedgerRepository.js';
 import { HealthMonitor } from '../../services/HealthMonitor.js';
-import { GapResolver } from '../../services/GapResolver.js';
-import { BinanceDownloader } from '../../services/BinanceDownloader.js';
-import { ClickHouseWriter } from '../../services/ClickHouseWriter.js';
 
 /**
  * Check if Core Engine binary is available
@@ -27,67 +20,40 @@ export function hasCoreEngineBinary(): boolean {
 }
 
 let testAppInstance: Express | null = null;
-let testServices: {
-  resultStore: ResultStore;
-  processManager: ProcessManager;
-  backtestService: BacktestService;
-  resultAggregator: ResultAggregator;
-  idempotencyCache: IdempotencyCache;
-  healthMonitor: HealthMonitor;
-} | null = null;
-let tempDir: string | null = null;
 
 /**
- * Initialize a test Express app with all services
- * Routes are fully wired and functional for integration testing
+ * Initialize a test Express app with mock repositories (no real DB).
+ * Routes are fully wired for integration testing. Repo methods are
+ * jest.fn() stubs so validation errors (400s) are testable without Postgres.
  */
 export async function setupTestApp(): Promise<Express> {
   if (testAppInstance) {
     return testAppInstance;
   }
 
-  // Create temporary directory for test results
-  tempDir = path.join(__dirname, '../../../.test-data', `run-${Date.now()}`);
-  await fsPromises.mkdir(tempDir, { recursive: true });
+  // Mock repositories — no real DB connection required for acceptance tests
+  const backtestJobRepository = {
+    create: jest.fn().mockResolvedValue({ id: 'test-job-id', status: 'pending', config: {} }),
+    findById: jest.fn().mockResolvedValue(null),
+    listWithoutBlobs: jest.fn().mockResolvedValue([]),
+    claimNext: jest.fn().mockResolvedValue(null),
+    markCompleted: jest.fn().mockResolvedValue(undefined),
+    markFailed: jest.fn().mockResolvedValue(undefined),
+  } as unknown as BacktestJobRepository;
 
-  // Initialize services
-  const resultStore = new ResultStore(tempDir, 7);
-  await resultStore.initialize();
+  const syncLedgerRepository = {
+    checkCoverage: jest.fn().mockResolvedValue(false),
+    upsert: jest.fn().mockResolvedValue(undefined),
+  } as unknown as SyncLedgerRepository;
 
-  const processManager = new ProcessManager();
-  const mockBinaryPath = path.resolve(process.cwd(), 'testdata', 'mock-core-engine.js');
-  const backtestService = new BacktestService(mockBinaryPath);
-  const resultAggregator = new ResultAggregator();
-  const idempotencyCache = new IdempotencyCache(7);
-  const coreEngineBinaryPath = mockBinaryPath;
-  const healthMonitor = new HealthMonitor(processManager, coreEngineBinaryPath);
+  const coreEngineBinaryPath = path.resolve(process.cwd(), 'testdata', 'mock-core-engine.js');
+  const healthMonitor = new HealthMonitor(coreEngineBinaryPath);
 
-  // Use stub gap resolver (always reports no gap) and stub downloader for tests
-  const chWriter = new ClickHouseWriter();
-  const gapResolver = new GapResolver();
-  const downloader = new BinanceDownloader(chWriter);
-
-  // Create Express app
   testAppInstance = createApp({
-    resultStore,
-    processManager,
-    backtestService,
-    resultAggregator,
-    idempotencyCache,
+    backtestJobRepository,
+    syncLedgerRepository,
     healthMonitor,
-    coreEngineBinaryPath,
-    gapResolver,
-    downloader,
   });
-
-  testServices = {
-    resultStore,
-    processManager,
-    backtestService,
-    resultAggregator,
-    idempotencyCache,
-    healthMonitor,
-  };
 
   return testAppInstance;
 }
@@ -103,50 +69,46 @@ export function getTestApp(): Express {
 }
 
 /**
- * Get test services for assertions
+ * Get test services for assertions (stub — repos are mocks)
  */
 export function getTestServices() {
-  if (!testServices) {
-    throw new Error('Test services not initialized. Call setupTestApp() first.');
-  }
-  return testServices;
+  return {};
 }
 
 /**
  * Clean up test environment
  */
 export async function cleanupTestApp(): Promise<void> {
-  if (tempDir) {
-    try {
-      await fsPromises.rm(tempDir, { recursive: true, force: true });
-    } catch {
-      // Ignore cleanup errors
-    }
-  }
   testAppInstance = null;
-  testServices = null;
 }
 
 /**
- * Default valid backtest request for testing
+ * Default valid backtest request matching current ApiBacktestRequest schema
  */
 export function createValidBacktestRequest() {
   return {
-    entry_price: '100.50000000',
-    amounts: ['10.25000000', '15.50000000', '20.75000000'],
-    sequences: [0, 1, 2],
-    leverage: '2.00000000',
-    margin_ratio: '0.75000000',
-    market_data_csv_path: '/data/BTCUSDT_1m.csv',
+    trading_pair: 'BTC/USDT',
+    start_date: '2025-01-01T00:00:00Z',
+    end_date: '2025-01-31T23:59:59Z',
+    price_entry: '50000.00',
+    price_scale: '1.05',
+    amount_scale: '1.10',
+    number_of_orders: 5,
+    amount_per_trade: '100.00',
+    margin_type: 'cross',
+    multiplier: 1,
+    take_profit_distance_percent: '2.5',
+    account_balance: '5000.00',
+    exit_on_last_order: false,
   };
 }
 
 /**
- * Create multiple backtest requests for concurrency testing
+ * Create multiple backtest requests for testing
  */
 export function createMultipleBacktestRequests(count: number) {
   return Array.from({ length: count }, (_, i) => ({
     ...createValidBacktestRequest(),
-    entry_price: (100.50 + i * 0.01).toFixed(8),
+    price_entry: (50000 + i * 10).toFixed(2),
   }));
 }

@@ -10,7 +10,6 @@
  */
 
 import fs from 'fs';
-import { ProcessManager } from './ProcessManager.js';
 
 /**
  * Health status levels
@@ -53,7 +52,6 @@ export class HealthMonitor {
   private totalExecutionMs: number = 0;
 
   constructor(
-    private processManager: ProcessManager,
     private coreEngineBinaryPath: string,
   ) {}
 
@@ -66,8 +64,10 @@ export class HealthMonitor {
     // Check Core Engine binary availability
     const binaryAccessible = this.checkBinaryAccess();
 
-    // Get queue metrics
-    const queueMetrics = this.processManager.getMetrics();
+    // Queue metrics — jobs are tracked in Postgres; stub with zeros for health display
+    const queueDepth = 0;
+    const activeCount = 0;
+    const totalCompleted = this.successCount;
 
     // Calculate error rates
     const total = this.errors + this.timeouts + this.successCount;
@@ -79,7 +79,7 @@ export class HealthMonitor {
     let status: HealthStatus = 'healthy';
     if (!binaryAccessible || errorRatePercent > 20) {
       status = 'unhealthy';
-    } else if (queueMetrics.queue_depth > 20 || errorRatePercent > 10) {
+    } else if (queueDepth > 20 || errorRatePercent > 10) {
       status = 'degraded';
     }
 
@@ -95,10 +95,10 @@ export class HealthMonitor {
         binary_accessible: binaryAccessible,
       },
       queue: {
-        depth: queueMetrics.queue_depth,
-        active_count: queueMetrics.active_count,
-        max_workers: queueMetrics.queue_depth + queueMetrics.active_count, // Simplified for MVP
-        processed: queueMetrics.total_completed,
+        depth: queueDepth,
+        active_count: activeCount,
+        max_workers: 1,
+        processed: totalCompleted,
       },
       performance: {
         error_rate_percent: Math.round(errorRatePercent * 100) / 100,

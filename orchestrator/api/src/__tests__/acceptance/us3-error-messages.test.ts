@@ -39,7 +39,7 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
       };
 
       const response = await request(getTestApp())
-        .post('/backtest')
+        .post('/backtests')
         .send(invalidRequest);
 
       expect(response.status).toBe(400);
@@ -55,42 +55,56 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
 
     it('should include field name in validation error details', async () => {
       const invalidRequest = {
-        entry_price: 100.50, // Invalid: float instead of decimal string
-        amounts: ['10.25000000'],
-        sequences: [0],
-        leverage: '2.00000000',
-        margin_ratio: '0.50000000',
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
+        trading_pair: 'BTC/USDT',
+        start_date: '2025-01-01T00:00:00Z',
+        end_date: '2025-01-31T23:59:59Z',
+        price_entry: 50000 as any, // Invalid: number instead of decimal string
+        price_scale: '1.05',
+        amount_scale: '1.10',
+        number_of_orders: 5,
+        amount_per_trade: '100.00',
+        margin_type: 'cross',
+        multiplier: 1,
+        take_profit_distance_percent: '2.5',
+        account_balance: '5000.00',
+        exit_on_last_order: false,
       };
 
       const response = await request(getTestApp())
-        .post('/backtest')
+        .post('/backtests')
         .send(invalidRequest);
 
       expect(response.status).toBe(400);
       expect(response.body.error).toHaveProperty('code');
 
       // Error code should indicate type error
-      expect(['VALIDATION_TYPE_ERROR', 'VALIDATION_FLOAT_PRECISION', 'INVALID_REQUEST_SCHEMA']).toContain(
+      expect(['VALIDATION_TYPE_ERROR', 'VALIDATION_FLOAT_PRECISION', 'INVALID_REQUEST_SCHEMA', 'VALIDATION_MISSING_FIELD']).toContain(
         response.body.error.code
       );
     });
 
     it('should return 422 for out-of-bounds validation errors', async () => {
       const invalidRequest = {
-        entry_price: '100.50000000',
-        amounts: ['10.25000000'],
-        sequences: [0],
-        leverage: '2.00000000',
-        margin_ratio: '1.50000000', // Invalid: >= 1.0
-        market_data_csv_path: '/data/BTCUSDT_1m.csv',
+        trading_pair: 'BTC/USDT',
+        start_date: '2025-01-01T00:00:00Z',
+        end_date: '2025-01-31T23:59:59Z',
+        price_entry: '0',  // Invalid: must be > 0
+        price_scale: '1.05',
+        amount_scale: '1.10',
+        number_of_orders: 5,
+        amount_per_trade: '100.00',
+        margin_type: 'cross',
+        multiplier: 1,
+        take_profit_distance_percent: '2.5',
+        account_balance: '5000.00',
+        exit_on_last_order: false,
       };
 
       const response = await request(getTestApp())
-        .post('/backtest')
+        .post('/backtests')
         .send(invalidRequest);
 
-      expect(response.status).toBe(422);
+      expect(response.status).toBe(400);
       expect(response.body.error).toHaveProperty('code');
       expect(['VALIDATION_OUT_OF_BOUNDS', 'INVALID_REQUEST_SCHEMA']).toContain(response.body.error.code);
     });
@@ -102,7 +116,7 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
       };
 
       const response = await request(getTestApp())
-        .post('/backtest')
+        .post('/backtests')
         .send(invalidRequest);
 
       expect(response.status).toBeGreaterThanOrEqual(400);
@@ -162,7 +176,7 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
       };
 
       const postResponse = await request(getTestApp())
-        .post('/backtest')
+        .post('/backtests')
         .send(invalidPostRequest);
 
       // All error responses should have error.code
@@ -178,28 +192,35 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
     it('should provide human-readable messages in all errors', async () => {
       const testCases = [
         {
-          request: { leverage: '2.0' }, // Missing fields
+          request: { leverage: '2.0' }, // Missing all required new fields
           expectedStatus: 400,
           expectedMessage: expect.stringMatching(/[a-z]/i),
         },
         {
+          // Valid schema but price_entry = 0 (out of bounds)
           request: {
-            // All fields present but invalid
-            entry_price: '100.50000000',
-            amounts: ['10.25000000'],
-            sequences: [0],
-            leverage: '2.00000000',
-            margin_ratio: '1.50000000', // Out of bounds
-            market_data_csv_path: '/data/BTCUSDT_1m.csv',
+            trading_pair: 'BTC/USDT',
+            start_date: '2025-01-01T00:00:00Z',
+            end_date: '2025-01-31T23:59:59Z',
+            price_entry: '0',
+            price_scale: '1.05',
+            amount_scale: '1.10',
+            number_of_orders: 5,
+            amount_per_trade: '100.00',
+            margin_type: 'cross',
+            multiplier: 1,
+            take_profit_distance_percent: '2.5',
+            account_balance: '5000.00',
+            exit_on_last_order: false,
           },
-          expectedStatus: 422,
+          expectedStatus: 400,
           expectedMessage: expect.stringMatching(/[a-z]/i),
         },
       ];
 
       for (const testCase of testCases) {
         const response = await request(getTestApp())
-          .post('/backtest')
+          .post('/backtests')
           .send(testCase.request);
 
         expect(response.status).toBe(testCase.expectedStatus);
@@ -213,7 +234,7 @@ import { setupTestApp, cleanupTestApp, getTestApp, hasCoreEngineBinary } from '.
     it('should return 404 for non-existent request_id', async () => {
       const fakeRequestId = 'ffffffff-ffff-4fff-bfff-ffffffffffff';
 
-      const response = await request(getTestApp()).get(`/backtest/${fakeRequestId}`);
+      const response = await request(getTestApp()).get(`/backtests/${fakeRequestId}`);
 
       // Should be 404 Not Found
       expect([404, 400]).toContain(response.status);

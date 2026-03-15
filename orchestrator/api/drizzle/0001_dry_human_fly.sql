@@ -1,0 +1,1 @@
+ALTER TABLE "backtests" ADD COLUMN "execution_time_ms" integer;

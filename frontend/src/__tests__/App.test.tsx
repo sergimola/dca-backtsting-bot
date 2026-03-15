@@ -7,6 +7,7 @@ jest.mock('../services/backtest-api', () => ({
   submitBacktest: jest.fn(),
   getStatus: jest.fn(),
   getResults: jest.fn(),
+  listBacktests: jest.fn().mockResolvedValue([]),
 }))
 
 // Ensure RunPollingController never actually polls in unit tests

@@ -109,5 +109,5 @@ export function useResultsMetrics(
       tradeGroups,
       safetyOrderUsage,
     }
-  }, [results.backtestId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [results.backtestId, results.tradeEvents.length]) // eslint-disable-line react-hooks/exhaustive-deps
 }

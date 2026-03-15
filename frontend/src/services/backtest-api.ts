@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { BacktestFormState, BacktestResults } from './types';
+import type { BacktestFormState, BacktestResults, Run } from './types';
 
 const API_BASE_URL = 'http://localhost:4000';
 
@@ -53,10 +53,10 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
     console.log('Sending payload to API:', apiPayload);
 
     // This POST request will block until the Go engine finishes (max 35s)
-    const response = await axios.post(`${API_BASE_URL}/backtest`, apiPayload, { headers: getHeaders() });
+    const response = await axios.post(`${API_BASE_URL}/backtests`, apiPayload, { headers: getHeaders() });
 
-    if (response.status >= 202) {
-      throw new Error(`Expected status 201, received ${response.status}`);
+    if (response.status !== 201 && response.status !== 202) {
+      throw new Error(`Expected status 202, received ${response.status}`);
     }
 
     const backtestId = response.data.backtestId || response.data.request_id;
@@ -91,7 +91,7 @@ export async function getStatus(backtestId: string): Promise<{ status: 'pending'
 
   // For in-flight backtests, poll the status endpoint so the UI can reflect
   // intermediate states like DOWNLOADING_DATA.
-  const response = await axios.get(`${API_BASE_URL}/backtest/${backtestId}/status`, { headers: getHeaders() });
+  const response = await axios.get(`${API_BASE_URL}/backtests/${backtestId}/status`, { headers: getHeaders() });
 
   if (response.status !== 200) {
     throw new Error(`Expected status 200, received ${response.status}`);
@@ -132,16 +132,60 @@ const EVENT_TYPE_LABEL: Record<string, string> = {
   PositionClosed:   'EXIT',
 };
 
+/** Map snake_case ApiBacktestRequest (from DB) → camelCase BacktestFormState */
+function mapConfigToFormState(c: Record<string, any>): BacktestFormState {
+  return {
+    tradingPair:               c.trading_pair               ?? '',
+    startDate:                 c.start_date                 ?? '',
+    endDate:                   c.end_date                   ?? '',
+    priceEntry:                c.price_entry                ?? '',
+    priceScale:                c.price_scale                ?? '',
+    amountScale:               c.amount_scale               ?? '',
+    numberOfOrders:            String(c.number_of_orders    ?? ''),
+    amountPerTrade:            c.amount_per_trade           ?? '',
+    marginType:               (c.margin_type as 'cross' | 'isolated') ?? 'cross',
+    multiplier:                String(c.multiplier          ?? ''),
+    takeProfitDistancePercent: c.take_profit_distance_percent ?? '',
+    accountBalance:            c.account_balance            ?? '',
+    exitOnLastOrder:           c.exit_on_last_order         ?? false,
+  };
+}
+
+/**
+ * Fetch all existing backtests from the server and convert them into
+ * the Run[] shape for the sidebar history list.
+ */
+export async function listBacktests(): Promise<Run[]> {
+  const response = await axios.get(`${API_BASE_URL}/backtests`, { headers: getHeaders() });
+  if (response.status !== 200) return [];
+
+  const items: any[] = Array.isArray(response.data) ? response.data : [];
+  return items.map(item => ({
+    backtestId: item.backtestId ?? item.id,
+    shortId:    (item.backtestId ?? item.id ?? '').slice(0, 8),
+    status:     item.status === 'completed' ? 'completed'
+              : item.status === 'failed'    ? 'failed'
+              : 'running',
+    config:     mapConfigToFormState(item.config ?? {}),
+    results:    item.pnlSummary
+                  ? { backtestId: item.backtestId ?? item.id, pnlSummary: item.pnlSummary, tradeEvents: item.tradeEvents ?? [], safetyOrderUsage: item.safetyOrderUsage ?? [], executionTimeMs: item.executionTimeMs ?? 0 }
+                  : undefined,
+    logs:       [],
+    progress:   item.status === 'completed' ? 100 : 0,
+    createdAt:  item.createdAt ?? new Date().toISOString(),
+  }));
+}
+
 async function getResultsFromHttp(backtestId: string): Promise<BacktestResults> {
-  const response = await axios.get(`${API_BASE_URL}/backtest/${backtestId}/results`, { headers: getHeaders() });
+  const response = await axios.get(`${API_BASE_URL}/backtests/${backtestId}/results`, { headers: getHeaders() });
   if (response.status !== 200) {
     throw new Error(`Expected status 200, received ${response.status}`);
   }
-  const data = response.data as BacktestResults;
+  const data = response.data as BacktestResults & { executionTimeMs?: number };
   if (!data || !data.pnlSummary) {
     throw new Error('Malformed results response');
   }
-  return data;
+  return { ...data, executionTimeMs: data.executionTimeMs ?? 0 };
 }
 
 export async function getResults(backtestId: string): Promise<BacktestResults> {
@@ -276,5 +320,6 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
     },
     safetyOrderUsage,
     tradeEvents,
+    executionTimeMs: data.execution_time_ms ?? 0,
   };
 }

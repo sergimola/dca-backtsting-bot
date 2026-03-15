@@ -1,6 +1,6 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import type { BacktestFormState, BacktestResults, Run } from './services/types'
-import { submitBacktest } from './services/backtest-api'
+import { submitBacktest, listBacktests, getResults } from './services/backtest-api'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LeftSidebar } from './components/LeftSidebar'
 import { ConfigFormView } from './components/ConfigFormView'
@@ -14,6 +14,30 @@ export default function App() {
   const [activeView, setActiveView] = useState<'history' | 'config'>('config')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Load existing backtests from server on mount
+  useEffect(() => {
+    listBacktests()
+      .then(loaded => {
+        if (loaded.length > 0) setRuns(loaded)
+      })
+      .catch(() => { /* silently ignore network errors on startup */ })
+  }, [])
+
+  // Lazy-fetch full results when a completed run with no trade events is selected
+  useEffect(() => {
+    if (!selectedRunId) return
+    const run = runs.find(r => r.backtestId === selectedRunId)
+    if (!run || run.status !== 'completed') return
+    if ((run.results?.tradeEvents?.length ?? 0) > 0) return
+    getResults(selectedRunId)
+      .then(results => {
+        setRuns(prev =>
+          prev.map(r => r.backtestId === selectedRunId ? { ...r, results } : r)
+        )
+      })
+      .catch(() => { /* silently ignore fetch errors */ })
+  }, [selectedRunId])
 
   // ── State mutators ────────────────────────────────────────────────────────
 

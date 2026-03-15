@@ -42,13 +42,18 @@ describe('DashboardHeader', () => {
     expect(screen.getByText(/71 days/i)).toBeInTheDocument()
   })
 
-  it('renders executionMs when provided', () => {
+  it('renders executionMs when provided (>=1000ms → seconds)', () => {
     render(<DashboardHeader run={completedRun} executionMs={1234} />)
-    expect(screen.getByText(/1234/)).toBeInTheDocument()
+    expect(screen.getByText('1.2s')).toBeInTheDocument()
   })
 
-  it('does not render ms section when executionMs not provided', () => {
+  it('renders executionMs when provided (<1000ms → ms)', () => {
+    render(<DashboardHeader run={completedRun} executionMs={834} />)
+    expect(screen.getByText('834ms')).toBeInTheDocument()
+  })
+
+  it('does not render engine section when executionMs not provided', () => {
     render(<DashboardHeader run={completedRun} />)
-    expect(screen.queryByText(/ms/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/engine/i)).not.toBeInTheDocument()
   })
 })
