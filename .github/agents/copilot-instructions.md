@@ -19,6 +19,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - N/A — session-only React state; no persistence (009-pro-quant-terminal-ui)
 - TypeScript 5.1 / Node.js 18+ + Express 5.x (existing), Drizzle ORM (drizzle-orm + drizzle-kit), pg (node-postgres), child_process.spawn (stdlib) (010-postgres-async-architecture)
 - PostgreSQL 16 (new — backtest jobs + sync ledger) + ClickHouse (existing — market data OHLCV only) (010-postgres-async-architecture)
+- Go 1.22 (core engine), TypeScript 5.x / Node.js 20 LTS (orchestrator) (011-go-engine-io-optimization)
+- PostgreSQL 16 via Drizzle ORM (two new columns); ClickHouse (new pre-flight COUNT query) (011-go-engine-io-optimization)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -38,9 +40,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 011-go-engine-io-optimization: Added Go 1.22 (core engine), TypeScript 5.x / Node.js 20 LTS (orchestrator)
 - 010-postgres-async-architecture: Added TypeScript 5.1 / Node.js 18+ + Express 5.x (existing), Drizzle ORM (drizzle-orm + drizzle-kit), pg (node-postgres), child_process.spawn (stdlib)
 - 010-postgres-async-architecture: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
-- 009-pro-quant-terminal-ui: Added TypeScript 5.1 / React 18.2 + React 18, Vite 5, TailwindCSS 3.3, lucide-react (NEW), decimal.js
 
 
 <!-- MANUAL ADDITIONS START -->

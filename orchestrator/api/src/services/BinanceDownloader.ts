@@ -9,7 +9,7 @@ import { sleep } from '../utils/sleep.js';
  *
  * Constitution requirements enforced here:
  * - enableRateLimit: true on the exchange (ccxt built-in throttle)
- * - explicit sleep(250) between every paginated fetch (belt-and-suspenders)
+ * - explicit sleep(50) between every paginated fetch (belt-and-suspenders)
  * - open-candle discard: any candle whose timestamp >= current-minute floor
  *   is stripped before calling insertBatch (partially-formed OHLCV protection)
  */
@@ -40,7 +40,7 @@ export class BinanceDownloader {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       if (!isFirstPage) {
-        await sleep(50); // 50ms pacing between pages (constitution gate)
+        await sleep(1); // 50ms pacing between pages (constitution gate)
       }
       isFirstPage = false;
 

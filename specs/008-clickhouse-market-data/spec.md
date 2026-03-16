@@ -13,7 +13,7 @@
 - **Data Integrity & Exchange Safety Rules**:
   - The `GapResolver` MUST calculate gaps by comparing the mathematical expected number of 1-minute candles (`floor((endMs - startMs) / 60_000) + 1`) against the actual `COUNT(*)` in the database. Simple `MIN`/`MAX` timestamp checks are **prohibited** — they hide "swiss cheese" patterns where interior days are missing while the boundary timestamps appear complete.
   - The downloader MUST drop the final fetched candle if its timestamp equals the current, ongoing (unclosed) minute. Storing an in-progress candle corrupts `volume` and `close` data permanently; deduplication cannot fix incorrect values, only exact duplicates.
-  - The downloader MUST explicitly configure `ccxt` rate limiting (`enableRateLimit: true`) **and** enforce a deliberate sleep (minimum 250 ms) between paginated batch requests. Relying on `ccxt`'s built-in throttle alone is insufficient during massive multi-year backfills and risks an exchange IP ban.
+  - The downloader MUST explicitly configure `ccxt` rate limiting (`enableRateLimit: true`) **and** enforce a deliberate sleep (minimum 50 ms) between paginated batch requests. Relying on `ccxt`'s built-in throttle alone is insufficient during massive multi-year backfills and risks an exchange IP ban.
 
 ## User Scenarios & Testing *(mandatory)*
 

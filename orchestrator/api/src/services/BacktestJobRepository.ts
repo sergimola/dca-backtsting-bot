@@ -12,7 +12,7 @@ import { eq, sql, desc, and, gte, lte } from 'drizzle-orm';
 import { getTableColumns } from 'drizzle-orm';
 import { db } from '../db/client.js';
 import { backtests, type BacktestRow } from '../db/schema.js';
-import type { ApiBacktestRequest, StoredPnlSummary, StoredTradeEvent } from '../types/index.js';
+import type { ApiBacktestRequest, StoredPnlSummary, StoredTradeEvent, ProgressLine, SafetyOrderUsageEntry } from '../types/index.js';
 
 export type { BacktestRow };
 
@@ -104,22 +104,40 @@ export class BacktestJobRepository {
       config:          row['config'] as ApiBacktestRequest,
       summary:         row['summary'] as StoredPnlSummary | null,
       trades:          row['trades'] as StoredTradeEvent[] | null,
-      safetyOrders:    row['safety_orders'] as Record<string, unknown>[] | null,
+      safetyOrders:    row['safety_orders'] as SafetyOrderUsageEntry[] | null,
       executionTimeMs: row['execution_time_ms'] as number | null,
       errorMessage:    row['error_message'] as string | null,
+      progress:        (row['progress'] as number) ?? 0,
+      currentMetrics:  (row['current_metrics'] as ProgressLine | null) ?? null,
       createdAt:       row['created_at'] as Date,
       updatedAt:       row['updated_at'] as Date,
     };
   }
 
   /**
+   * Update the in-flight progress percent and optional current metrics snapshot.
+   * Clamps percent to [0, 100] and floors to integer to keep the DB column clean.
+   */
+  async updateProgress(id: string, percent: number, metrics?: ProgressLine): Promise<void> {
+    await db
+      .update(backtests)
+      .set({
+        progress: Math.max(0, Math.min(100, Math.floor(percent))),
+        ...(metrics ? { currentMetrics: metrics } : {}),
+        updatedAt: new Date(),
+      })
+      .where(eq(backtests.id, id));
+  }
+
+  /**
    * Transition a job to `completed` and store the result data.
+   * safetyOrders accepts the typed SafetyOrderUsageEntry[] from the engine result.
    */
   async markCompleted(
     id: string,
     summary: StoredPnlSummary,
     trades: StoredTradeEvent[],
-    safetyOrders: Record<string, unknown>[],
+    safetyOrders: SafetyOrderUsageEntry[],
     executionTimeMs: number,
   ): Promise<void> {
     await db

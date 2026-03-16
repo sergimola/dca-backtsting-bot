@@ -58,6 +58,7 @@ type Position struct {
 	TakeProfitDistance decimal.Decimal // Percentage above average entry to set TP target (SDD § 2.4)
 
 	// Metadata
+	TradingPair    string          // e.g. "BTCUSDC" — propagated from OrchestratorConfig
 	OpenPrice      decimal.Decimal // Market buy execution price
 	NextOrderIndex int             // Which order (by index) fills next
 	HasMoreOrders  bool            // Shorthand: NextOrderIndex < len(Prices)

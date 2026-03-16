@@ -2,30 +2,15 @@
  * BacktestService - Manages Core Engine subprocess execution and event streaming
  *
  * Spawns Core Engine as a child process, streams backtest configuration via stdin,
- * reads Event Bus output as ndjson, and handles timeouts with graceful cleanup.
+ * reads NDJSON output line-by-line with readline, routes progress lines to an optional
+ * progressHandler callback, and captures the final result line.
  */
 
 import { spawn } from 'child_process';
-import { ApiBacktestRequest } from '../types/index.js';
+import { createInterface } from 'readline';
+import type { ApiBacktestRequest, BacktestExecuteOptions, BacktestExecutionResult, EngineResultLine } from '../types/index.js';
 import { ProcessError } from '../types/errors.js';
-import { parseEventLine } from '../utils/EventBusParser.js';
 import * as fs from 'fs';
-
-/**
- * Execution result from BacktestService.execute()
- *
- * events:        Raw events from the engine.
- *                - New Go engine format: { timestamp, type, data } objects
- *                - Old ndjson/mock format: flat TradeEvent objects (legacy fallback)
- * finalPosition: The final_position object from the Go engine, or null for
- *                old-format sources (mock). Used by the route handler to detect
- *                which aggregation path to use.
- */
-export interface BacktestExecutionResult {
-  events: any[];
-  finalPosition: any | null;
-  executionTimeMs: number;
-}
 
 /**
  * BacktestService - Handles subprocess lifecycle and event streaming
@@ -33,15 +18,17 @@ export interface BacktestExecutionResult {
  * Responsibilities:
  * - Spawn Core Engine binary as child_process.spawn()
  * - Stream configuration to stdin as JSON + newline
- * - Parse ndjson Event Bus output line-by-line
+ * - Parse NDJSON stdout line-by-line via readline (US3)
+ * - Route "progress" lines to optional progressHandler callback
+ * - Route "result" line to resolve BacktestExecutionResult
  * - Enforce 30-second timeout with SIGTERM → SIGKILL escalation
  * - Capture stderr for error mapping
  * - Track execution time with high-resolution timer
  *
  * @example
  * const service = new BacktestService('/path/to/core-engine');
- * const result = await service.execute(backtestRequest, 30000);
- * console.log(`Executed ${result.events.length} events in ${result.executionTimeMs}ms`);
+ * const result = await service.execute(backtestRequest, {}, 30000);
+ * console.log(`${result.tradeEvents.length} trades in ${result.engineExecutionTimeMs}ms`);
  */
 export class BacktestService {
   private binaryPath: string;
@@ -88,7 +75,7 @@ export class BacktestService {
    * @example
    * try {
    *   const result = await service.execute(request, 30000);
-   *   console.log(`${result.events.length} events in ${result.executionTimeMs}ms`);
+   *   console.log(`${result.tradeEvents.length} trades in ${result.engineExecutionTimeMs}ms`);
    * } catch (error) {
    *   if (error instanceof ProcessError) {
    *     console.error(`Exit: ${error.exitCode}, Signal: ${error.signal}`);
@@ -103,18 +90,15 @@ export class BacktestService {
       clickhouse_user: string;
       clickhouse_password: string;
     },
+    options?: BacktestExecuteOptions,
     timeoutMs?: number
   ): Promise<BacktestExecutionResult> {
     const timeout = timeoutMs ?? this.timeoutMs;
-    return this.executeInternal(request, timeout, []);
+    return this.executeInternal(request, timeout, [], options);
   }
 
   /**
    * Executes backtest with additional flags (for testing with mock binary)
-   *
-   * @param request - ApiBacktestRequest with configuration (market_data_csv_path appended by resolver)
-   * @param flags - Additional command-line flags to pass to binary (e.g., ['--fail', '--timeout'])
-   * @returns BacktestExecutionResult or throws with stderr attached
    */
   async executeWithStderr(
     request: ApiBacktestRequest & {
@@ -129,7 +113,7 @@ export class BacktestService {
   }
 
   /**
-   * Internal implementation of execute with optional flags for testing
+   * Internal implementation of execute with optional flags and options.
    */
   private async executeInternal(
     request: ApiBacktestRequest & {
@@ -139,7 +123,8 @@ export class BacktestService {
       clickhouse_password: string;
     },
     timeoutMs: number,
-    flags: string[] = []
+    flags: string[] = [],
+    options?: BacktestExecuteOptions
   ): Promise<BacktestExecutionResult> {
     return new Promise((resolve, reject) => {
       const startTime = performance.now();
@@ -149,14 +134,21 @@ export class BacktestService {
       let command: string;
       let args: string[];
 
+      // T029: prepend --log-level and --progress-interval-ms CLI flags
+      const engineFlags = [
+        `--log-level=${process.env.ENGINE_LOG_LEVEL ?? 'INFO'}`,
+        `--progress-interval-ms=${process.env.ENGINE_PROGRESS_INTERVAL_MS ?? '250'}`,
+        ...flags,
+      ];
+
       if (this.binaryPath.endsWith('.js')) {
         // Node.js script (mock binary)
         command = 'node';
-        args = [this.binaryPath, ...flags];
+        args = [this.binaryPath, ...engineFlags];
       } else {
         // Direct executable
         command = this.binaryPath;
-        args = flags;
+        args = engineFlags;
       }
 
       // Spawn child process
@@ -191,7 +183,6 @@ export class BacktestService {
         if (killHandle) clearTimeout(killHandle);
       };
 
-      // Setup timeout
       setupTimeout();
 
       // Capture stderr for error mapping
@@ -199,24 +190,40 @@ export class BacktestService {
         child.stderr.on('data', (data) => {
           const stderrOutput = data.toString();
           stderr += stderrOutput;
-          // Log Go engine errors to console immediately for visibility
           console.error('[Go Engine Error]:', stderrOutput);
         });
       }
 
-      // Accumulate ALL stdout into a single buffer.
-      // The real Go engine writes one JSON blob; the old mock writes ndjson.
-      // We detect the format on process exit so both are supported.
-      let stdoutBuffer = '';
-      if (child.stdout) {
-        child.stdout.on('data', (data: Buffer) => {
-          stdoutBuffer += data.toString();
-        });
-      }
+      // T027: Replace stdoutBuffer + data event with readline interface.
+      // Each line is a complete NDJSON object. Route by "type" field.
+      let resultLine: EngineResultLine | null = null;
+      const rl = createInterface({ input: child.stdout!, crlfDelay: Infinity, terminal: false });
+
+      rl.on('line', (line: string) => {
+        const trimmed = line.trim();
+        if (!trimmed) return;
+        let parsed: any;
+        try {
+          parsed = JSON.parse(trimmed);
+        } catch {
+          // Non-JSON stdout lines are discarded (e.g., debug output from mock binary)
+          return;
+        }
+        if (parsed?.type === 'progress') {
+          // Fire-and-forget: progress handler errors must not crash the backtest
+          if (options?.progressHandler) {
+            options.progressHandler(parsed).catch(console.warn);
+          }
+        } else if (parsed?.type === 'result') {
+          resultLine = parsed as EngineResultLine;
+        }
+        // Lines with unknown type are silently discarded
+      });
 
       // Handle process exit
       child.on('exit', (exitCode, signal) => {
         clearTimeouts();
+        rl.close();
         const executionTimeMs = Math.round(performance.now() - startTime);
 
         if (this.logger) {
@@ -225,68 +232,29 @@ export class BacktestService {
 
         // Success: exit code 0
         if (exitCode === 0) {
-          let events: any[] = [];
-          let finalPosition: any | null = null;
-
-          const trimmed = stdoutBuffer.trim();
-          if (trimmed) {
-            let parsedAsBlob = false;
-
-            // Try new Go engine format first: a single JSON blob with top-level "events" array
-            try {
-              const parsed = JSON.parse(trimmed);
-              if (parsed && Array.isArray(parsed.events)) {
-                events = parsed.events;
-                finalPosition = parsed.final_position ?? null;
-                parsedAsBlob = true;
-                if (this.logger) {
-                  this.logger.info(`Go engine blob parsed: ${events.length} events, finalPosition=${finalPosition !== null}`);
-                }
-              }
-            } catch {
-              // Not a single JSON blob — fall through to ndjson
-            }
-
-            // Old ndjson fallback (mock engine / legacy format)
-            if (!parsedAsBlob) {
-              const lines = trimmed.split('\n');
-              for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line) continue;
-                try {
-                  const event = parseEventLine(line, i + 1);
-                  events.push(event);
-                } catch (error) {
-                  if (this.logger) {
-                    this.logger.error(`ndjson parse error at line ${i + 1}: ${error instanceof Error ? error.message : String(error)}`);
-                  }
-                }
-              }
-            }
+          if (resultLine) {
+            resolve(mapResultLine(resultLine));
+          } else {
+            // Engine exited cleanly but no result line was received
+            reject(new ProcessError(exitCode, signal, stderr,
+              'Core Engine exited with code 0 but produced no result line'));
           }
-
-          resolve({ events, finalPosition, executionTimeMs });
           return;
         }
 
         // Failure: non-zero exit code or signal
-        // Include stderr in error message for API logs
         const errorMessage = `Core Engine exited with code ${exitCode}${signal ? ` and signal ${signal}` : ''}${stderr ? `\n[stderr]: ${stderr}` : ''}`;
-        const error = new ProcessError(exitCode, signal, stderr, errorMessage);
-        reject(error);
+        reject(new ProcessError(exitCode, signal, stderr, errorMessage));
       });
 
       // Handle spawn errors
       child.on('error', (error) => {
         clearTimeouts();
+        rl.close();
         reject(new ProcessError(null, null, error.message, `Failed to spawn Core Engine: ${error.message}`));
       });
 
       // Build an explicit engine payload — guarantees field presence and correct types.
-      // Go's EngineRequest expects string decimals (price_entry, price_scale, etc.) and
-      // integer JSON numbers (number_of_orders, multiplier). Spread of the full request
-      // object is avoided so the ClickHouse credentials are always present even if the
-      // caller omits optional fields.
       const enginePayload: Record<string, unknown> = {
         trading_pair:                 String(request.trading_pair),
         start_date:                   String(request.start_date),
@@ -313,6 +281,7 @@ export class BacktestService {
       child.stdin!.write(configJson, (err) => {
         if (err) {
           clearTimeouts();
+          rl.close();
           reject(new ProcessError(null, null, err.message, `Failed to write to stdin: ${err.message}`));
           return;
         }
@@ -322,4 +291,23 @@ export class BacktestService {
       });
     });
   }
+}
+
+// ---------------------------------------------------------------------------
+// T028: mapResultLine — maps EngineResultLine → BacktestExecutionResult
+// ---------------------------------------------------------------------------
+
+/**
+ * Maps the final NDJSON result line from the Go engine to BacktestExecutionResult.
+ * This is a pure transformation; it performs no I/O.
+ */
+export function mapResultLine(line: EngineResultLine): BacktestExecutionResult {
+  return {
+    pnlSummary:           line.pnlSummary,
+    tradeEvents:          line.tradeEvents,
+    safetyOrderUsage:     line.safetyOrderUsage,
+    engineExecutionTimeMs: line.executionTimeMs,
+    candleCount:          line.candleCount,
+    eventCount:           line.eventCount,
+  };
 }

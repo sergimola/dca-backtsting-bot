@@ -152,7 +152,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 		tradeOpenedEvent := &TradeOpenedEvent{
 			TradeID:     pos.TradeID,
 			Timestamp:   candle.Timestamp,
-			TradingPair: "BTC/USDT", // TODO: would come from config
+			TradingPair: pos.TradingPair,
 			EntryFee:    marketBuyFill.Fee.String(),
 		}
 
@@ -237,7 +237,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 				liqEvent := &LiquidationPriceUpdatedEvent{
 					TradeID:          pos.TradeID,
 					Timestamp:        candle.Timestamp,
-					TradingPair:      "BTC/USDT",
+					TradingPair:      pos.TradingPair,
 					LiquidationPrice: pos.LiquidationPrice.String(),
 					CurrentPrice:     candle.Close.String(),
 					// PriceRatio would be: current / liquidation
@@ -276,7 +276,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 				TradeID:       pos.TradeID,
 				OpenTimestamp: pos.OpenTimestamp,
 				Timestamp:     candle.Timestamp,
-				TradingPair:   "BTC/USDT",
+				TradingPair:   pos.TradingPair,
 				ClosingPrice:  closingPrice.String(),
 				Size:          totalSize.String(),
 				Profit:        profit.String(),
@@ -306,7 +306,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 				TradeID:         pos.TradeID,
 				OpenTimestamp:   pos.OpenTimestamp,
 				Timestamp:       candle.Timestamp,
-				TradingPair:     "BTC/USDT",
+				TradingPair:     pos.TradingPair,
 				ClosingPrice:    candle.Close.String(),
 				Size:            totalSize.String(),
 				Profit:          profit.String(),
@@ -331,11 +331,10 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 		}
 
 		if !pos.TakeProfitTarget.IsZero() && CheckTakeProfit(ctx, candle.High, pos.TakeProfitTarget) {
-			// Close position via take-profit
-			closingPrice := candle.High
-			if closingPrice.LessThan(pos.TakeProfitTarget) {
-				closingPrice = candle.Close
-			}
+			// Close position via take-profit at the configured limit price.
+			// A limit sell order fills at exactly TakeProfitTarget — not at candle.High
+			// (which would grant unrealistic positive slippage).
+			closingPrice := pos.TakeProfitTarget
 
 			totalSize := CalculatePositionQuantity(pos.Orders)
 
@@ -354,7 +353,7 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 				TradeID:       pos.TradeID,
 				OpenTimestamp: pos.OpenTimestamp,
 				Timestamp:     candle.Timestamp,
-				TradingPair:   "BTC/USDT",
+				TradingPair:   pos.TradingPair,
 				ClosingPrice:  closingPrice.String(),
 				Size:          totalSize.String(),
 				Profit:        profit.String(),
