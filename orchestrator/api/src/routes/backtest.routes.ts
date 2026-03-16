@@ -92,9 +92,11 @@ export function createBacktestRouter(repo: BacktestJobRepository): Router {
       }
 
       res.status(200).json({
-        id:            job.id,
-        status:        job.status,
-        error_message: job.errorMessage ?? null,
+        id:             job.id,
+        status:         job.status,
+        progress:       job.progress,
+        currentMetrics: job.currentMetrics ?? null,
+        error_message:  job.errorMessage ?? null,
       });
     } catch (error: any) {
       return next(error);

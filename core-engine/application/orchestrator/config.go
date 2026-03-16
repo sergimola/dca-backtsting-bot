@@ -1,7 +1,11 @@
 package orchestrator
 
 import (
+	"time"
+
 	domainconfig "dca-bot/core-engine/domain/config"
+
+	"github.com/shopspring/decimal"
 )
 
 // OrchestratorConfig configures the backtest orchestrator.
@@ -17,6 +21,18 @@ type OrchestratorConfig struct {
 
 	// Optional: early exit callback for progress monitoring
 	ProgressCallback func(candleIdx int, eventCount int) error
+
+	// OnCandleProcessed is an optional hook called once per candle after PSM processing.
+	// Receives the 0-based candle index, the candle's UTC timestamp, and its close price.
+	// Used by the CLI progress ticker (cmd/engine) to read current date and price.
+	// Safe to leave nil — the orchestrator checks before calling.
+	OnCandleProcessed func(idx int, ts time.Time, close decimal.Decimal)
+
+	// OnPositionClosed is an optional hook called when a position closes.
+	// Receives the raw profit string exactly as carried in the domain TradeClosedEvent.
+	// Used by the CLI progress ticker to update the running realized P&L (display-only).
+	// Safe to leave nil.
+	OnPositionClosed func(profit string)
 
 	// DomainConfig provides SDD §2.1/§2.2 parameter configuration for computing
 	// price and amount sequences. If nil, NewPosition uses empty grids (no orders).

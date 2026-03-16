@@ -14,7 +14,6 @@ import 'dotenv/config';
 import http from 'http';
 import { createApp } from './app.js';
 import { BacktestService } from './services/BacktestService.js';
-import { ResultAggregator } from './services/ResultAggregator.js';
 import { HealthMonitor } from './services/HealthMonitor.js';
 import { GapResolver } from './services/GapResolver.js';
 import { BinanceDownloader } from './services/BinanceDownloader.js';
@@ -54,7 +53,6 @@ async function main(): Promise<void> {
 
     // 4. Build background services
     const backtestService = new BacktestService(coreEngineBinaryPath);
-    const resultAggregator = new ResultAggregator();
     const chWriter    = new ClickHouseWriter();
     const gapResolver = new GapResolver();
     const downloader  = new BinanceDownloader(chWriter);
@@ -75,7 +73,6 @@ async function main(): Promise<void> {
     const worker = new BackgroundWorker(
       backtestJobRepository,
       backtestService,
-      resultAggregator,
       gapResolver,
       downloader,
     );

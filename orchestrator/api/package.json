@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch -r dotenv/config src/main.ts",
+    "sync": "npx tsx src/scripts/syncMarketData.ts",
     "build": "tsc",
     "start": "node dist/main.js",
     "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js",

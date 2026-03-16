@@ -2,7 +2,7 @@ package orchestrator
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 	"time"
 
 	"dca-bot/core-engine/domain/position"
@@ -70,6 +70,14 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 	eventCount := 0
 	var lastPosition *position.Position // tracks the most-recently active position (even after close)
 
+	// Monthly addition tracking: accumulate MonthlyAddition to account balance at month boundaries.
+	// lastMonth is set to -1 so the first candle never triggers a false addition.
+	lastMonth := -1
+	var runningBalance decimal.Decimal
+	if orch.config.DomainConfig != nil {
+		runningBalance = orch.config.DomainConfig.AccountBalance()
+	}
+
 	// Initialize the backtest run
 	backtest := &BacktestRun{
 		ID:        orch.config.BacktestID,
@@ -96,21 +104,46 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 				backtest.Symbol = candle.Symbol
 			}
 
-			// [ENGINE-DEBUG] Symbol integrity check
+			// Structured symbol integrity check (slog.Debug — only visible at --log-level DEBUG)
 			configPair := ""
 			if orch.config.DomainConfig != nil {
 				configPair = orch.config.DomainConfig.TradingPair()
 			}
-			fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] First candle: Symbol=%q TradingPair(config)=%q candle.Close=%s\n",
-				candle.Symbol, configPair, candle.Close)
+			slog.Debug("first candle",
+				"symbol", candle.Symbol,
+				"config_pair", configPair,
+				"close", candle.Close,
+			)
 			if candle.Symbol != "" && configPair != "" && candle.Symbol != configPair {
-				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] WARNING: candle.Symbol %q does not match config TradingPair %q — PSM may ignore candle data\n",
-					candle.Symbol, configPair)
+				slog.Warn("symbol mismatch — PSM may ignore candle data",
+					"candle_symbol", candle.Symbol,
+					"config_pair", configPair,
+				)
 			}
 		}
 
 		// Open a new position whenever the position slot is empty (first candle or after close)
 		if orch.position == nil {
+			// Apply monthly capital injection at the start of each new calendar month.
+			// This increases the pool of capital available for new positions (DCA monthly addition).
+			if orch.config.DomainConfig != nil {
+				monthlyAdd := orch.config.DomainConfig.MonthlyAddition()
+				if !monthlyAdd.IsZero() {
+					candleMonth := int(candle.Timestamp.Month()) + int(candle.Timestamp.Year())*12
+					if lastMonth < 0 {
+						lastMonth = candleMonth // initialise on first candle
+					} else if candleMonth > lastMonth {
+						runningBalance = runningBalance.Add(monthlyAdd)
+						lastMonth = candleMonth
+						slog.Debug("monthly addition applied",
+							"month", candle.Timestamp.Format("2006-01"),
+							"added", monthlyAdd,
+							"new_balance", runningBalance,
+						)
+					}
+				}
+			}
+
 			tradeID := fmt.Sprintf("%s-%d", backtest.ID, time.Now().UnixNano())
 
 			// Apply market-buy slippage: P_0 = candle.Close × (1 + marketTolerance)
@@ -121,10 +154,12 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 			if orch.config.DomainConfig != nil {
 				priceSeq, priceErr := orch.config.DomainConfig.ComputePriceSequence(actualEntryPrice)
 				if priceErr != nil {
-					fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputePriceSequence error: %v\n", priceErr)
+					slog.Error("ComputePriceSequence failed", "err", priceErr)
 				} else {
-					fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputePriceSequence OK: actualEntryPrice=%s resultCount=%d prices=%v\n",
-						actualEntryPrice, len(priceSeq), priceSeq)
+					slog.Debug("price sequence computed",
+						"actual_entry_price", actualEntryPrice,
+						"count", len(priceSeq),
+					)
 				}
 				if priceErr == nil && len(priceSeq) > 0 {
 					prices = []decimal.Decimal(priceSeq)
@@ -133,35 +168,49 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 					// at fill time to obtain base-currency (BTC) quantities.
 					usdtAmounts, amountErr := orch.config.DomainConfig.ComputeAmountSequence()
 					if amountErr != nil {
-						fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputeAmountSequence error: %v\n", amountErr)
+						slog.Error("ComputeAmountSequence failed", "err", amountErr)
 					} else {
-						fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ComputeAmountSequence OK: count=%d usdtAmounts=%v\n", len(usdtAmounts), usdtAmounts)
+						slog.Debug("amount sequence computed", "count", len(usdtAmounts))
 						if len(usdtAmounts) == len(prices) {
 							amounts = []decimal.Decimal(usdtAmounts)
 						} else {
-							fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] WARNING: prices count (%d) != amounts count (%d)\n",
-								len(prices), len(usdtAmounts))
+							slog.Warn("price/amount count mismatch",
+								"prices", len(prices),
+								"amounts", len(usdtAmounts),
+							)
 						}
 					}
 				}
 			}
 
-			fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Opening new position: tradeID=%q candle.Close=%s prices=%d amounts=%d\n",
-				tradeID, candle.Close, len(prices), len(amounts))
+			slog.Debug("opening new position",
+				"trade_id", tradeID,
+				"close", candle.Close,
+				"prices", len(prices),
+				"amounts", len(amounts),
+			)
 			if len(amounts) > 0 && len(prices) > 0 {
 				firstBTCQty := amounts[0].Div(prices[0])
-				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Order-0: D_0=%s USDT / P_0=%s → BTC Qty=%s\n",
-					amounts[0], prices[0], firstBTCQty)
+				slog.Debug("order-0 sizing",
+					"d0", amounts[0],
+					"p0", prices[0],
+					"btc_qty", firstBTCQty,
+				)
 			}
 
 			newPos, err := orch.psm.NewPosition(tradeID, candle.Timestamp, prices, amounts)
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ERROR: NewPosition failed: %v — skipping candle\n", err)
+				slog.Error("NewPosition failed — skipping candle", "err", err)
 			} else {
-				// Set take-profit distance and account balance from domain config
+				// Set take-profit distance and account balance from domain config.
+				// Use runningBalance (which may have grown via monthly additions) if available.
 				if orch.config.DomainConfig != nil {
 					newPos.TakeProfitDistance = orch.config.DomainConfig.TakeProfitDistancePercent()
-					newPos.AccountBalance = orch.config.DomainConfig.AccountBalance()
+					if !runningBalance.IsZero() {
+						newPos.AccountBalance = runningBalance
+					} else {
+						newPos.AccountBalance = orch.config.DomainConfig.AccountBalance()
+					}
 					newPos.ExitOnLastOrder = orch.config.DomainConfig.ExitOnLastOrder()
 				}
 				orch.position = newPos
@@ -170,8 +219,12 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 		}
 
 		// Feed candle to PSM if position exists (T020, T021, T022, T023)
-		fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] ProcessCandle candle#%d: ts=%s close=%s positionNil=%v\n",
-			candleCount, candle.Timestamp.Format("2006-01-02T15:04:05Z"), candle.Close, orch.position == nil)
+		slog.Debug("process candle",
+			"index", candleCount,
+			"ts", candle.Timestamp.Format("2006-01-02T15:04:05Z"),
+			"close", candle.Close,
+			"position_nil", orch.position == nil,
+		)
 		if orch.position != nil {
 			// Convert Orchestrator Candle to PSM Candle (compatible structure)
 			psmCandle := &position.Candle{
@@ -192,7 +245,7 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 
 			// Wrap PSM events into Orchestrator Event structs (T022: Full fidelity)
 			if len(psmEvents) > 0 {
-				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] candle#%d produced %d PSM event(s)\n", candleCount, len(psmEvents))
+				slog.Debug("PSM events emitted", "candle", candleCount, "count", len(psmEvents))
 				for _, psmEvent := range psmEvents {
 					orchEvent := Event{
 						Timestamp: psmEvent.EventTimestamp(),
@@ -207,14 +260,43 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 					}
 
 					eventCount++
+					// Log safety order fills (OrderNumber >= 2; the entry is OrderNumber 1)
+					if boe, ok := psmEvent.(*position.BuyOrderExecutedEvent); ok && boe.OrderNumber >= 2 {
+						slog.Debug("safety order triggered",
+							"candle_ts", candle.Timestamp.Format("2006-01-02T15:04:05Z"),
+							"price", boe.Price,
+							"order_number", boe.OrderNumber,
+						)
+					}
 				}
 			}
 
-			// If the position was closed this candle, reset so the next candle opens a new trade
+			// If the position was closed this candle, notify the progress hook and reset.
 			if orch.position.State == position.StateClosed {
-				fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] Position closed at candle#%d — resetting for re-entry next candle\n", candleCount)
+				// Find TradeClosedEvent to enrich the debug log and notify the progress ticker.
+				var closingPrice, closedProfit string
+				for _, psmEv := range psmEvents {
+					if tce, ok := psmEv.(*position.TradeClosedEvent); ok {
+						closingPrice = tce.ClosingPrice
+						closedProfit = tce.Profit
+						if orch.config.OnPositionClosed != nil {
+							orch.config.OnPositionClosed(tce.Profit)
+						}
+						break
+					}
+				}
+				slog.Debug("position closed — will re-enter next candle",
+					"candle", candleCount,
+					"closing_price", closingPrice,
+					"profit", closedProfit,
+				)
 				orch.position = nil
 			}
+		}
+
+		// Notify progress hook (used by cmd/engine progress ticker).
+		if orch.config.OnCandleProcessed != nil {
+			orch.config.OnCandleProcessed(candleCount, candle.Timestamp, candle.Close)
 		}
 
 		candleCount++

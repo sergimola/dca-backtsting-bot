@@ -2,14 +2,14 @@
  * BinanceDownloader Unit Tests (T009)
  *
  * Verifies the paginated OHLCV fetch loop: open-candle discard,
- * 250ms paging sleep, and correct insertBatch call count.
+ * 50ms paging sleep, and correct insertBatch call count.
  *
  * Test matrix:
  *   BD1 - Single full page (1,000 candles) → 1× insertBatch
  *   BD2 - Two pages (1,000 + 400) → 2× insertBatch
  *   BD3 - Empty first response → 0× insertBatch
  *   BD4 - Open candle (last ts === current minute floor) is stripped before insertBatch
- *   BD5 - sleep(250) is called between pages
+ *   BD5 - sleep(50) is called between pages
  */
 
 import { BinanceDownloader } from './BinanceDownloader';

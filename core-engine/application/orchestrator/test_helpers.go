@@ -54,6 +54,12 @@ func (m *MockCandleLoader) Close() error {
 	return nil
 }
 
+// Count returns the number of candles in the pre-loaded slice.
+// Satisfies the CandleLoader interface for use in tests.
+func (m *MockCandleLoader) Count() (int64, error) {
+	return int64(len(m.candles)), nil
+}
+
 // makeCandles creates n sequential 1-minute candles starting at 2025-01-01 00:00 UTC.
 // Used by clickhouse_loader_test.go and other test files.
 func makeCandles(n int) []*Candle {

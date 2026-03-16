@@ -8,7 +8,7 @@
 
 import { pgTable, uuid, text, jsonb, integer, timestamp, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
-import type { ApiBacktestRequest, StoredPnlSummary, StoredTradeEvent } from '../types/index.js';
+import type { ApiBacktestRequest, StoredPnlSummary, StoredTradeEvent, ProgressLine, SafetyOrderUsageEntry } from '../types/index.js';
 
 // ---------------------------------------------------------------------------
 // backtests
@@ -19,9 +19,11 @@ export const backtests = pgTable('backtests', {
   config:          jsonb('config').notNull().$type<ApiBacktestRequest>(),
   summary:         jsonb('summary').$type<StoredPnlSummary | null>(),
   trades:          jsonb('trades').$type<StoredTradeEvent[] | null>(),
-  safetyOrders:    jsonb('safety_orders').$type<Record<string, unknown>[] | null>(),
+  safetyOrders:    jsonb('safety_orders').$type<SafetyOrderUsageEntry[] | null>(),
   executionTimeMs: integer('execution_time_ms'),
   errorMessage:    text('error_message'),
+  progress:        integer('progress').notNull().default(0),
+  currentMetrics:  jsonb('current_metrics').$type<ProgressLine | null>(),
   createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt:       timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

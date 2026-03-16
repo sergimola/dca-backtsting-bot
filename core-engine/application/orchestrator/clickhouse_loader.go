@@ -23,6 +23,10 @@ type ClickHouseCandleLoader struct {
 	rows   driver.Rows
 	ctx    context.Context
 	cancel context.CancelFunc
+	// Fields for the pre-flight COUNT query used by Count().
+	symbol string
+	start  time.Time
+	end    time.Time
 }
 
 // NewClickHouseCandleLoader opens a native TCP connection to ClickHouse and
@@ -84,6 +88,9 @@ func NewClickHouseCandleLoader(
 		rows:   rows,
 		ctx:    ctx,
 		cancel: cancel,
+		symbol: symbol,
+		start:  start,
+		end:    end,
 	}, nil
 }
 
@@ -121,6 +128,21 @@ func (cl *ClickHouseCandleLoader) NextCandle() (*Candle, error) {
 		Close:     decimal.NewFromFloat(close64),
 		Volume:    decimal.NewFromFloat(volume64),
 	}, nil
+}
+
+// Count executes a pre-flight SELECT count(*) for the configured query range.
+// Used by the progress ticker in main.go to compute accurate completion percentages.
+// Returns (0, err) on failure; the caller should fall back to EstimatedCandleCount.
+func (cl *ClickHouseCandleLoader) Count() (int64, error) {
+	var count uint64
+	row := cl.conn.QueryRow(cl.ctx,
+		`SELECT count(*) FROM market_data FINAL WHERE symbol = ? AND timestamp >= ? AND timestamp <= ?`,
+		cl.symbol, cl.start, cl.end,
+	)
+	if err := row.Scan(&count); err != nil {
+		return 0, fmt.Errorf("candle COUNT query: %w", err)
+	}
+	return int64(count), nil
 }
 
 // Close releases the ClickHouse row set and connection.

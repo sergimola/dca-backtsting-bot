@@ -54,9 +54,11 @@ type BacktestRun struct {
 // CandleLoader is the abstraction over any candle source (ClickHouse, mock, etc.).
 // NextCandle returns the next candle in ascending timestamp order.
 // It returns (nil, nil) to signal end of stream, and (nil, err) on error.
+// Count returns the total number of candles available for progress percentage calculation.
 // Close must be called to release the underlying connection or resources.
 type CandleLoader interface {
 	NextCandle() (*Candle, error)
+	Count() (int64, error) // pre-flight row count for progress percentage; returns (0, err) on failure
 	Close() error
 }
 

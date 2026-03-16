@@ -11,7 +11,7 @@
 - Go engine independence: engine connects to CH directly; API never relays candle data
 - COUNT(*) gap math: no MIN/MAX-only gap detection — swiss cheese prohibition
 - Open-candle discard before every insert
-- 250ms sleep + `enableRateLimit: true` on every paginated fetch
+- 50ms sleep + `enableRateLimit: true` on every paginated fetch
 - Green Light Protocol: all tests green before merge
 
 ---
@@ -57,7 +57,7 @@
 
 - [X] T011 [P] [US1] Implement `orchestrator/api/src/services/ClickHouseWriter.ts` — `insertBatch(rows: OHLCVRow[]): Promise<void>` calls `chClient.insert<OHLCVRow>({ table: 'market_data', values: rows, format: 'JSONEachRow' })`; throw `Error('insertBatch called with empty array')` as internal guard
 - [X] T012 [P] [US1] Implement `orchestrator/api/src/services/GapResolver.ts` — `check(symbol, startDate, endDate): Promise<GapResult>` runs `SELECT toUInt64(COUNT(*)) AS cnt FROM market_data FINAL WHERE symbol = {symbol:String} AND timestamp >= {start:DateTime64(3)} AND timestamp <= {end:DateTime64(3)}`; computes `expectedCount`; returns `{ hasGap, expectedCount, actualCount }`
-- [X] T013 [US1] Implement `orchestrator/api/src/services/BinanceDownloader.ts` — paginated `fetchOHLCV('1m', since, 1000)` loop; `sleep(250)` between pages; open-candle discard (`if lastCandleTs >= Math.floor(Date.now() / 60_000) * 60_000 → pop()`); map each page to `OHLCVRow[]`; call `writer.insertBatch(batch)` per page; return total candle count stored (depends on T011)
+- [X] T013 [US1] Implement `orchestrator/api/src/services/BinanceDownloader.ts` — paginated `fetchOHLCV('1m', since, 1000)` loop; `sleep(50)` between pages; open-candle discard (`if lastCandleTs >= Math.floor(Date.now() / 60_000) * 60_000 → pop()`); map each page to `OHLCVRow[]`; call `writer.insertBatch(batch)` per page; return total candle count stored (depends on T011)
 - [X] T014 [US1] Update `orchestrator/api/src/services/BacktestService.ts` — remove `market_data_csv_path` from the engine request payload; add `clickhouse_addr` (from `CLICKHOUSE_HOST:CLICKHOUSE_NATIVE_PORT`), `clickhouse_db`, `clickhouse_user`, `clickhouse_password` fields sourced from env vars
 - [X] T015 [US1] Refactor `orchestrator/api/src/routes/backtest.routes.ts` — replace `MarketDataResolver` with `GapResolver`; inject `BinanceDownloader` and `ClickHouseWriter`; implement async status flow: set `PENDING` → `gapResolver.check()` → if gap: set `DOWNLOADING_DATA`, `await downloader.downloadAndStore()` → set `RUNNING` → `await backtestService.execute()` → set `COMPLETE`; wrap each stage in try/catch → set `FAILED` with stage-specific error message (depends on T012, T013, T014)
 - [X] T016 [US1] Delete `orchestrator/api/src/services/MarketDataResolver.ts` and `orchestrator/api/src/services/MarketDataResolver.test.ts`; update all `import` statements across the codebase that referenced `MarketDataResolver` to point to `GapResolver` (depends on T015)

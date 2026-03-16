@@ -7,7 +7,7 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"log/slog"
 
 	"github.com/shopspring/decimal"
 )
@@ -103,8 +103,14 @@ func (c *Config) ComputeAmountSequence() (AmountSequence, error) {
 	}
 
 	D0 := V.Div(R)
-	fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG] SDD §2.2 Sizing: V=%s USDT, R=%s, D_0=%s USDT (AmountPerTrade=%s, AccountBalance=%s, Multiplier=%s)\n",
-		V, R, D0, apt, c.accountBalance, m)
+	slog.Debug("SDD §2.2 sizing",
+		"V_usdt", V,
+		"R", R,
+		"D0_usdt", D0,
+		"amount_per_trade", apt,
+		"account_balance", c.accountBalance,
+		"multiplier", m,
+	)
 
 	seq := make(AmountSequence, n)
 	for i := 0; i < n; i++ {
@@ -154,8 +160,7 @@ func (c *Config) ComputeBaseQuantities(prices PriceSequence) (AmountSequence, er
 			}
 		}
 		qty[i] = d.Div(prices[i]).Round(precision)
-		fmt.Fprintf(os.Stderr, "[ENGINE-DEBUG]   Order %d: D=%s USDT / P=%s → Qty=%s BTC\n",
-			i, d, prices[i], qty[i])
+		slog.Debug("order sizing", "order", i, "D_usdt", d, "price", prices[i], "qty", qty[i])
 	}
 	return qty, nil
 }

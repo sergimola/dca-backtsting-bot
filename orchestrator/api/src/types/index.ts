@@ -111,6 +111,60 @@ export interface StoredTradeEvent {
   fee: number;
 }
 
+// ============== Engine NDJSON Protocol Types ==============
+// Shapes emitted by the Go engine over stdout (US1, US3).
+
+/** Progress line emitted at --progress-interval-ms cadence. JSON tag: type="progress" */
+export interface ProgressLine {
+  type: 'progress';
+  percent: number;
+  current_date: string;       // RFC 3339 UTC of the last processed candle
+  processed_candles: number;
+  total_candles: number;
+  current_price: number;
+  realized_pnl: number;
+  candles_per_second: number;
+}
+
+/** Safety order usage histogram item — mirrors Go SafetyOrderUsageEntry. */
+export interface SafetyOrderUsageEntry {
+  level: string;  // "1", "2", ... (1-indexed)
+  count: number;
+}
+
+/** Final result line emitted once when simulation ends. JSON tag: type="result" */
+export interface EngineResultLine {
+  type: 'result';
+  pnlSummary: StoredPnlSummary;
+  tradeEvents: StoredTradeEvent[];
+  safetyOrderUsage: SafetyOrderUsageEntry[];
+  executionTimeMs: number;
+  candleCount: number;
+  eventCount: number;
+}
+
+// ============== BacktestService Contract ==============
+
+/** Options accepted by BacktestService.execute() */
+export interface BacktestExecuteOptions {
+  /** Called for each progress line; fire-and-forget (errors are caught internally). */
+  progressHandler?: (line: ProgressLine) => Promise<void>;
+}
+
+/**
+ * Structured result returned by BacktestService after a successful backtest run.
+ * Replaces the old `{ events: any[], finalPosition: any }` blob shape.
+ */
+export interface BacktestExecutionResult {
+  pnlSummary: StoredPnlSummary;
+  tradeEvents: StoredTradeEvent[];
+  safetyOrderUsage: SafetyOrderUsageEntry[];
+  /** Wall-clock ms measured by the engine binary (from EngineResultLine). */
+  engineExecutionTimeMs: number;
+  candleCount: number;
+  eventCount: number;
+}
+
 // ============== PnlSummary Types ==============
 
 export interface PnlSummary {

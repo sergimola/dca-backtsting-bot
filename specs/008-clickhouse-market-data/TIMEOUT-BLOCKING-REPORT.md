@@ -107,7 +107,7 @@ The frontend polls `GET /backtest/:id/status`, but that route only queries the `
                           │       └─ SELECT COUNT(*) FINAL from ClickHouse/HTTP │
                           │                                                     │
                           │  2. [conditional] BinanceDownloader.downloadAndStore│
-                          │       ├─ ccxt.fetchOHLCV() loop (paginated, 250ms)  │
+                          │       ├─ ccxt.fetchOHLCV() loop (paginated, 50ms)  │
                           │       ├─ ClickHouseWriter.insertBatch() per page    │
                           │       └─ chClient.insert() → market_data_syncs      │
                           │                                                     │
