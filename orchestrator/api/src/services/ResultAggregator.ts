@@ -252,6 +252,7 @@ export class ResultAggregator {
     let entryFee = new Decimal(0);    // cumulative entry-buy fees (from PositionOpened)
     let tradingFees = new Decimal(0); // cumulative safety-order + sell fees (from BuyOrderExecuted / SellOrderExecuted)
     let realizedPnl = new Decimal(0); // authoritative: accumulated from all PositionClosed events
+    let totalAdditions = new Decimal(0); // cumulative capital injected via monthly.addition events
     let totalFills = 0;
     const safetyOrderUsageCounts: Record<number, number> = {};
 
@@ -285,6 +286,13 @@ export class ResultAggregator {
         // PositionClosed.profit is the authoritative realized P&L per trade.
         // Use += to accumulate across multiple trades in a multi-trade backtest.
         realizedPnl = realizedPnl.plus(new Decimal(d.profit ?? '0'));
+
+      } else if (type === 'monthly.addition') {
+        try {
+          totalAdditions = totalAdditions.plus(new Decimal(d.addition_amount ?? '0'));
+        } catch {
+          console.warn(`[ResultAggregator] Failed to parse addition_amount: ${d.addition_amount}`);
+        }
       }
       // LiquidationPriceUpdated, price.changed → ignored
     }
@@ -292,10 +300,11 @@ export class ResultAggregator {
     const totalPnl  = realizedPnl;
     const totalFees = entryFee.plus(tradingFees);
 
-    // ROI = (realized P&L / account balance) × 100
-    const roiPercent = accBalance.isZero()
+    // ROI = (realized P&L / (account balance + total injections)) × 100
+    const roiDenominator = accBalance.plus(totalAdditions);
+    const roiPercent = roiDenominator.isZero()
       ? new Decimal(0)
-      : totalPnl.dividedBy(accBalance).times(100);
+      : totalPnl.dividedBy(roiDenominator).times(100);
 
     return {
       total_pnl:    PrecisionFormatter.formatPrice(totalPnl),
@@ -306,6 +315,7 @@ export class ResultAggregator {
       total_fills:  totalFills,
       realized_pnl: PrecisionFormatter.formatPrice(realizedPnl),
       safety_order_usage_counts: safetyOrderUsageCounts,
+      total_additions: PrecisionFormatter.formatPrice(totalAdditions),
     };
   }
 }

@@ -407,6 +407,10 @@ func TestCanonical_Scenario6_EarlyExitLastOrder(t *testing.T) {
 }
 
 // Test Scenario 7: Monthly addition impact
+// TestCanonical_Scenario7_MonthlyAddition verifies that the PSM does NOT emit
+// MonthlyAdditionEvent nor modify AccountBalance at the 43,200-candle boundary.
+// Monthly capital injection is exclusively Orchestrator-driven (globalCandleCount).
+// The PSM's responsibility is limited to incrementing CandleCount each candle.
 func TestCanonical_Scenario7_MonthlyAddition(t *testing.T) {
 	sm := NewStateMachine()
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -416,26 +420,49 @@ func TestCanonical_Scenario7_MonthlyAddition(t *testing.T) {
 	}, []decimal.Decimal{
 		mustDecimal("10.00"),
 	})
-	pos.AccountBalance = mustDecimal("1000.00")
+	initialBalance := mustDecimal("1000.00")
+	pos.AccountBalance = initialBalance
 	pos.MonthlyAddition = mustDecimal("500.00")
 
-	// Process candles up to day 30 (1440 minutes = 1 day)
-	baseTime := startTime
-	for i := 0; i < 1440; i++ {
+	// Process exactly 43200 candles (30 days × 24 h × 60 min)
+	var monthlyEventsFromPSM int
+	for i := 0; i < 43200; i++ {
 		candle := &Candle{
-			Timestamp: baseTime.Add(time.Duration(i) * time.Minute),
+			Timestamp: startTime.Add(time.Duration(i) * time.Minute),
 			Open:      mustDecimal("100.00"),
 			High:      mustDecimal("100.00"),
 			Low:       mustDecimal("100.00"),
 			Close:     mustDecimal("100.00"),
 			Volume:    mustDecimal("1000000"),
 		}
-		_, _ = sm.ProcessCandle(pos, candle)
+		events, err := sm.ProcessCandle(pos, candle)
+		if err != nil {
+			t.Fatalf("S7: ProcessCandle %d failed: %v", i, err)
+		}
+		for _, evt := range events {
+			if evt.EventType() == "monthly.addition" {
+				monthlyEventsFromPSM++
+			}
+		}
 	}
 
-	// Note: Monthly addition logic depends on implementation in minute_loop.go
-	// This test verifies the structure; actual test happens during integration run
-	t.Logf("S7: PASS - Monthly addition test structure in place")
+	// PSM must NOT have emitted any MonthlyAdditionEvent
+	if monthlyEventsFromPSM > 0 {
+		t.Errorf("S7: PSM emitted %d MonthlyAdditionEvent(s); expected 0 — Orchestrator is the sole emitter",
+			monthlyEventsFromPSM)
+	}
+
+	// PSM must NOT have modified AccountBalance
+	if !pos.AccountBalance.Equal(initialBalance) {
+		t.Errorf("S7: expected AccountBalance=%v unchanged by PSM, got %v", initialBalance, pos.AccountBalance)
+	}
+
+	// CandleCount must be accurate
+	if pos.CandleCount != 43200 {
+		t.Errorf("S7: expected CandleCount=43200, got %d", pos.CandleCount)
+	}
+
+	t.Logf("S7: PASS — PSM correctly delegates monthly injection to the Orchestrator")
 }
 
 // Test Scenario 8: Concurrent position invariant

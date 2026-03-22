@@ -10,9 +10,11 @@ export function useResultsMetrics(
     const { tradeEvents, pnlSummary, safetyOrderUsage } = results
     const accountBalance = parseFloat(config.accountBalance) || 0
 
-    // Group events by trade_id
+    // Group events by trade_id, skipping DEPOSIT rows (capital injections are
+    // ledger entries only — they must not contribute to trade PnL or open-trade counts).
     const groupMap = new Map<string, TradeEvent[]>()
     for (const evt of tradeEvents) {
+      if (evt.eventType === 'DEPOSIT') continue
       const arr = groupMap.get(evt.trade_id) ?? []
       arr.push(evt)
       groupMap.set(evt.trade_id, arr)
@@ -87,10 +89,19 @@ export function useResultsMetrics(
 
     const netProfit = netProfitD.toNumber()
     const totalFees = totalFeesD.toNumber()
-    const roi = accountBalance > 0 ? (netProfit / accountBalance) * 100 : 0
+    
+    // FR-023: Calculate total additions first so we can use it in the math
+    const totalAdditions = tradeEvents
+      .filter(e => e.eventType === 'DEPOSIT')
+      .reduce((sum, e) => sum + e.balance, 0)
+
+    const trueCapitalAvailable = accountBalance + totalAdditions;
+
+    // Use the corrected denominator for ROI and Capital Utilized
+    const roi = trueCapitalAvailable > 0 ? (netProfit / trueCapitalAvailable) * 100 : 0
     const profitFactor = grossLosses.gt(0) ? grossWins.div(grossLosses).toNumber() : Infinity
-    const capitalUtilized = accountBalance > 0
-      ? totalCapitalD.div(accountBalance).times(100).toNumber()
+    const capitalUtilized = trueCapitalAvailable > 0
+      ? totalCapitalD.div(trueCapitalAvailable).times(100).toNumber()
       : 0
 
     const winCount = tradeGroups.filter(tg => tg.grossProfit > 0).length
@@ -105,7 +116,7 @@ export function useResultsMetrics(
       profitFactor,
       capitalUtilized,
       maxDrawdown: pnlSummary.maxDrawdown,
-      accountEquity: accountBalance + netProfit,
+      accountEquity: trueCapitalAvailable + netProfit,
       tradeGroups,
       safetyOrderUsage,
     }

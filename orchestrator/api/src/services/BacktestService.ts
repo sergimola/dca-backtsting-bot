@@ -268,6 +268,7 @@ export class BacktestService {
         multiplier:                   Number(request.multiplier),
         take_profit_distance_percent: String(request.take_profit_distance_percent),
         account_balance:              String(request.account_balance),
+        monthly_addition:             request.monthly_addition ? String(request.monthly_addition) : '0',
         exit_on_last_order:           Boolean(request.exit_on_last_order),
         clickhouse_addr:              String(request.clickhouse_addr),
         clickhouse_db:                String(request.clickhouse_db),

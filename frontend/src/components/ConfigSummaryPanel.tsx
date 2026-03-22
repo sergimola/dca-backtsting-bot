@@ -14,6 +14,7 @@ const LABELS: Record<string, string> = {
   multiplier: 'Multiplier',
   takeProfitDistancePercent: 'Take Profit %',
   accountBalance: 'Account Balance',
+  monthlyAddition: 'Monthly Addition',
   exitOnLastOrder: 'Exit on Last Order',
 }
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+	"log/slog"
 	"sort"
 	"strconv"
 	"time"
@@ -34,18 +36,21 @@ func decStr(s string) decimal.Decimal {
 //   - entryFees from PositionOpened.entry_fee
 //   - tradingFees from BuyOrderExecuted.fee + SellOrderExecuted.fee
 //   - realizedPnl from PositionClosed.profit (accumulated across multiple trades)
+//   - totalAdditions from monthly.addition events (FR-019)
 //   - maxDrawdown via peak-equity tracking after each PositionClosed
 //   - safetyOrderCounts keyed by 0-based soIndex (orderNumber - 1)
 //
+// ROI denominator = accountBalance + totalAdditions (FR-020).
 // All arithmetic is performed with decimal.Decimal.
 // float64 conversion is done only when constructing PnlSummaryOutput fields.
 func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal.Decimal) aggregationResult {
 	var (
-		entryFees   decimal.Decimal
-		tradingFees decimal.Decimal
-		realizedPnl decimal.Decimal
-		peakEquity  decimal.Decimal
-		maxDrawdown decimal.Decimal
+		entryFees      decimal.Decimal
+		tradingFees    decimal.Decimal
+		realizedPnl    decimal.Decimal
+		totalAdditions decimal.Decimal
+		peakEquity     decimal.Decimal
+		maxDrawdown    decimal.Decimal
 	)
 	safetyOrderCounts := make(map[int]int)
 
@@ -86,13 +91,25 @@ func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal
 					}
 				}
 			}
+
+		case orchestrator.EventType("monthly.addition"):
+			// FR-019: accumulate capital injections into totalAdditions.
+			// These are excluded from fees/PnL but widen the ROI denominator (FR-020).
+			mae, ok := ev.Data.(*position.MonthlyAdditionEvent)
+			if !ok {
+				slog.Warn("aggregateBacktestEvents: unexpected monthly.addition data type", "type", fmt.Sprintf("%T", ev.Data))
+				continue
+			}
+			totalAdditions = totalAdditions.Add(decStr(mae.AdditionAmount))
 		}
 	}
 
 	totalFees := entryFees.Add(tradingFees)
+	// FR-020: ROI denominator widens by every capital injection received.
+	roiDenominator := accountBalance.Add(totalAdditions)
 	roi := decimal.Zero
-	if accountBalance.IsPositive() {
-		roi = realizedPnl.Div(accountBalance).Mul(decimal.NewFromInt(100))
+	if roiDenominator.IsPositive() {
+		roi = realizedPnl.Div(roiDenominator).Mul(decimal.NewFromInt(100))
 	}
 
 	return aggregationResult{
@@ -109,10 +126,11 @@ func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal
 //
 // Rules (mirror the TypeScript logic exactly):
 //   - tradeCounter increments on every PositionOpened; currentTradeID = string(counter)
-//   - PositionOpened   → ENTRY event (uses configured_orders[0] for price/qty/balance)
-//   - BuyOrderExecuted → SAFETY_ORDER event
-//   - PositionClosed   → EXIT event with Fee=0 initially; stored as lastExitIdx
+//   - PositionOpened    → ENTRY event (uses configured_orders[0] for price/qty/balance)
+//   - BuyOrderExecuted  → SAFETY_ORDER event
+//   - PositionClosed    → EXIT event with Fee=0 initially; stored as lastExitIdx
 //   - SellOrderExecuted → patches the last EXIT event Fee; never emitted as its own event
+//   - monthly.addition  → DEPOSIT event (FR-021): balance=addition_amount, price/qty/fee=0
 func buildTradeEvents(events []orchestrator.Event) []TradeEventOutput {
 	result := make([]TradeEventOutput, 0, len(events)/2)
 	tradeCounter := 0
@@ -196,6 +214,25 @@ func buildTradeEvents(events []orchestrator.Event) []TradeEventOutput {
 				}
 				lastExitIdx = -1
 			}
+
+		case orchestrator.EventType("monthly.addition"):
+			// FR-021: emit a DEPOSIT row so the frontend ledger shows capital injections.
+			// Price, Quantity, and Fee are zero — Balance carries the injection amount.
+			mae, ok := ev.Data.(*position.MonthlyAdditionEvent)
+			if !ok {
+				slog.Warn("buildTradeEvents: unexpected monthly.addition data type", "type", fmt.Sprintf("%T", ev.Data))
+				continue
+			}
+			result = append(result, TradeEventOutput{
+				Timestamp:    formatUTCTimestamp(ev.Timestamp),
+				RawTimestamp: ev.Timestamp.UTC().Format(time.RFC3339),
+				EventType:    "DEPOSIT",
+				Price:        0,
+				Quantity:     0,
+				Balance:      decStr(mae.AdditionAmount).InexactFloat64(),
+				TradeID:      "deposit",
+				Fee:          0,
+			})
 		}
 	}
 

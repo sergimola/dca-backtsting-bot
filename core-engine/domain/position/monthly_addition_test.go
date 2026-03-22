@@ -110,23 +110,22 @@ func TestUS5_T087_DailyBoundaryDetection(t *testing.T) {
 }
 
 // ============================================================================
-// T088: Monthly boundary — CandleCount = 43200 (30 days) triggers MonthlyAdditionEvent
+// T088: PSM must NOT emit MonthlyAdditionEvent at the 43,200-candle boundary.
+// Monthly capital injection is now exclusively managed by the Orchestrator via
+// globalCandleCount. The PSM's ProcessCandle no longer contains the %43200 block.
 // ============================================================================
-func TestUS5_T088_MonthlyBoundaryTriggersEvent(t *testing.T) {
+func TestUS5_T088_PSMDoesNotEmitMonthlyAdditionEvent(t *testing.T) {
 	sm := NewStateMachine()
 
-	tradeID := "test-monthly-boundary"
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-
 	prices := mustDecimalSlice("100.00", "98.00", "95.84")
 	amounts := mustDecimalSlice("10.00", "20.00", "30.00")
-	pos := NewPosition(tradeID, startTime, prices, amounts)
-	initialBalance := mustDecimal("1000.00")
-	pos.AccountBalance = initialBalance
+	pos := NewPosition("test-monthly-boundary", startTime, prices, amounts)
+	pos.AccountBalance = mustDecimal("1000.00")
 	pos.MonthlyAddition = mustDecimal("100.00")
 
 	basePrice := mustDecimal("100.00")
-	var monthlyAdditionEvent *MonthlyAdditionEvent
+	var monthlyAdditionEventCount int
 
 	// Process exactly 43200 candles (30 days)
 	for i := int64(0); i < 43200; i++ {
@@ -135,49 +134,35 @@ func TestUS5_T088_MonthlyBoundaryTriggersEvent(t *testing.T) {
 		if err != nil {
 			t.Fatalf("ProcessCandle %d failed: %v", i, err)
 		}
-
-		// Check for MonthlyAdditionEvent on candle 43200
-		if i == 43199 { // 0-indexed, so 43199 is the 43200th candle
-			for _, evt := range events {
-				if evt.EventType() == "monthly.addition" {
-					monthlyAdditionEvent = evt.(*MonthlyAdditionEvent)
-					break
-				}
+		for _, evt := range events {
+			if evt.EventType() == "monthly.addition" {
+				monthlyAdditionEventCount++
 			}
 		}
 	}
 
-	// Verify CandleCount = 43200
+	// Verify CandleCount is still tracked correctly
 	if pos.CandleCount != 43200 {
 		t.Errorf("after 43200 candles, expected CandleCount=43200, got %d", pos.CandleCount)
 	}
 
-	// Verify MonthlyAdditionEvent was emitted
-	if monthlyAdditionEvent == nil {
-		t.Errorf("expected MonthlyAdditionEvent on candle 43200, got none")
-	}
-
-	// Verify event contains correct amount
-	if monthlyAdditionEvent != nil {
-		eventAmount := mustDecimal(monthlyAdditionEvent.AdditionAmount)
-		if !eventAmount.Equal(pos.MonthlyAddition) {
-			t.Errorf("expected monthly addition amount %v, got %v", pos.MonthlyAddition, eventAmount)
-		}
+	// PSM must NOT have emitted any MonthlyAdditionEvent — that is now the Orchestrator's job
+	if monthlyAdditionEventCount > 0 {
+		t.Errorf("expected 0 MonthlyAdditionEvents from PSM over 43200 candles, got %d", monthlyAdditionEventCount)
 	}
 }
 
 // ============================================================================
-// T089: Account balance increases by monthly_addition amount on day 30
+// T089: PSM must NOT modify AccountBalance at the 43,200-candle boundary.
+// Balance updates at monthly boundaries are exclusively managed by the Orchestrator.
 // ============================================================================
-func TestUS5_T089_AccountBalanceIncreasesOnDay30(t *testing.T) {
+func TestUS5_T089_PSMDoesNotModifyAccountBalanceAtMonthlyBoundary(t *testing.T) {
 	sm := NewStateMachine()
 
-	tradeID := "test-balance-increase"
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-
 	prices := mustDecimalSlice("100.00", "98.00", "95.84")
 	amounts := mustDecimalSlice("10.00", "20.00", "30.00")
-	pos := NewPosition(tradeID, startTime, prices, amounts)
+	pos := NewPosition("test-balance-unchanged", startTime, prices, amounts)
 	initialBalance := mustDecimal("1000.00")
 	pos.AccountBalance = initialBalance
 	pos.MonthlyAddition = mustDecimal("100.00")
@@ -187,82 +172,55 @@ func TestUS5_T089_AccountBalanceIncreasesOnDay30(t *testing.T) {
 	// Process exactly 43200 candles (30 days)
 	for i := int64(0); i < 43200; i++ {
 		candle := generateCandle(startTime.Add(time.Duration(i)*time.Minute), basePrice)
-		events, err := sm.ProcessCandle(pos, candle)
+		_, err := sm.ProcessCandle(pos, candle)
 		if err != nil {
 			t.Fatalf("ProcessCandle %d failed: %v", i, err)
 		}
-
-		// Check if monthly addition event occurred
-		if i == 43199 { // 0-indexed
-			for _, evt := range events {
-				if evt.EventType() == "monthly.addition" {
-					// Event detected - monthly addition has been applied
-					_ = evt
-				}
-			}
-		}
 	}
 
-	// Verify balance increased by the monthly addition amount
-	// The balance should NOT be the initial + monthly, but rather:
-	// The balance at the time of the event + monthly (or the implementation 
-	// should update the balance as part of the event)
-	// For now, we check that the current balance is at least the initial + monthly
-	minExpectedBalance := initialBalance.Add(pos.MonthlyAddition)
-	
-	if pos.AccountBalance.LessThan(minExpectedBalance) {
-		t.Errorf("expected account balance >= %v, got %v", minExpectedBalance, pos.AccountBalance)
+	// AccountBalance must equal the initial value — PSM must not have modified it
+	if !pos.AccountBalance.Equal(initialBalance) {
+		t.Errorf("expected AccountBalance unchanged at %v after 43200 PSM candles, got %v",
+			initialBalance, pos.AccountBalance)
 	}
 }
 
 // ============================================================================
-// T090: Subsequent position after day 30 sees increased account balance
+// T090: After 43,200 PSM candles, pos.AccountBalance is unchanged regardless of
+// MonthlyAddition value. The Orchestrator, not the PSM, is responsible for
+// updating the running balance at monthly boundaries.
 // ============================================================================
-func TestUS5_T090_SubsequentPositionUsesIncreasedBalance(t *testing.T) {
+func TestUS5_T090_PSMDoesNotModifyBalanceAcrossMultipleBoundaries(t *testing.T) {
 	sm := NewStateMachine()
 
-	tradeID1 := "test-pos-before-monthly"
 	startTime := time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)
-
 	prices := mustDecimalSlice("100.00", "98.00", "95.84")
 	amounts := mustDecimalSlice("10.00", "20.00", "30.00")
-	pos1 := NewPosition(tradeID1, startTime, prices, amounts)
+	pos := NewPosition("test-no-psm-balance-mutation", startTime, prices, amounts)
 	initialBalance := mustDecimal("1000.00")
-	pos1.AccountBalance = initialBalance
-	pos1.MonthlyAddition = mustDecimal("100.00")
+	pos.AccountBalance = initialBalance
+	pos.MonthlyAddition = mustDecimal("500.00") // large amount — must not affect balance
 
 	basePrice := mustDecimal("100.00")
-	var balanceAtMonthlyEvent decimal.Decimal
 
-	// Process 43200 candles and capture balance at monthly event
-	for i := int64(0); i < 43200; i++ {
+	// Process 86400 candles (2 × 30-day boundaries) to ensure no injection fires at either
+	for i := int64(0); i < 86400; i++ {
 		candle := generateCandle(startTime.Add(time.Duration(i)*time.Minute), basePrice)
-		events, err := sm.ProcessCandle(pos1, candle)
+		_, err := sm.ProcessCandle(pos, candle)
 		if err != nil {
 			t.Fatalf("ProcessCandle %d failed: %v", i, err)
 		}
-
-		// Capture balance at monthly addition event
-		if i == 43199 {
-			for _, evt := range events {
-				if evt.EventType() == "monthly.addition" {
-					balanceAtMonthlyEvent = pos1.AccountBalance
-				}
-			}
-		}
 	}
 
-	// Create second position that inherits the increased balance
-	tradeID2 := "test-pos-after-monthly"
-	pos2 := NewPosition(tradeID2, startTime.Add(43200*time.Minute), prices, amounts)
-	pos2.AccountBalance = balanceAtMonthlyEvent
+	// AccountBalance must remain exactly the initial value throughout
+	if !pos.AccountBalance.Equal(initialBalance) {
+		t.Errorf("expected AccountBalance=%v after 2 monthly boundaries through PSM, got %v",
+			initialBalance, pos.AccountBalance)
+	}
 
-	// Verify second position has increased balance
-	// Expected: initial (1000) + monthly addition (100) = 1100
-	minExpectedBalance := initialBalance.Add(pos1.MonthlyAddition)
-	
-	if pos2.AccountBalance.LessThan(minExpectedBalance) {
-		t.Errorf("expected second position balance >= %v, got %v", minExpectedBalance, pos2.AccountBalance)
+	// CandleCount must be accurate
+	if pos.CandleCount != 86400 {
+		t.Errorf("expected CandleCount=86400, got %d", pos.CandleCount)
 	}
 }
 

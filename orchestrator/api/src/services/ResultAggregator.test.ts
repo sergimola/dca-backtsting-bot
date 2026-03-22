@@ -642,4 +642,57 @@ describe('ResultAggregator', () => {
       expect(summary.total_fills).toBe(2);
     });
   });
+
+  // ─── US6 / FR-019 / FR-020 ───────────────────────────────────────────────
+  describe('✅ aggregateGoEvents — Monthly Injection ROI Correction (US6, FR-019, FR-020)', () => {
+    it('T031: canonical roi=10.00 — 3 injections of $500 on $1000 balance + profit $250', async () => {
+      // Denominator = accountBalance(1000) + totalAdditions(1500) = 2500
+      // ROI = 250 / 2500 * 100 = 10.00
+      const events = [
+        { type: 'monthly.addition', data: { addition_amount: '500' } },
+        { type: 'monthly.addition', data: { addition_amount: '500' } },
+        { type: 'monthly.addition', data: { addition_amount: '500' } },
+        { type: 'PositionClosed',   data: { profit: '250' } },
+      ];
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      expect(summary.roi_percent).toBe('10.00');
+      expect(summary.total_additions).toBe('1500.00000000');
+    });
+
+    it('T032: baseline zero additions — roi_percent uses original denominator, total_additions=0', async () => {
+      // No monthly.addition events → denominator is just accountBalance(1000)
+      // ROI = 100 / 1000 * 100 = 10.00
+      const events = [
+        { type: 'PositionClosed', data: { profit: '100' } },
+      ];
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      expect(summary.roi_percent).toBe('10.00');
+      expect(summary.total_additions).toBe('0.00000000');
+    });
+
+    it('T033: unparseable addition_amount does not throw; total_additions stays 0', async () => {
+      const events = [
+        { type: 'monthly.addition', data: { addition_amount: 'abc' } },
+        { type: 'PositionClosed',   data: { profit: '100' } },
+      ];
+      // Must not throw
+      await expect(aggregator.aggregateGoEvents(events, '1000')).resolves.toBeDefined();
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      // Bad value skipped → denominator = 1000, roi = 100/1000*100 = 10.00
+      expect(summary.roi_percent).toBe('10.00');
+      expect(summary.total_additions).toBe('0.00000000');
+    });
+
+    it('T034: 2 additions in mixed stream — denominator = accountBalance + 2×additionAmount', async () => {
+      // denominator = 1000 + 500 + 500 = 2000; roi = 150/2000*100 = 7.50
+      const events = [
+        { type: 'monthly.addition', data: { addition_amount: '500' } },
+        { type: 'PositionClosed',   data: { profit: '150' } },
+        { type: 'monthly.addition', data: { addition_amount: '500' } },
+      ];
+      const summary = await aggregator.aggregateGoEvents(events, '1000');
+      expect(summary.roi_percent).toBe('7.50');
+      expect(summary.total_additions).toBe('1000.00000000');
+    });
+  });
 });

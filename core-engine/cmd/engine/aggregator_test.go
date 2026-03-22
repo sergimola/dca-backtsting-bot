@@ -75,6 +75,17 @@ func almostEqual(a, b, tolerance float64) bool {
 	return math.Abs(a-b) <= tolerance
 }
 
+func makeMonthlyAdditionEvent(amount string) orchestrator.Event {
+	return orchestrator.Event{
+		Timestamp: testTS,
+		Type:      orchestrator.EventType("monthly.addition"),
+		Data: &position.MonthlyAdditionEvent{
+			Timestamp:      testTS,
+			AdditionAmount: amount,
+		},
+	}
+}
+
 // ---------------------------------------------------------------------------
 // aggregateBacktestEvents tests
 // ---------------------------------------------------------------------------
@@ -310,5 +321,110 @@ func TestBuildSafetyOrderUsage_EmptyMapReturnsEmptySlice(t *testing.T) {
 	result := buildSafetyOrderUsage(map[int]int{})
 	if len(result) != 0 {
 		t.Errorf("len = %d; want 0", len(result))
+	}
+}
+
+// ---------------------------------------------------------------------------
+// monthly.addition / FR-019, FR-020, FR-021 tests
+// ---------------------------------------------------------------------------
+
+// TestAggregateBacktestEvents_MonthlyAddition verifies SC-007:
+//   - realizedPnl=250 over denominator=1000+3×500=2500 → ROI ≈ 10.00%
+//
+// Without the fix the denominator would be 1000 → ROI ≈ 25.00%.
+func TestAggregateBacktestEvents_MonthlyAddition(t *testing.T) {
+	events := []orchestrator.Event{
+		makeMonthlyAdditionEvent("500"),
+		makeMonthlyAdditionEvent("500"),
+		makeMonthlyAdditionEvent("500"),
+		makeClosedEvent("t1", "51000", "0.01", "250"),
+	}
+	balance := decimal.NewFromInt(1000)
+	result := aggregateBacktestEvents(events, balance)
+
+	// ROI = 250 / (1000 + 1500) × 100 = 10.00
+	if !almostEqual(result.PnlSummary.Roi, 10.0, 0.0001) {
+		t.Errorf("ROI = %.6f; want 10.0000 (corrected denominator 2500)", result.PnlSummary.Roi)
+	}
+}
+
+// TestAggregateBacktestEvents_NoAdditionsRoiUnchanged confirms zero-addition
+// backtests are mathematically identical to the old formula.
+func TestAggregateBacktestEvents_NoAdditionsRoiUnchanged(t *testing.T) {
+	events := []orchestrator.Event{
+		makeClosedEvent("t1", "51000", "0.01", "100"),
+	}
+	balance := decimal.NewFromInt(1000)
+	result := aggregateBacktestEvents(events, balance)
+
+	if !almostEqual(result.PnlSummary.Roi, 10.0, 0.0001) {
+		t.Errorf("ROI = %.6f; want 10.0000 (no additions, denominator unchanged)", result.PnlSummary.Roi)
+	}
+}
+
+// TestAggregateBacktestEvents_ZeroBalancePlusAdditions confirms no panic when
+// accountBalance is zero but additions are present.
+func TestAggregateBacktestEvents_ZeroBalancePlusAdditions(t *testing.T) {
+	events := []orchestrator.Event{
+		makeMonthlyAdditionEvent("1000"),
+		makeClosedEvent("t1", "51000", "0.01", "100"),
+	}
+	balance := decimal.Zero
+	result := aggregateBacktestEvents(events, balance)
+
+	// ROI = 100 / 1000 × 100 = 10.00
+	if !almostEqual(result.PnlSummary.Roi, 10.0, 0.0001) {
+		t.Errorf("ROI = %.6f; want 10.0000 (denominator covered entirely by addition)", result.PnlSummary.Roi)
+	}
+}
+
+// TestBuildTradeEvents_MonthlyAdditionEmitsDeposit verifies FR-021:
+// monthly.addition events must emit DEPOSIT rows with the injection amount as
+// Balance and zero Price, Quantity, Fee.
+func TestBuildTradeEvents_MonthlyAdditionEmitsDeposit(t *testing.T) {
+	events := []orchestrator.Event{
+		makeMonthlyAdditionEvent("500"),
+		makeMonthlyAdditionEvent("500"),
+		makeMonthlyAdditionEvent("500"),
+		makeOpenedEvent("t1", []position.OrderGrid{{Price: "50000", Amount: "100"}}, "0.1"),
+		makeClosedEvent("t1", "51000", "0.002", "10"),
+		makeSellEvent("t1", "0.05"),
+	}
+	result := buildTradeEvents(events)
+
+	// 3 DEPOSIT + 1 ENTRY + 1 EXIT = 5
+	if len(result) != 5 {
+		t.Fatalf("len = %d; want 5 (3 DEPOSIT + ENTRY + EXIT)", len(result))
+	}
+
+	// First three events must be DEPOSIT rows.
+	for i := 0; i < 3; i++ {
+		d := result[i]
+		if d.EventType != "DEPOSIT" {
+			t.Errorf("result[%d].EventType = %q; want DEPOSIT", i, d.EventType)
+		}
+		if !almostEqual(d.Balance, 500, 0.001) {
+			t.Errorf("result[%d].Balance = %.2f; want 500", i, d.Balance)
+		}
+		if d.Price != 0 {
+			t.Errorf("result[%d].Price = %.2f; want 0", i, d.Price)
+		}
+		if d.Quantity != 0 {
+			t.Errorf("result[%d].Quantity = %.2f; want 0", i, d.Quantity)
+		}
+		if d.Fee != 0 {
+			t.Errorf("result[%d].Fee = %.4f; want 0", i, d.Fee)
+		}
+		if d.TradeID != "deposit" {
+			t.Errorf("result[%d].TradeID = %q; want \"deposit\"", i, d.TradeID)
+		}
+	}
+
+	// Remaining events: ENTRY then EXIT
+	if result[3].EventType != "ENTRY" {
+		t.Errorf("result[3].EventType = %q; want ENTRY", result[3].EventType)
+	}
+	if result[4].EventType != "EXIT" {
+		t.Errorf("result[4].EventType = %q; want EXIT", result[4].EventType)
 	}
 }

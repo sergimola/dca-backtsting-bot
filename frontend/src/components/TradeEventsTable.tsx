@@ -112,15 +112,31 @@ export function TradeEventsTable({ events }: TradeEventsTableProps) {
                   <td className="border border-gray-300 px-4 py-2 text-sm capitalize">
                     {event.eventType}
                   </td>
-                  <td className="border border-gray-300 px-4 py-2 text-sm text-right">
-                    {formatCryptoQuantity(event.price, 8)}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-2 text-sm text-right">
-                    {formatCryptoQuantity(event.quantity, 8)}
-                  </td>
-                  <td className="border border-gray-300 px-4 py-2 text-sm text-right">
-                    {formatCurrency(event.balance, 2)}
-                  </td>
+                  {event.eventType === 'DEPOSIT' ? (
+                    <>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-right text-slate-400">
+                        &mdash;
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-right text-slate-400">
+                        &mdash;
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-right text-emerald-600">
+                        {formatCurrency(event.balance, 2)}
+                      </td>
+                    </>
+                  ) : (
+                    <>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-right">
+                        {formatCryptoQuantity(event.price, 8)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-right">
+                        {formatCryptoQuantity(event.quantity, 8)}
+                      </td>
+                      <td className="border border-gray-300 px-4 py-2 text-sm text-right">
+                        {formatCurrency(event.balance, 2)}
+                      </td>
+                    </>
+                  )}
                 </tr>
               ))
             ) : (

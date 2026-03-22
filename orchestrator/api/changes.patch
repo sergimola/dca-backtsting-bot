@@ -1,0 +1,155 @@
+diff --git a/frontend/src/components/ConfigSummaryPanel.tsx b/frontend/src/components/ConfigSummaryPanel.tsx
+index 45cc057..34f0cd6 100644
+--- a/frontend/src/components/ConfigSummaryPanel.tsx
++++ b/frontend/src/components/ConfigSummaryPanel.tsx
+@@ -14,6 +14,7 @@ const LABELS: Record<string, string> = {
+   multiplier: 'Multiplier',
+   takeProfitDistancePercent: 'Take Profit %',
+   accountBalance: 'Account Balance',
++  monthlyAddition: 'Monthly Addition',
+   exitOnLastOrder: 'Exit on Last Order',
+ }
+ 
+diff --git a/frontend/src/components/ConfigurationForm.tsx b/frontend/src/components/ConfigurationForm.tsx
+index 5e4a0fe..a95cada 100644
+--- a/frontend/src/components/ConfigurationForm.tsx
++++ b/frontend/src/components/ConfigurationForm.tsx
+@@ -27,6 +27,7 @@ const EMPTY_FORM: BacktestFormState = {
+   multiplier: '',
+   takeProfitDistancePercent: '',
+   accountBalance: '',
++  monthlyAddition: '',
+   exitOnLastOrder: false,
+ }
+ 
+@@ -128,6 +129,13 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
+           return undefined
+         }
+ 
++        case 'monthlyAddition': {
++          if (!value || (value as string).trim() === '') return undefined
++          const n = parseFloat(value as string)
++          if (isNaN(n) || n < 0) return 'Monthly addition must be >= 0'
++          return undefined
++        }
++
+         default:
+           return undefined
+       }
+@@ -345,6 +353,18 @@ export const ConfigurationForm: React.FC<ConfigurationFormProps> = ({
+           placeholder="e.g., 1000.00"
+           serverError={serverErrors.accountBalance}
+         />
++
++        <FormInput
++          label="Monthly Addition (USDT)"
++          type="number"
++          value={values.monthlyAddition}
++          onChange={(val) => handleChange('monthlyAddition', val)}
++          onBlur={() => handleBlur('monthlyAddition')}
++          error={errors.monthlyAddition}
++          touched={touched.monthlyAddition}
++          placeholder="0"
++          serverError={serverErrors.monthlyAddition}
++        />
+       </div>
+ 
+       {/* Exit on Last Order — full width checkbox */}
+diff --git a/frontend/src/services/backtest-api.ts b/frontend/src/services/backtest-api.ts
+index f2e169a..0e8ade2 100644
+--- a/frontend/src/services/backtest-api.ts
++++ b/frontend/src/services/backtest-api.ts
+@@ -47,6 +47,7 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
+       multiplier: parseInt(config.multiplier, 10),
+       take_profit_distance_percent: config.takeProfitDistancePercent,
+       account_balance: config.accountBalance,
++      monthly_addition: config.monthlyAddition && config.monthlyAddition.trim() !== '' ? config.monthlyAddition : '0',
+       exit_on_last_order: config.exitOnLastOrder,
+     };
+ 
+@@ -147,6 +148,7 @@ function mapConfigToFormState(c: Record<string, any>): BacktestFormState {
+     multiplier:                String(c.multiplier          ?? ''),
+     takeProfitDistancePercent: c.take_profit_distance_percent ?? '',
+     accountBalance:            c.account_balance            ?? '',
++    monthlyAddition:           c.monthly_addition            ?? '',
+     exitOnLastOrder:           c.exit_on_last_order         ?? false,
+   };
+ }
+diff --git a/frontend/src/services/types.ts b/frontend/src/services/types.ts
+index f611216..b02a76d 100644
+--- a/frontend/src/services/types.ts
++++ b/frontend/src/services/types.ts
+@@ -32,6 +32,8 @@ export interface BacktestFormState {
+   takeProfitDistancePercent: string
+   /** Account balance in USDT, e.g. "1000.00" */
+   accountBalance: string
++  /** Monthly capital injection in USDT, e.g. "500.00" (empty string = no injection) */
++  monthlyAddition: string
+   /** End simulation when the last order fills */
+   exitOnLastOrder: boolean
+ }
+diff --git a/orchestrator/api/src/types/configuration.ts b/orchestrator/api/src/types/configuration.ts
+index 5b74504..f5e18f0 100644
+--- a/orchestrator/api/src/types/configuration.ts
++++ b/orchestrator/api/src/types/configuration.ts
+@@ -52,6 +52,9 @@ export interface ApiBacktestRequest {
+   /** Account balance in USDT (decimal string, > 0) */
+   account_balance: string;
+ 
++  /** Monthly capital injection in USDT (decimal string, >= 0, optional, defaults to '0') */
++  monthly_addition?: string;
++
+   /** Exit on last order flag (boolean: end simulation when last order fills) */
+   exit_on_last_order: boolean;
+ 
+@@ -370,6 +373,30 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
+     );
+   }
+ 
++  // Validate monthly_addition (optional decimal string >= 0, defaults to '0')
++  let validatedMonthlyAddition: string = '0';
++  if (request.monthly_addition !== undefined && request.monthly_addition !== null && request.monthly_addition !== '') {
++    if (typeof request.monthly_addition !== 'string') {
++      throw new ValidationError(
++        'monthly_addition',
++        'type_error',
++        `monthly_addition must be a string decimal, got ${typeof request.monthly_addition}`
++      );
++    }
++    try {
++      validatedMonthlyAddition = validateDecimal(request.monthly_addition);
++    } catch (error) {
++      throw new ValidationError('monthly_addition', 'decimal_error', `Invalid monthly_addition: ${String(error)}`);
++    }
++    if (parseFloat(validatedMonthlyAddition) < 0) {
++      throw new ValidationError(
++        'monthly_addition',
++        'out_of_bounds',
++        `monthly_addition must be >= 0, got ${validatedMonthlyAddition}`
++      );
++    }
++  }
++
+   // Validate exit_on_last_order (boolean, no coercion)
+   if (request.exit_on_last_order === undefined) {
+     throw new ValidationError('exit_on_last_order', 'required_field', 'Missing required field: exit_on_last_order');
+@@ -418,6 +445,7 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
+     multiplier: request.multiplier,
+     take_profit_distance_percent: validatedTakeProfitDistance,
+     account_balance: validatedAccountBalance,
++    monthly_addition: validatedMonthlyAddition,
+     exit_on_last_order: request.exit_on_last_order,
+     idempotency_key: validatedIdempotencyKey,
+   };
+diff --git a/orchestrator/api/src/types/index.ts b/orchestrator/api/src/types/index.ts
+index 03170bb..57c0d17 100644
+--- a/orchestrator/api/src/types/index.ts
++++ b/orchestrator/api/src/types/index.ts
+@@ -18,6 +18,7 @@ export interface ApiBacktestRequest {
+   multiplier: number;
+   take_profit_distance_percent: string;
+   account_balance: string;
++  monthly_addition?: string;
+   exit_on_last_order: boolean;
+   idempotency_key?: string;
+ }
