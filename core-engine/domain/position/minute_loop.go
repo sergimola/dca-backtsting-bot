@@ -78,26 +78,11 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 	var events []Event
 	ctx := context.Background()
 
-	// PHASE 7: Increment candle counter (T086-T091)
-	// This must be done at the very beginning of each candle processing
+	// PHASE 7: Increment candle counter (T086-T087)
+	// This must be done at the very beginning of each candle processing.
+	// NOTE: Monthly capital injection is NOT managed here. The Orchestrator owns the
+	// 43,200-candle (30-day) boundary via globalCandleCount and emits MonthlyAdditionEvent.
 	pos.CandleCount++
-
-	// PHASE 7: Check for monthly addition event (T088-T091)
-	// Dispatch MonthlyAdditionEvent on day 30 (candle 43,200 = 1440 * 30)
-	if pos.CandleCount > 0 && pos.CandleCount%43200 == 0 && !pos.MonthlyAddition.IsZero() {
-		// Add the monthly addition to account balance
-		pos.AccountBalance = pos.AccountBalance.Add(pos.MonthlyAddition)
-
-		// Emit MonthlyAdditionEvent
-		monthlyEvent := &MonthlyAdditionEvent{
-			TradeID:         pos.TradeID,
-			Timestamp:       candle.Timestamp,
-			AdditionAmount:  pos.MonthlyAddition.String(),
-			NewBalance:      pos.AccountBalance.String(),
-			DaysSinceStart:  int(pos.CandleCount / 1440),
-		}
-		events = append(events, monthlyEvent)
-	}
 
 	// Step 1: Emit PriceChangedEvent
 	priceChangeEvent := &PriceChangedEvent{

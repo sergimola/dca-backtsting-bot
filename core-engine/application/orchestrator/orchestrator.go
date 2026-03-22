@@ -17,10 +17,12 @@ var marketTolerance = decimal.NewFromFloat(0.0005)
 
 // Orchestrator coordinates CSV data loading, PSM position processing, and event capture
 type Orchestrator struct {
-	psm       position.PositionStateMachine
-	eventBus  *EventBus
-	config    *OrchestratorConfig
-	position  *position.Position
+	psm               position.PositionStateMachine
+	eventBus          *EventBus
+	config            *OrchestratorConfig
+	position          *position.Position
+	globalCandleCount int64
+	runningBalance    decimal.Decimal
 }
 
 // NewOrchestrator creates a new orchestrator instance
@@ -70,12 +72,12 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 	eventCount := 0
 	var lastPosition *position.Position // tracks the most-recently active position (even after close)
 
-	// Monthly addition tracking: accumulate MonthlyAddition to account balance at month boundaries.
-	// lastMonth is set to -1 so the first candle never triggers a false addition.
-	lastMonth := -1
-	var runningBalance decimal.Decimal
+	// Monthly addition tracking: globalCandleCount drives the 43,200-candle (30-day) boundary.
+	// runningBalance accumulates the starting balance + monthly injections + realized profits.
+	monthlyAdditionNumber := 0
+	orch.globalCandleCount = 0
 	if orch.config.DomainConfig != nil {
-		runningBalance = orch.config.DomainConfig.AccountBalance()
+		orch.runningBalance = orch.config.DomainConfig.AccountBalance()
 	}
 
 	// Initialize the backtest run
@@ -122,28 +124,53 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 			}
 		}
 
+		// 43,200-candle global tick: fires once every 30 days (30 × 24 × 60).
+		// Runs before the position-open guard so runningBalance is current when a new
+		// position opens on the same candle as a monthly boundary.
+		orch.globalCandleCount++
+		if orch.config.DomainConfig != nil {
+			monthlyAdd := orch.config.DomainConfig.MonthlyAddition()
+			if !monthlyAdd.IsZero() && orch.globalCandleCount%43200 == 0 {
+				prevBalance := orch.runningBalance
+				monthlyAdditionNumber++
+				orch.runningBalance = orch.runningBalance.Add(monthlyAdd)
+				// Also inject into the currently open position so its running capital is current
+				if orch.position != nil {
+					orch.position.AccountBalance = orch.position.AccountBalance.Add(monthlyAdd)
+				}
+				monthlyEvent := &position.MonthlyAdditionEvent{
+					RunID:           backtest.ID,
+					Timestamp:       candle.Timestamp,
+					AdditionAmount:  monthlyAdd.String(),
+					PreviousBalance: prevBalance.String(),
+					NewBalance:      orch.runningBalance.String(),
+					AdditionNumber:  monthlyAdditionNumber,
+					DaysSinceStart:  int(orch.globalCandleCount / 1440),
+				}
+				if orch.position != nil {
+					monthlyEvent.TradeID = orch.position.TradeID
+				}
+				orchEvent := Event{
+					Timestamp: candle.Timestamp,
+					Type:      EventType("monthly.addition"),
+					Data:      monthlyEvent,
+					RawEvent:  monthlyEvent,
+				}
+				if appendErr := orch.eventBus.Append(orchEvent); appendErr != nil {
+					slog.Warn("failed to append monthly addition event", "err", appendErr)
+				}
+				eventCount++
+				slog.Debug("monthly addition applied",
+					"global_candle", orch.globalCandleCount,
+					"addition_number", monthlyAdditionNumber,
+					"added", monthlyAdd,
+					"new_balance", orch.runningBalance,
+				)
+			}
+		}
+
 		// Open a new position whenever the position slot is empty (first candle or after close)
 		if orch.position == nil {
-			// Apply monthly capital injection at the start of each new calendar month.
-			// This increases the pool of capital available for new positions (DCA monthly addition).
-			if orch.config.DomainConfig != nil {
-				monthlyAdd := orch.config.DomainConfig.MonthlyAddition()
-				if !monthlyAdd.IsZero() {
-					candleMonth := int(candle.Timestamp.Month()) + int(candle.Timestamp.Year())*12
-					if lastMonth < 0 {
-						lastMonth = candleMonth // initialise on first candle
-					} else if candleMonth > lastMonth {
-						runningBalance = runningBalance.Add(monthlyAdd)
-						lastMonth = candleMonth
-						slog.Debug("monthly addition applied",
-							"month", candle.Timestamp.Format("2006-01"),
-							"added", monthlyAdd,
-							"new_balance", runningBalance,
-						)
-					}
-				}
-			}
-
 			tradeID := fmt.Sprintf("%s-%d", backtest.ID, time.Now().UnixNano())
 
 			// Apply market-buy slippage: P_0 = candle.Close × (1 + marketTolerance)
@@ -206,11 +233,7 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 				// Use runningBalance (which may have grown via monthly additions) if available.
 				if orch.config.DomainConfig != nil {
 					newPos.TakeProfitDistance = orch.config.DomainConfig.TakeProfitDistancePercent()
-					if !runningBalance.IsZero() {
-						newPos.AccountBalance = runningBalance
-					} else {
-						newPos.AccountBalance = orch.config.DomainConfig.AccountBalance()
-					}
+					newPos.AccountBalance = orch.runningBalance
 					newPos.ExitOnLastOrder = orch.config.DomainConfig.ExitOnLastOrder()
 				}
 				orch.position = newPos
@@ -281,6 +304,15 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 						closedProfit = tce.Profit
 						if orch.config.OnPositionClosed != nil {
 							orch.config.OnPositionClosed(tce.Profit)
+						}
+						// Carry realized profit (or loss) into the running balance
+						if profitDec, parseErr := decimal.NewFromString(closedProfit); parseErr == nil {
+							orch.runningBalance = orch.runningBalance.Add(profitDec)
+						} else {
+							slog.Warn("failed to parse profit for running balance update",
+								"profit", closedProfit,
+								"err", parseErr,
+							)
 						}
 						break
 					}

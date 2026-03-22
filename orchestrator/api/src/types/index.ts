@@ -18,6 +18,7 @@ export interface ApiBacktestRequest {
   multiplier: number;
   take_profit_distance_percent: string;
   account_balance: string;
+  monthly_addition?: string;
   exit_on_last_order: boolean;
   idempotency_key?: string;
 }
@@ -179,6 +180,8 @@ export interface PnlSummary {
   realized_pnl: string;
   unrealized_pnl?: string;
   safety_order_usage_counts: Record<number, number>;
+  /** Cumulative capital injected via monthly.addition events (8 dp string). Optional for backward compat. */
+  total_additions?: string;
 }
 
 // ============== BacktestResult Types ==============

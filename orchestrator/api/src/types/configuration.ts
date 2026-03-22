@@ -52,6 +52,9 @@ export interface ApiBacktestRequest {
   /** Account balance in USDT (decimal string, > 0) */
   account_balance: string;
 
+  /** Monthly capital injection in USDT (decimal string, >= 0, optional, defaults to '0') */
+  monthly_addition?: string;
+
   /** Exit on last order flag (boolean: end simulation when last order fills) */
   exit_on_last_order: boolean;
 
@@ -370,6 +373,30 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
     );
   }
 
+  // Validate monthly_addition (optional decimal string >= 0, defaults to '0')
+  let validatedMonthlyAddition: string = '0';
+  if (request.monthly_addition !== undefined && request.monthly_addition !== null && request.monthly_addition !== '') {
+    if (typeof request.monthly_addition !== 'string') {
+      throw new ValidationError(
+        'monthly_addition',
+        'type_error',
+        `monthly_addition must be a string decimal, got ${typeof request.monthly_addition}`
+      );
+    }
+    try {
+      validatedMonthlyAddition = validateDecimal(request.monthly_addition);
+    } catch (error) {
+      throw new ValidationError('monthly_addition', 'decimal_error', `Invalid monthly_addition: ${String(error)}`);
+    }
+    if (parseFloat(validatedMonthlyAddition) < 0) {
+      throw new ValidationError(
+        'monthly_addition',
+        'out_of_bounds',
+        `monthly_addition must be >= 0, got ${validatedMonthlyAddition}`
+      );
+    }
+  }
+
   // Validate exit_on_last_order (boolean, no coercion)
   if (request.exit_on_last_order === undefined) {
     throw new ValidationError('exit_on_last_order', 'required_field', 'Missing required field: exit_on_last_order');
@@ -418,6 +445,7 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
     multiplier: request.multiplier,
     take_profit_distance_percent: validatedTakeProfitDistance,
     account_balance: validatedAccountBalance,
+    monthly_addition: validatedMonthlyAddition,
     exit_on_last_order: request.exit_on_last_order,
     idempotency_key: validatedIdempotencyKey,
   };

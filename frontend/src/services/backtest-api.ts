@@ -47,6 +47,7 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
       multiplier: parseInt(config.multiplier, 10),
       take_profit_distance_percent: config.takeProfitDistancePercent,
       account_balance: config.accountBalance,
+      monthly_addition: config.monthlyAddition && config.monthlyAddition.trim() !== '' ? config.monthlyAddition : '0',
       exit_on_last_order: config.exitOnLastOrder,
     };
 
@@ -147,6 +148,7 @@ function mapConfigToFormState(c: Record<string, any>): BacktestFormState {
     multiplier:                String(c.multiplier          ?? ''),
     takeProfitDistancePercent: c.take_profit_distance_percent ?? '',
     accountBalance:            c.account_balance            ?? '',
+    monthlyAddition:           c.monthly_addition            ?? '',
     exitOnLastOrder:           c.exit_on_last_order         ?? false,
   };
 }
@@ -214,6 +216,23 @@ export async function getResults(backtestId: string): Promise<BacktestResults> {
     if (e.type === 'PositionOpened') {
       tradeCounter++;
       currentTradeId = String(tradeCounter);
+    }
+
+    // FR-021: Monthly capital injection → DEPOSIT ledger row.
+    // Handled before FILL_EVENT_TYPES guard so it always produces an entry.
+    if (e.type === 'monthly.addition') {
+      const d: any = e.data ?? {};
+      tradeEvents.push({
+        timestamp:    new Date(e.timestamp ?? '').toLocaleString(),
+        rawTimestamp: e.timestamp ?? '',
+        eventType:    'DEPOSIT',
+        price:        0,
+        quantity:     0,
+        balance:      parseFloat(d.addition_amount ?? '0'),
+        trade_id:     'deposit',
+        fee:          0,
+      });
+      continue;
     }
 
     // Patch exit fee from SellOrderExecuted that immediately follows PositionClosed (US2/T014)

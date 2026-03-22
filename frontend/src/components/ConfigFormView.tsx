@@ -21,6 +21,7 @@ const EMPTY_FORM: Record<string, string | boolean> = {
   multiplier: '',
   takeProfitDistancePercent: '',
   accountBalance: '',
+  monthlyAddition: '',
   exitOnLastOrder: false,
 }
 
@@ -56,7 +57,8 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
     form.tradingPair &&
     form.startDate &&
     form.endDate &&
-    numericFields.every(f => isNumericValid(form[f] as string))
+    numericFields.every(f => isNumericValid(form[f] as string)) &&
+    (!form.monthlyAddition || parseFloat(form.monthlyAddition as string) >= 0)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -75,6 +77,7 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
       multiplier:                form.multiplier as string,
       takeProfitDistancePercent: form.takeProfitDistancePercent as string,
       accountBalance:            form.accountBalance as string,
+      monthlyAddition:           form.monthlyAddition as string,
       exitOnLastOrder:           form.exitOnLastOrder as boolean,
     }
     await onSubmit(config)
@@ -289,6 +292,27 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
                   placeholder="1000"
                   value={form.accountBalance as string}
                   onChange={e => setField('accountBalance', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Monthly addition */}
+            <div>
+              <label htmlFor="monthlyAddition" className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+                Monthly Addition (optional)
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">$</span>
+                <input
+                  id="monthlyAddition"
+                  aria-label="Monthly addition"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  className="w-full bg-slate-900 border border-slate-700 rounded pl-7 pr-3 py-2 text-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                  placeholder="0"
+                  value={form.monthlyAddition as string}
+                  onChange={e => setField('monthlyAddition', e.target.value)}
                 />
               </div>
             </div>

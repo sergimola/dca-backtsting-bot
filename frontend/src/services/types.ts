@@ -32,6 +32,8 @@ export interface BacktestFormState {
   takeProfitDistancePercent: string
   /** Account balance in USDT, e.g. "1000.00" */
   accountBalance: string
+  /** Monthly capital injection in USDT, e.g. "500.00" (empty string = no injection) */
+  monthlyAddition: string
   /** End simulation when the last order fills */
   exitOnLastOrder: boolean
 }

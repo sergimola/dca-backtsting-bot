@@ -5,7 +5,7 @@ import { DashboardHeader } from './DashboardHeader'
 import { KpiGrid } from './KpiGrid'
 import { SafetyOrderUsagePanel } from './SafetyOrderUsagePanel'
 import { ConfigSummaryPanel } from './ConfigSummaryPanel'
-import { TradeAccordion } from './TradeAccordion'
+import { TradingTimeline } from './TradingTimeline'
 
 interface DashboardViewProps {
   run: Run
@@ -13,31 +13,48 @@ interface DashboardViewProps {
 
 export function DashboardView({ run }: DashboardViewProps) {
   const metrics = useResultsMetrics(run.results!, run.config)
+  const initialBalance = parseFloat(run.config.accountBalance) || 0
 
   return (
-    <div className="flex flex-col h-full overflow-y-auto custom-scrollbar">
-      <DashboardHeader run={run} executionMs={run.results?.executionTimeMs} />
-      <KpiGrid metrics={metrics} />
+    // 1. Outer container: Full height, hidden overflow to prevent double scrollbars
+    <div className="flex flex-col h-full overflow-hidden relative bg-[#05070a]">
+      
+      {/* 2. FIXED HEADER & METRICS: This area never scrolls */}
+      <div className="shrink-0 z-30 pt-4 pb-5 px-6 border-b border-slate-800/80 shadow-md">
+        <DashboardHeader run={run} executionMs={run.results?.executionTimeMs} />
+        <div className="mt-4">
+          <KpiGrid metrics={metrics} />
+        </div>
+      </div>
 
-      <div className="flex gap-4 px-6 pb-6">
-        {/* Trade history — left 3/4 */}
-        <section className="flex-1 min-w-0">
-          <h2 className="text-[10px] uppercase tracking-widest text-slate-500 mb-3">
-            Trade History
-          </h2>
-          {metrics.tradeGroups.map(tg => (
-            <TradeAccordion key={tg.tradeId} metrics={tg} />
-          ))}
-        </section>
+      {/* 3. SCROLLABLE CONTENT AREA: Only the timeline and sidebar scroll */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        
+        {/* items-start prevents the sidebar from stretching to full height, which breaks sticky */}
+        <div className="flex gap-4 p-6 items-start">
+          
+          {/* Left Column: The Timeline */}
+          <section className="flex-1 min-w-0 rounded-xl border border-slate-800/60 pt-4 bg-[#0b0e14] shadow-sm">
+            <TradingTimeline
+              tradeEvents={run.results!.tradeEvents}
+              tradeGroups={metrics.tradeGroups}
+              initialBalance={initialBalance}
+              maxOrders={parseInt(run.config.numberOfOrders) || 0}
+              startDate={run.config.startDate}
+            />
+          </section>
 
-        {/* Right column — 1/4 */}
-        <aside className="w-64 shrink-0 space-y-4">
-          <SafetyOrderUsagePanel
-            safetyOrderUsage={metrics.safetyOrderUsage}
-            totalTrades={metrics.tradeGroups.length}
-          />
-          <ConfigSummaryPanel config={run.config} />
-        </aside>
+          {/* Right Column: Sticky Sidebar */}
+          {/* Because it is inside the scrolling container, top-0 perfectly stops it right under the KPI grid! */}
+          <aside className="w-64 shrink-0 space-y-4 sticky top-0">
+            <SafetyOrderUsagePanel
+              safetyOrderUsage={metrics.safetyOrderUsage}
+              totalTrades={metrics.tradeGroups.length}
+            />
+            <ConfigSummaryPanel config={run.config} />
+          </aside>
+          
+        </div>
       </div>
     </div>
   )
