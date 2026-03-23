@@ -60,8 +60,8 @@ func (c *Config) ComputePriceSequence(currentPrice decimal.Decimal) (PriceSequen
 // ComputeAmountSequence distributes the Total Volume V across N orders using a geometric
 // weighting scheme. SDD §2.2:
 //
-//	V   = AccountBalance × AmountPerTrade × Multiplier
-//	       (AmountPerTrade ≤ 1.0 → fraction of AccountBalance;
+//	V   = dynamicBalance × AmountPerTrade × Multiplier
+//	       (AmountPerTrade ≤ 1.0 → fraction of dynamicBalance;
 //	        AmountPerTrade > 1.0 → absolute USDT amount → V = AmountPerTrade × Multiplier)
 //
 //	R   = (s_a^N − 1) / (s_a − 1)     (s_a ≠ 1)
@@ -69,12 +69,15 @@ func (c *Config) ComputePriceSequence(currentPrice decimal.Decimal) (PriceSequen
 //	D_n = (V / R) × s_a^n              (USDT dollar amount per order tier)
 //
 // The returned AmountSequence contains the USDT dollar amounts D_n for each order.
-// To obtain Base Currency Quantities call ComputeBaseQuantities(prices).
+// To obtain Base Currency Quantities call ComputeBaseQuantities(dynamicBalance, prices).
+//
+// dynamicBalance is the caller's live equity (e.g. Orchestrator.runningBalance). Used only
+// when AmountPerTrade ≤ 1.0 (percentage mode); ignored in absolute mode (> 1.0).
 //
 // Canonical test data (zero tolerance, amountPerTrade as absolute USDT):
 //
 //	C=1000, s_a=2.0, m=1, N=3 → R=7, [142.85714286, 285.71428571, 571.42857143], sum=1000
-func (c *Config) ComputeAmountSequence() (AmountSequence, error) {
+func (c *Config) ComputeAmountSequence(dynamicBalance decimal.Decimal) (AmountSequence, error) {
 	n  := c.numberOfOrders
 	sa := c.amountScale
 	m  := c.multiplier
@@ -84,11 +87,17 @@ func (c *Config) ComputeAmountSequence() (AmountSequence, error) {
 	N   := decimal.NewFromInt(int64(n))
 
 	// SDD §2.2: compute Total Volume V
-	// AmountPerTrade ≤ 1.0 → fraction of AccountBalance
+	// AmountPerTrade ≤ 1.0 → fraction of dynamicBalance (percentage mode)
 	// AmountPerTrade > 1.0 → absolute USDT (V = AmountPerTrade × Multiplier)
 	var V decimal.Decimal
 	if apt.LessThanOrEqual(one) {
-		V = c.accountBalance.Mul(apt).Mul(m)
+		if dynamicBalance.LessThanOrEqual(decimal.Zero) {
+			return nil, &SequenceComputationError{
+				Sequence: "amount",
+				Message:  "dynamicBalance must be > 0 for percentage-mode AmountPerTrade, got " + dynamicBalance.String(),
+			}
+		}
+		V = dynamicBalance.Mul(apt).Mul(m)
 	} else {
 		V = apt.Mul(m)
 	}
@@ -108,7 +117,8 @@ func (c *Config) ComputeAmountSequence() (AmountSequence, error) {
 		"R", R,
 		"D0_usdt", D0,
 		"amount_per_trade", apt,
-		"account_balance", c.accountBalance,
+		"static_account_balance", c.accountBalance,
+		"dynamic_balance", dynamicBalance,
 		"multiplier", m,
 	)
 
@@ -133,14 +143,16 @@ func (c *Config) ComputeAmountSequence() (AmountSequence, error) {
 // Base Currency (BTC) quantities by dividing each D_n by the corresponding limit price.
 // SDD §2.2: Quantity[n] = D_n / P_n
 //
+// dynamicBalance is forwarded to ComputeAmountSequence unchanged (see its doc for semantics).
+//
 // The returned AmountSequence contains pre-computed BTC quantities ready for use in
 // NewPosition — no further price division is needed at order execution time.
-func (c *Config) ComputeBaseQuantities(prices PriceSequence) (AmountSequence, error) {
+func (c *Config) ComputeBaseQuantities(dynamicBalance decimal.Decimal, prices PriceSequence) (AmountSequence, error) {
 	if len(prices) == 0 {
 		return nil, &SequenceComputationError{Sequence: "base_quantity", Message: "prices must not be empty"}
 	}
 
-	dollarsSeq, err := c.ComputeAmountSequence()
+	dollarsSeq, err := c.ComputeAmountSequence(dynamicBalance)
 	if err != nil {
 		return nil, err
 	}
