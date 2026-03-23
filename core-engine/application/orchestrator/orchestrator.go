@@ -193,7 +193,7 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 					// ComputeAmountSequence returns USDT dollar amounts (D_n) per order.
 					// The PSM execution layer (order_fills, minute_loop) divides by price
 					// at fill time to obtain base-currency (BTC) quantities.
-					usdtAmounts, amountErr := orch.config.DomainConfig.ComputeAmountSequence()
+					usdtAmounts, amountErr := orch.config.DomainConfig.ComputeAmountSequence(orch.runningBalance)
 					if amountErr != nil {
 						slog.Error("ComputeAmountSequence failed", "err", amountErr)
 					} else {
