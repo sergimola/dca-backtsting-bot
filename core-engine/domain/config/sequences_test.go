@@ -457,3 +457,115 @@ func TestTS013_US1_PercentageWithMultiplier(t *testing.T) {
 	// V = 5000 × 1.0 × 3 = 15000
 	assertSumInvariant(t, seq, mustDecimal("15000.00000000"))
 }
+
+// ── Feature 013: User Story 2 — Absolute Amount Immune to Balance Growth (T009–T011) ──
+
+// T009 — TS013 US2: absolute amt ignores dynamicBalance entirely.
+// apt=500 > 1.0 → absolute path: V = apt × m = 500 × 1 = 500, regardless of balance.
+func TestTS013_US2_AbsoluteIgnoresBalance(t *testing.T) {
+	cfg := configForAmountTest(t, "500", "1.0", "1", 1)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("50000"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	// V = 500 × 1 = 500 (dynamicBalance=50000 is irrelevant)
+	assertSumInvariant(t, seq, mustDecimal("500.00000000"))
+}
+
+// T010 — TS013 US2: absolute amount with multiplier.
+// apt=500, m=2 → V = 500 × 2 = 1000, balance still ignored.
+func TestTS013_US2_AbsoluteWithMultiplier(t *testing.T) {
+	cfg := configForAmountTest(t, "500", "1.0", "2", 1)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("50000"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	// V = 500 × 2 = 1000
+	assertSumInvariant(t, seq, mustDecimal("1000.00000000"))
+}
+
+// T011 — TS013 US2: absolute amount when balance is below the apt "floor".
+// Even if dynamicBalance < apt, no clamping: V = apt × m = 500 × 1 = 500.
+func TestTS013_US2_AbsoluteWhenBalanceBelowFloor(t *testing.T) {
+	cfg := configForAmountTest(t, "500", "1.0", "1", 1)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("400"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	// No clamping: V = 500 regardless of balance=400
+	assertSumInvariant(t, seq, mustDecimal("500.00000000"))
+}
+
+// ── Feature 013: User Story 3 — Boundary Condition apt=1.0 (T012–T014) ──────
+
+// T012 — TS013 US3: apt exactly 1.0 is percentage mode (≤ 1.0 branch).
+// dynamicBalance=2000 → V = 2000 × 1.0 × 1 = 2000.
+func TestTS013_US3_BoundaryExactlyOneIsPercentage(t *testing.T) {
+	cfg := configForAmountTest(t, "1.0", "1.0", "1", 1)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("2000"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	assertSumInvariant(t, seq, mustDecimal("2000.00000000"))
+}
+
+// T013 — TS013 US3: apt just above 1.0 flips to absolute mode (> 1.0 branch).
+// apt=1.01 → V = 1.01 × 1 = 1.01, balance is ignored.
+func TestTS013_US3_BoundaryAboveOneIsAbsolute(t *testing.T) {
+	cfg := configForAmountTest(t, "1.01", "1.0", "1", 1)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("2000"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	// absolute: V = 1.01 × 1 = 1.01 (balance 2000 irrelevant)
+	assertSumInvariant(t, seq, mustDecimal("1.01000000"))
+}
+
+// T014 — TS013 US3: apt=0.5 is percentage mode.
+// dynamicBalance=2000 → V = 2000 × 0.5 × 1 = 1000.
+func TestTS013_US3_BoundaryHalfPercentage(t *testing.T) {
+	cfg := configForAmountTest(t, "0.5", "1.0", "1", 1)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("2000"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	// V = 2000 × 0.5 × 1 = 1000
+	assertSumInvariant(t, seq, mustDecimal("1000.00000000"))
+}
+
+// ── Feature 013: Polish — FR-005 Guard + FR-006 Sum Invariant (T015–T017) ────
+
+// T015 — TS013 FR-005: zero dynamicBalance in percentage mode returns error.
+func TestTS013_FR005_ZeroBalanceReturnsError(t *testing.T) {
+	cfg := configForAmountTest(t, "1.0", "1.0", "1", 1)
+	_, err := cfg.ComputeAmountSequence(decimal.Zero)
+	if err == nil {
+		t.Fatal("expected error for dynamicBalance=0, got nil")
+	}
+	if _, ok := err.(*SequenceComputationError); !ok {
+		t.Errorf("expected *SequenceComputationError, got %T: %v", err, err)
+	}
+}
+
+// T016 — TS013 FR-005: negative dynamicBalance in percentage mode returns error.
+func TestTS013_FR005_NegativeBalanceReturnsError(t *testing.T) {
+	cfg := configForAmountTest(t, "0.5", "1.0", "1", 1)
+	_, err := cfg.ComputeAmountSequence(mustDecimal("-100"))
+	if err == nil {
+		t.Fatal("expected error for dynamicBalance=-100, got nil")
+	}
+	if _, ok := err.(*SequenceComputationError); !ok {
+		t.Errorf("expected *SequenceComputationError, got %T: %v", err, err)
+	}
+}
+
+// T017 — TS013 FR-006: sum invariant is preserved with dynamic balance across N orders.
+// apt=1.0, sa=2.0, m=1, N=10, dynamicBalance=5000 → sum must equal exactly 5000.
+func TestTS013_FR006_SumInvariantPreservedWithDynamicBalance(t *testing.T) {
+	cfg := configForAmountTest(t, "1.0", "2.0", "1", 10)
+	seq, err := cfg.ComputeAmountSequence(mustDecimal("5000"))
+	if err != nil {
+		t.Fatalf("ComputeAmountSequence: %v", err)
+	}
+	assertSumInvariant(t, seq, mustDecimal("5000.00000000"))
+}
