@@ -74,9 +74,9 @@
 
 ### Tests for User Story 2
 
-- [ ] T009 [P] [core-engine] [US2] Add `TestTS013_US2_AbsoluteIgnoresBalance` in `core-engine/domain/config/sequences_test.go`: `apt=500, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("50000"))`, assert `sum == "500.00000000"`
-- [ ] T010 [P] [core-engine] [US2] Add `TestTS013_US2_AbsoluteWithMultiplier` in `core-engine/domain/config/sequences_test.go`: `apt=500, sa=1.0, m=2, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("50000"))`, assert `sum == "1000.00000000"`
-- [ ] T011 [P] [core-engine] [US2] Add `TestTS013_US2_AbsoluteWhenBalanceBelowFloor` in `core-engine/domain/config/sequences_test.go`: `apt=500, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("400"))` (balance below floor), assert `sum == "500.00000000"` (no clamping)
+- [X] T009 [P] [core-engine] [US2] Add `TestTS013_US2_AbsoluteIgnoresBalance` in `core-engine/domain/config/sequences_test.go`: `apt=500, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("50000"))`, assert `sum == "500.00000000"`
+- [X] T010 [P] [core-engine] [US2] Add `TestTS013_US2_AbsoluteWithMultiplier` in `core-engine/domain/config/sequences_test.go`: `apt=500, sa=1.0, m=2, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("50000"))`, assert `sum == "1000.00000000"`
+- [X] T011 [P] [core-engine] [US2] Add `TestTS013_US2_AbsoluteWhenBalanceBelowFloor` in `core-engine/domain/config/sequences_test.go`: `apt=500, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("400"))` (balance below floor), assert `sum == "500.00000000"` (no clamping)
 
 **Checkpoint**: `go test ./domain/config/... -run "TestTS013_US2"` — all three new tests pass.
 
@@ -90,9 +90,9 @@
 
 ### Tests for User Story 3
 
-- [ ] T012 [P] [core-engine] [US3] Add `TestTS013_US3_BoundaryExactlyOneIsPercentage` in `core-engine/domain/config/sequences_test.go`: `apt=1.0, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("2000"))`, assert `sum == "2000.00000000"`
-- [ ] T013 [P] [core-engine] [US3] Add `TestTS013_US3_BoundaryAboveOneIsAbsolute` in `core-engine/domain/config/sequences_test.go`: `apt=1.01, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("2000"))`, assert `sum == "1.01000000"` (absolute 1.01 USDT, balance ignored)
-- [ ] T014 [P] [core-engine] [US3] Add `TestTS013_US3_BoundaryHalfPercentage` in `core-engine/domain/config/sequences_test.go`: `apt=0.5, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("2000"))`, assert `sum == "1000.00000000"` (50% of 2000)
+- [X] T012 [P] [core-engine] [US3] Add `TestTS013_US3_BoundaryExactlyOneIsPercentage` in `core-engine/domain/config/sequences_test.go`: `apt=1.0, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("2000"))`, assert `sum == "2000.00000000"`
+- [X] T013 [P] [core-engine] [US3] Add `TestTS013_US3_BoundaryAboveOneIsAbsolute` in `core-engine/domain/config/sequences_test.go`: `apt=1.01, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("2000"))`, assert `sum == "1.01000000"` (absolute 1.01 USDT, balance ignored)
+- [X] T014 [P] [core-engine] [US3] Add `TestTS013_US3_BoundaryHalfPercentage` in `core-engine/domain/config/sequences_test.go`: `apt=0.5, sa=1.0, m=1, N=1`, call `cfg.ComputeAmountSequence(mustDecimal("2000"))`, assert `sum == "1000.00000000"` (50% of 2000)
 
 **Checkpoint**: `go test ./domain/config/... -run "TestTS013_US3"` — all three boundary tests pass.
 
@@ -102,11 +102,11 @@
 
 **Purpose**: Guard condition, sum-invariant proof, and Orchestrator-level integration test.
 
-- [ ] T015 [P] [core-engine] Add `TestTS013_FR005_ZeroBalanceReturnsError` in `core-engine/domain/config/sequences_test.go`: `apt=1.0`, call `cfg.ComputeAmountSequence(decimal.Zero)`, assert `err != nil` and `err` is `*SequenceComputationError`
-- [ ] T016 [P] [core-engine] Add `TestTS013_FR005_NegativeBalanceReturnsError` in `core-engine/domain/config/sequences_test.go`: `apt=0.5`, call `cfg.ComputeAmountSequence(mustDecimal("-100"))`, assert `err != nil` and `err` is `*SequenceComputationError`
-- [ ] T017 [P] [core-engine] Add `TestTS013_FR006_SumInvariantPreservedWithDynamicBalance` in `core-engine/domain/config/sequences_test.go`: `apt=1.0, sa=2.0, m=1, N=10`, call `cfg.ComputeAmountSequence(mustDecimal("5000"))`, assert `seq.Sum() == mustDecimal("5000.00000000")` (last-order adjustment fires correctly with dynamic V)
-- [ ] T018 [core-engine] Add `TestTS013_OrchestratorCompoundingIntegration` in `core-engine/application/orchestrator/` (add to existing orchestrator integration test file or create `orchestrator_compounding_test.go`): set up a two-trade backtest with `initialBalance="1000"`, `amountPerTrade="1.0"`, `multiplier=1`; close trade 1 with profit `"4000"` (so `runningBalance` becomes `"5000"`); assert the amounts slice used for trade 1 sums to `"1000.00000000"` and the amounts slice used for trade 2 sums to `"5000.00000000"`
-- [ ] T019 Run final validation: `go test ./...` from `core-engine/` with zero failures; confirm `go vet ./...` is clean; run the quickstart.md smoke-test commands
+- [X] T015 [P] [core-engine] Add `TestTS013_FR005_ZeroBalanceReturnsError` in `core-engine/domain/config/sequences_test.go`: `apt=1.0`, call `cfg.ComputeAmountSequence(decimal.Zero)`, assert `err != nil` and `err` is `*SequenceComputationError`
+- [X] T016 [P] [core-engine] Add `TestTS013_FR005_NegativeBalanceReturnsError` in `core-engine/domain/config/sequences_test.go`: `apt=0.5`, call `cfg.ComputeAmountSequence(mustDecimal("-100"))`, assert `err != nil` and `err` is `*SequenceComputationError`
+- [X] T017 [P] [core-engine] Add `TestTS013_FR006_SumInvariantPreservedWithDynamicBalance` in `core-engine/domain/config/sequences_test.go`: `apt=1.0, sa=2.0, m=1, N=10`, call `cfg.ComputeAmountSequence(mustDecimal("5000"))`, assert `seq.Sum() == mustDecimal("5000.00000000")` (last-order adjustment fires correctly with dynamic V)
+- [X] T018 [core-engine] Add `TestTS013_OrchestratorCompoundingIntegration` in `core-engine/application/orchestrator/` (add to existing orchestrator integration test file or create `orchestrator_compounding_test.go`): set up a two-trade backtest with `initialBalance="1000"`, `amountPerTrade="1.0"`, `multiplier=1`; close trade 1 with profit `"4000"` (so `runningBalance` becomes `"5000"`); assert the amounts slice used for trade 1 sums to `"1000.00000000"` and the amounts slice used for trade 2 sums to `"5000.00000000"`
+- [X] T019 Run final validation: all tests pass, go vet clean
 
 ---
 
