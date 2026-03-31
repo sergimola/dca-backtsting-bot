@@ -1,8 +1,10 @@
 package orchestrator
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,8 +12,10 @@ import (
 	"testing"
 	"time"
 
+	domainconfig "dca-bot/core-engine/domain/config"
 	"dca-bot/core-engine/domain/position"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -282,4 +286,71 @@ func TestQuickstart_Example_Integration(t *testing.T) {
 
 	// This validates the basic quickstart workflow
 	t.Logf("Quickstart example validated: processed %d candles, captured %d events", run.CandleCount, len(events))
+}
+
+// T032: Integration test — wide event enricher produces valid .jsonl file with correct line counts.
+func TestIntegration_WideEvent_Enricher_LineCount(t *testing.T) {
+	csvPath := filepath.Join("testdata", "integration_100_candles.csv")
+
+	// Build domain config that triggers trading (opens position + takes profit)
+	domCfg, err := domainconfig.NewConfig(
+		domainconfig.WithAccountBalance(decimal.NewFromInt(10000)),
+		domainconfig.WithAmountPerTrade(decimal.NewFromInt(1)),
+		domainconfig.WithNumberOfOrders(3),
+		domainconfig.WithMultiplier(decimal.NewFromInt(1)),
+		domainconfig.WithTakeProfitDistancePercent(decimal.NewFromFloat(3.0)),
+		domainconfig.WithPriceEntry(decimal.NewFromFloat(0.0005)),
+		domainconfig.WithTradingPair("BTCUSDC"),
+		domainconfig.WithPriceScale(decimal.NewFromFloat(1.1)),
+		domainconfig.WithAmountScale(decimal.NewFromFloat(1.0)),
+	)
+	require.NoError(t, err)
+
+	dir := t.TempDir()
+	psm := position.NewStateMachine()
+	config := &OrchestratorConfig{
+		EstimatedCandleCount: 100,
+		BacktestID:           fmt.Sprintf("wide-event-integ-%d", time.Now().UnixNano()),
+		WideEventOutputDir:   dir,
+		DomainConfig:         domCfg,
+	}
+
+	orch, err := NewOrchestrator(psm, config)
+	require.NoError(t, err)
+
+	run, err := orch.RunBacktest(LoadCSVFileAsLoader(t, csvPath))
+	require.NoError(t, err)
+
+	// File should exist
+	require.NotEmpty(t, run.WideEventFilePath, "WideEventFilePath must be set")
+	f, err := os.Open(run.WideEventFilePath)
+	require.NoError(t, err)
+	defer f.Close()
+
+	// Count lines and validate JSON + schema_version
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 1<<20), 1<<20)
+	lineCount := 0
+	for scanner.Scan() {
+		lineCount++
+		var obj map[string]interface{}
+		require.NoError(t, json.Unmarshal(scanner.Bytes(), &obj), "line %d should be valid JSON", lineCount)
+		sv, ok := obj["schema_version"]
+		require.True(t, ok, "line %d should have schema_version", lineCount)
+		require.Equal(t, float64(1), sv, "schema_version should be 1 on line %d", lineCount)
+	}
+	require.NoError(t, scanner.Err())
+
+	// At minimum, one wide event per candle (price_changed)
+	assert.GreaterOrEqual(t, lineCount, run.CandleCount,
+		"wide event line count (%d) should be >= candle count (%d)", lineCount, run.CandleCount)
+
+	// Fill events add to the total, so line count should exceed candle count when trading occurs
+	if run.EventCount > 0 {
+		assert.Greater(t, lineCount, run.CandleCount,
+			"with %d PSM events, line count should exceed candle count", run.EventCount)
+	}
+
+	t.Logf("Integration result: %d candles, %d PSM events, %d wide event lines, stall=%v",
+		run.CandleCount, run.EventCount, lineCount, run.WideEventStallDuration)
 }

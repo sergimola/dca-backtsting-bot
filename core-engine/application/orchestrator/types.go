@@ -49,6 +49,10 @@ type BacktestRun struct {
 	EventCount    int                // Total events captured
 	EventBus      *EventBus          // In-memory event log
 	FinalPosition *position.Position // Live position state at end of backtest (nil if no position opened)
+
+	// Wide event enricher output (empty/zero when enricher is disabled)
+	WideEventFilePath      string        // Absolute path to .jsonl file
+	WideEventStallDuration time.Duration // Cumulative PSM stall from enricher back-pressure
 }
 
 // CandleLoader is the abstraction over any candle source (ClickHouse, mock, etc.).

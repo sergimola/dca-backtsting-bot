@@ -87,13 +87,15 @@ type SafetyOrderUsageEntry struct {
 // EngineResultPayload is the single JSON line emitted to stdout at simulation end.
 // JSON tags MUST match the TypeScript EngineResultLine interface in contracts/.
 type EngineResultPayload struct {
-	Type             string                  `json:"type"`             // always "result"
-	PnlSummary       PnlSummaryOutput        `json:"pnlSummary"`
-	TradeEvents      []TradeEventOutput      `json:"tradeEvents"`
-	SafetyOrderUsage []SafetyOrderUsageEntry `json:"safetyOrderUsage"`
-	ExecutionTimeMs  int64                   `json:"executionTimeMs"`
-	CandleCount      int                     `json:"candleCount"`
-	EventCount       int                     `json:"eventCount"`
+	Type                     string                  `json:"type"`                                  // always "result"
+	PnlSummary               PnlSummaryOutput        `json:"pnlSummary"`
+	TradeEvents              []TradeEventOutput      `json:"tradeEvents"`
+	SafetyOrderUsage         []SafetyOrderUsageEntry `json:"safetyOrderUsage"`
+	ExecutionTimeMs          int64                   `json:"executionTimeMs"`
+	CandleCount              int                     `json:"candleCount"`
+	EventCount               int                     `json:"eventCount"`
+	WideEventFile            string                  `json:"wide_event_file,omitempty"`             // path to .jsonl; absent when enricher disabled
+	WideEventStallDurationMs int64                   `json:"wide_event_stall_duration_ms,omitempty"` // PSM stall ms; absent when 0
 }
 
 // progressState holds the shared state between the hot loop and the progress ticker goroutine.
@@ -182,6 +184,7 @@ func main() {
 	// CLI flags — must be parsed before stdin decode and slog initialisation.
 	logLevel := flag.String("log-level", "INFO", "Log level: DEBUG, INFO, WARN, ERROR")
 	progressIntervalMs := flag.Int("progress-interval-ms", 250, "Progress tick interval in milliseconds")
+	wideEventDir := flag.String("wide-event-dir", "", "Directory for wide-event .jsonl output (empty = disabled)")
 	flag.Parse()
 
 	// Configure structured logging immediately after flag parsing.
@@ -239,6 +242,7 @@ func main() {
 		EstimatedCandleCount: 10000, // Reasonable estimate; ClickHouse streams rows lazily
 		BacktestID:           request.IdempotencyKey,
 		DomainConfig:         cfg,
+		WideEventOutputDir:   *wideEventDir,
 	}
 
 	// Create orchestrator
@@ -328,13 +332,15 @@ func main() {
 
 	// Emit the single result line to stdout (NDJSON — json.Encoder appends \n).
 	if err := json.NewEncoder(os.Stdout).Encode(EngineResultPayload{
-		Type:             "result",
-		PnlSummary:       aggResult.PnlSummary,
-		TradeEvents:      tradeEvents,
-		SafetyOrderUsage: soUsage,
-		ExecutionTimeMs:  execTimeMs,
-		CandleCount:      backtest.CandleCount,
-		EventCount:       backtest.EventCount,
+		Type:                     "result",
+		PnlSummary:               aggResult.PnlSummary,
+		TradeEvents:              tradeEvents,
+		SafetyOrderUsage:         soUsage,
+		ExecutionTimeMs:          execTimeMs,
+		CandleCount:              backtest.CandleCount,
+		EventCount:               backtest.EventCount,
+		WideEventFile:            backtest.WideEventFilePath,
+		WideEventStallDurationMs: backtest.WideEventStallDuration.Milliseconds(),
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write result: %v\n", err)
 		os.Exit(1)

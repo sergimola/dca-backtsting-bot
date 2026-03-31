@@ -28,6 +28,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic) (013-psm-dynamic-trade-size)
 - N/A — pure in-memory domain computation (013-psm-dynamic-trade-size)
 - N/A — pure in-memory domain computation; no persistence changes (014-spot-no-liquidation)
+- Go 1.22 (core engine) · TypeScript 5.x / Node.js 20 (orchestrator API) + `shopspring/decimal` (Go), `bufio` stdlib, `encoding/json` stdlib, `@clickhouse/client` (Node.js, already present), `clickhouse-go/v2` (Go, already present) (015-wide-events-analytics)
+- ClickHouse (OLAP, JSONL bulk insert) · PostgreSQL (job queue, no change) (015-wide-events-analytics)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -47,9 +49,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 015-wide-events-analytics: Added Go 1.22 (core engine) · TypeScript 5.x / Node.js 20 (orchestrator API) + `shopspring/decimal` (Go), `bufio` stdlib, `encoding/json` stdlib, `@clickhouse/client` (Node.js, already present), `clickhouse-go/v2` (Go, already present)
 - 014-spot-no-liquidation: Added Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic)
 - 013-psm-dynamic-trade-size: Added Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic)
-- 012-monthly-capital-injection: Added Go 1.22 (core engine) | TypeScript 5.x / React 18 (frontend + orchestrator API) + `shopspring/decimal` (Go fixed-point), `decimal.js` (TypeScript fixed-point), React 18, Tailwind CSS, Vite
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -158,6 +158,10 @@ vite.config.ts.timestamp-*
 # Test binary, built with `go test -c`
 *.test
 
+# Wide event output files (produced by --wide-event-dir)
+output/
+*.jsonl
+
 # Code coverage profiles and other test artifacts
 *.out
 coverage.*

@@ -5,6 +5,9 @@ export interface GapResult {
   hasGap: boolean;
   expectedCount: number;
   actualCount: number;
+  /** When hasGap is true, the timestamp just after the last available candle.
+   *  Callers can start downloading from here instead of from range start. */
+  gapStart?: Date;
 }
 
 /**
@@ -65,11 +68,34 @@ export class GapResolver {
 
     const rows = await resultSet.json<{ cnt: string }>();
     const actualCount = rows.length > 0 ? parseInt(rows[0].cnt, 10) : 0;
+    const hasGap = actualCount < expectedCount;
+
+    // When a gap exists, find where existing data ends so the caller can
+    // start downloading from the gap instead of re-fetching everything.
+    let gapStart: Date | undefined;
+    if (hasGap && actualCount > 0) {
+      const maxRs = await chClient.query({
+        query: `
+          SELECT toUnixTimestamp64Milli(MAX(timestamp)) AS max_ts
+          FROM ${database}.market_data FINAL
+          WHERE symbol = {symbol:String}
+            AND timestamp >= {start:DateTime64(3)}
+            AND timestamp <= {end:DateTime64(3)}
+        `,
+        query_params: { symbol, start: startMs, end: endMs },
+        format: 'JSONEachRow',
+      });
+      const maxRows = await maxRs.json<{ max_ts: string }>();
+      if (maxRows.length > 0 && maxRows[0].max_ts !== '0') {
+        gapStart = new Date(parseInt(maxRows[0].max_ts, 10) + 60_000);
+      }
+    }
 
     return {
-      hasGap: actualCount < expectedCount,
+      hasGap,
       expectedCount,
       actualCount,
+      gapStart,
     };
   }
 }

@@ -37,4 +37,8 @@ type OrchestratorConfig struct {
 	// DomainConfig provides SDD §2.1/§2.2 parameter configuration for computing
 	// price and amount sequences. If nil, NewPosition uses empty grids (no orders).
 	DomainConfig *domainconfig.Config
+
+	// WideEventOutputDir is the directory where the enricher writes per-run .jsonl files.
+	// If empty, wide-event output is disabled and no enricher is created.
+	WideEventOutputDir string
 }

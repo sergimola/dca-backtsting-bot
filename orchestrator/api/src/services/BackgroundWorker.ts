@@ -24,7 +24,9 @@ import { BacktestJobRepository, type BacktestRow } from './BacktestJobRepository
 import { BacktestService } from './BacktestService.js';
 import { GapResolver } from './GapResolver.js';
 import { BinanceDownloader } from './BinanceDownloader.js';
+import { WideEventIngester } from './WideEventIngester.js';
 import type { ProgressLine, SafetyOrderUsageEntry } from '../types/index.js';
+import * as path from 'path';
 
 export interface BackgroundWorkerOptions {
   intervalMs?: number;
@@ -35,6 +37,7 @@ export class BackgroundWorker {
   private readonly service:     BacktestService;
   private readonly gapResolver: GapResolver;
   private readonly downloader:  BinanceDownloader;
+  private readonly ingester?:   WideEventIngester;
   private readonly intervalMs:  number;
 
   private isProcessing = false;
@@ -46,11 +49,13 @@ export class BackgroundWorker {
     gapResolver: GapResolver,
     downloader:  BinanceDownloader,
     options:     BackgroundWorkerOptions = {},
+    ingester?:   WideEventIngester,
   ) {
     this.repo        = repo;
     this.service     = service;
     this.gapResolver = gapResolver;
     this.downloader  = downloader;
+    this.ingester    = ingester;
     this.intervalMs  = options.intervalMs ?? 2000;
   }
 
@@ -103,8 +108,9 @@ export class BackgroundWorker {
       const gapResult      = await this.gapResolver.check(symbol, start, end);
 
       if (gapResult.hasGap) {
-        console.log(`[BackgroundWorker] Gap detected for job ${id}. Downloading from Binance...`);
-        await this.downloader.downloadAndStore(config.trading_pair, start, end);
+        const downloadStart = gapResult.gapStart ?? start;
+        console.log(`[BackgroundWorker] Gap detected for job ${id}. Downloading from Binance (${downloadStart.toISOString()} → ${end.toISOString()})...`);
+        await this.downloader.downloadAndStore(config.trading_pair, downloadStart, end);
       }
 
       // Step 2: Run the Go engine (BacktestService uses spawn() internally — never exec())
@@ -131,6 +137,17 @@ export class BackgroundWorker {
 
       // T032: Use engine result directly — no aggregation pass needed (done in Go)
       const safetyOrders: SafetyOrderUsageEntry[] = execResult.safetyOrderUsage;
+
+      // T031: Ingest wide event file into ClickHouse if the engine produced one
+      if (this.ingester && execResult.wideEventFile) {
+        try {
+          const runId = path.basename(execResult.wideEventFile, '.jsonl');
+          const ingestResult = await this.ingester.ingest(runId, execResult.wideEventFile);
+          console.log(`[BackgroundWorker] Wide events ingested: ${ingestResult.rowsInserted} rows in ${ingestResult.durationMs}ms`);
+        } catch (err) {
+          console.error(`[BackgroundWorker] Wide event ingestion failed for job ${id}:`, err);
+        }
+      }
 
       await this.repo.markCompleted(
         id,
