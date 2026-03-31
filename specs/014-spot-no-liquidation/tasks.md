@@ -16,7 +16,7 @@ description: "Task list for 014-spot-no-liquidation"
 
 **Purpose**: Confirm the test suite is fully green before any code changes are made. This is a mandatory condition of the Green Light Protocol.
 
-- [ ] T001 Run `cd core-engine && go test ./... -count=1` and record the total PASS count as the baseline; no feature work begins until all tests pass
+- [X] T001 Run `cd core-engine && go test ./... -count=1` and record the total PASS count as the baseline; no feature work begins until all tests pass
 
 **Checkpoint**: All existing tests GREEN. Baseline pass count recorded.
 
@@ -28,8 +28,8 @@ description: "Task list for 014-spot-no-liquidation"
 
 **⚠️ CRITICAL**: Phases 3, 4, and 5 cannot begin until T002 and T003 are complete.
 
-- [ ] T002 [core-engine] Add `Multiplier decimal.Decimal` field to `Position` struct between `ExitOnLastOrder` and `TakeProfitDistance` in `core-engine/domain/position/position.go`
-- [ ] T003 [core-engine] Add `newPos.Multiplier = orch.config.DomainConfig.Multiplier()` inside the `if orch.config.DomainConfig != nil` block in `core-engine/application/orchestrator/orchestrator.go`
+- [X] T002 [core-engine] Add `Multiplier decimal.Decimal` field to `Position` struct between `ExitOnLastOrder` and `TakeProfitDistance` in `core-engine/domain/position/position.go`
+- [X] T003 [core-engine] Add `newPos.Multiplier = orch.config.DomainConfig.Multiplier()` inside the `if orch.config.DomainConfig != nil` block in `core-engine/application/orchestrator/orchestrator.go`
 
 **Checkpoint**: `go build ./...` compiles with zero errors. No existing test regressions.
 
@@ -45,14 +45,14 @@ description: "Task list for 014-spot-no-liquidation"
 
 > **NOTE: Write these tests FIRST, ensure they FAIL (RED) before applying T006 and T007**
 
-- [ ] T004 [P] [core-engine] [US1] Create `core-engine/domain/position/spot_liquidation_test.go` with `package position` header and helper imports only (scaffold file, no test functions yet)
-- [ ] T005 [core-engine] [US1] Add `TestTS014_US1_SpotSurvivesCatastrophicDrop` to `core-engine/domain/position/spot_liquidation_test.go`: open with `Multiplier=1` at `$100.00`, process candle with `low=$1.00`/`high=$1.50`; assert `pos.State != StateClosed`, no `trade.closed` event, `pos.LiquidationPrice.Equal(decimal.Zero)`; run test and confirm RED
+- [X] T004 [P] [core-engine] [US1] Create `core-engine/domain/position/spot_liquidation_test.go` with `package position` header and helper imports only (scaffold file, no test functions yet)
+- [X] T005 [core-engine] [US1] Add `TestTS014_US1_SpotSurvivesCatastrophicDrop` to `core-engine/domain/position/spot_liquidation_test.go`: open with `Multiplier=1` at `$100.00`, process candle with `low=$1.00`/`high=$1.50`; assert `pos.State != StateClosed`, no `trade.closed` event, `pos.LiquidationPrice.Equal(decimal.Zero)`; run test and confirm RED
 
 ### Implementation for User Story 1
 
-- [ ] T006 [core-engine] [US1] In `core-engine/domain/position/minute_loop.go` Step 2 (inside `if pos.State == StateIdle` block, after `events = append(events, tradeOpenedEvent)`): add spot guard — `if pos.Multiplier.Equal(decimal.NewFromInt(1)) { pos.LiquidationPrice = decimal.Zero }`
-- [ ] T007 [core-engine] [US1] In `core-engine/domain/position/minute_loop.go` Step 3b (replace existing `if !pos.AverageEntryPrice.IsZero() { half ... }` liquidation recalculation block): replace with `if pos.Multiplier.Equal(decimal.NewFromInt(1)) { pos.LiquidationPrice = decimal.Zero } else if !pos.AverageEntryPrice.IsZero() { half, _ := decimal.NewFromString("0.5"); pos.LiquidationPrice = pos.AverageEntryPrice.Mul(half) }`
-- [ ] T008 [core-engine] [US1] Run `go test ./domain/position/ -run TestTS014_US1 -v` and confirm GREEN; run `go test ./domain/position/ -v` and confirm no regressions
+- [X] T006 [core-engine] [US1] In `core-engine/domain/position/minute_loop.go` Step 2 (inside `if pos.State == StateIdle` block, after `events = append(events, tradeOpenedEvent)`): add spot guard — `if pos.Multiplier.Equal(decimal.NewFromInt(1)) { pos.LiquidationPrice = decimal.Zero }`
+- [X] T007 [core-engine] [US1] In `core-engine/domain/position/minute_loop.go` Step 3b (replace existing `if !pos.AverageEntryPrice.IsZero() { half ... }` liquidation recalculation block): replace with `if pos.Multiplier.Equal(decimal.NewFromInt(1)) { pos.LiquidationPrice = decimal.Zero } else if !pos.AverageEntryPrice.IsZero() { half, _ := decimal.NewFromString("0.5"); pos.LiquidationPrice = pos.AverageEntryPrice.Mul(half) }`
+- [X] T008 [core-engine] [US1] Run `go test ./domain/position/ -run TestTS014_US1 -v` and confirm GREEN; run `go test ./domain/position/ -v` and confirm no regressions
 
 **Checkpoint**: `TestTS014_US1_SpotSurvivesCatastrophicDrop` passes. US1 is independently testable and complete.
 
@@ -66,8 +66,8 @@ description: "Task list for 014-spot-no-liquidation"
 
 ### Tests for User Story 2 (TDD — write first, must PASS after Phase 3 implementation)
 
-- [ ] T009 [core-engine] [US2] Add `TestTS014_US2_FuturesLiquidatesCorrectly` to `core-engine/domain/position/spot_liquidation_test.go`: open with `Multiplier=2` at `$100.00`; process candle 1 (open), candle 2 (`low=$97.00` triggers SO fill at `$98.00`, `LiquidationPrice` recalculates to `≈$49.xx`), candle 3 (`low=$20.00`); assert `pos.State == StateClosed`, `TradeClosedEvent.Reason == "liquidation"`, `pos.Profit.IsNegative()`
-- [ ] T010 [core-engine] [US2] Run `go test ./domain/position/ -run TestTS014_US2 -v` — this test should pass immediately from Phase 3's `else if` branch; if RED investigate the `else if` path in T007
+- [X] T009 [core-engine] [US2] Add `TestTS014_US2_FuturesLiquidatesCorrectly` to `core-engine/domain/position/spot_liquidation_test.go`: open with `Multiplier=2` at `$100.00`; process candle 1 (open), candle 2 (`low=$97.00` triggers SO fill at `$98.00`, `LiquidationPrice` recalculates to `≈$49.xx`), candle 3 (`low=$20.00`); assert `pos.State == StateClosed`, `TradeClosedEvent.Reason == "liquidation"`, `pos.Profit.IsNegative()`
+- [X] T010 [core-engine] [US2] Run `go test ./domain/position/ -run TestTS014_US2 -v` — this test should pass immediately from Phase 3's `else if` branch; if RED investigate the `else if` path in T007
 
 **Checkpoint**: `TestTS014_US2_FuturesLiquidatesCorrectly` passes. Futures behaviour confirmed unregressed.
 
@@ -83,8 +83,8 @@ description: "Task list for 014-spot-no-liquidation"
 
 > **NOTE: Write this test before confirming it passes. Candle 2 (`low=$50.00`) is the critical candle — without Phase 3's fix, it would produce a `trade.closed` (liquidation) event, causing this test to fail at the candle-2 assertion.**
 
-- [ ] T011 [core-engine] [US3] Add `TestTS014_US3_SpotClosesViaTakeProfit` to `core-engine/domain/position/spot_liquidation_test.go`: set `Multiplier=1`, `TakeProfitDistance=0.5`; process candle 1 (open at `$100.00`, TP target `≈$100.50`), candle 2 (`low=$50.00`, assert no `trade.closed` event), candle 3 (`low=$100.00`, `high=$101.00`); assert `pos.State == StateClosed`, `TradeClosedEvent.Reason == "take_profit"`, `pos.Profit.IsPositive()`
-- [ ] T012 [core-engine] [US3] Run `go test ./domain/position/ -run TestTS014_US3 -v` and confirm GREEN
+- [X] T011 [core-engine] [US3] Add `TestTS014_US3_SpotClosesViaTakeProfit` to `core-engine/domain/position/spot_liquidation_test.go`: set `Multiplier=1`, `TakeProfitDistance=0.5`; process candle 1 (open at `$100.00`, TP target `≈$100.50`), candle 2 (`low=$50.00`, assert no `trade.closed` event), candle 3 (`low=$100.00`, `high=$101.00`); assert `pos.State == StateClosed`, `TradeClosedEvent.Reason == "take_profit"`, `pos.Profit.IsPositive()`
+- [X] T012 [core-engine] [US3] Run `go test ./domain/position/ -run TestTS014_US3 -v` and confirm GREEN
 
 **Checkpoint**: `TestTS014_US3_SpotClosesViaTakeProfit` passes. All three acceptance scenarios are GREEN.
 
@@ -94,8 +94,8 @@ description: "Task list for 014-spot-no-liquidation"
 
 **Purpose**: Confirm zero regressions across the entire core-engine module and rebuild the binary for integration testing.
 
-- [ ] T013 [core-engine] Run `go test ./... -count=1 -v` from `core-engine/`; confirm total pass count equals baseline (T001) + 3 new tests; zero failures permitted under Green Light Protocol
-- [ ] T014 [P] [core-engine] Rebuild binary: `go build -o "../orchestrator/api/core-engine.exe" ./cmd/engine/` from `core-engine/`; confirm exit code 0
+- [X] T013 [core-engine] Run `go test ./... -count=1 -v` from `core-engine/`; confirm total pass count equals baseline (T001) + 3 new tests; zero failures permitted under Green Light Protocol
+- [X] T014 [P] [core-engine] Rebuild binary: `go build -o "../orchestrator/api/core-engine.exe" ./cmd/engine/` from `core-engine/`; confirm exit code 0
 
 **Checkpoint**: All tests GREEN. Binary rebuilt. Feature is complete and ready for merge.
 
