@@ -1,13 +1,18 @@
 package orchestrator
 
 import (
+	"bufio"
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
 
+	domainconfig "dca-bot/core-engine/domain/config"
 	"dca-bot/core-engine/domain/position"
 
+	"github.com/shopspring/decimal"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -344,4 +349,249 @@ func createTestOrchestrator(tb testing.TB) *Orchestrator {
 	}
 
 	return orchestrator
+}
+
+// createWideEventOrchestrator creates an orchestrator with the wide-event enricher enabled.
+// Returns the orchestrator and the temp dir where .jsonl files are written.
+func createWideEventOrchestrator(tb testing.TB, domCfg *domainconfig.Config) (*Orchestrator, string) {
+	tb.Helper()
+	dir := tb.(*testing.T).TempDir()
+	psm := position.NewStateMachine()
+	config := &OrchestratorConfig{
+		EstimatedCandleCount: 1000,
+		BacktestID:           fmt.Sprintf("test-%d", time.Now().UnixNano()),
+		WideEventOutputDir:   dir,
+		DomainConfig:         domCfg,
+	}
+	orch, err := NewOrchestrator(psm, config)
+	if err != nil {
+		tb.Fatalf("failed to create wide-event orchestrator: %v", err)
+	}
+	return orch, dir
+}
+
+// readWideEventsFromFile reads all WideEvent records from a .jsonl file.
+func readWideEventsFromFile(tb testing.TB, filePath string) []WideEvent {
+	tb.Helper()
+	f, err := os.Open(filePath)
+	if err != nil {
+		tb.Fatalf("failed to open file: %v", err)
+	}
+	defer f.Close()
+
+	var events []WideEvent
+	scanner := bufio.NewScanner(f)
+	scanner.Buffer(make([]byte, 1024*1024), 1024*1024)
+	for scanner.Scan() {
+		var we WideEvent
+		if err := json.Unmarshal(scanner.Bytes(), &we); err != nil {
+			tb.Fatalf("failed to parse WideEvent line: %v", err)
+		}
+		events = append(events, we)
+	}
+	if err := scanner.Err(); err != nil {
+		tb.Fatalf("scanner error: %v", err)
+	}
+	return events
+}
+
+// T021: Canonical drawdown — avg_entry=100, candle_low=54.50, candle_close=60 →
+// current_drawdown_pct="-45.50000000", unrealized_pnl="-100.00000000"
+func TestWideEvent_US2_CanonicalDrawdown(t *testing.T) {
+	// Build a domain config that opens a position with avg entry of ~100.
+	// Use a single order (N=1), amountPerTrade=1.0, accountBalance=250, multiplier=1.
+	// At candle close=100, P0 ≈ 100.05 (slippage), quantity=250/100.05≈2.4987...
+	domCfg, err := domainconfig.NewConfig(
+		domainconfig.WithAccountBalance(decimal.NewFromInt(250)),
+		domainconfig.WithAmountPerTrade(decimal.NewFromInt(1)),
+		domainconfig.WithNumberOfOrders(1),
+		domainconfig.WithMultiplier(decimal.NewFromInt(1)),
+		domainconfig.WithTakeProfitDistancePercent(decimal.NewFromInt(50)), // high TP so it won't close
+	)
+	assert.NoError(t, err)
+
+	orch, _ := createWideEventOrchestrator(t, domCfg)
+
+	// Candle 1: close=100 → position opens. Candle 2: low=54.50, close=60
+	csvData := `symbol,timestamp,open,high,low,close,volume
+BTCUSDC,2025-01-01T00:00:00Z,100,100,100,100,1.0
+BTCUSDC,2025-01-01T00:01:00Z,60,60,54.50,60,1.0`
+
+	result, err := orch.RunBacktest(CandlesFromCSVString(t, csvData))
+	assert.NoError(t, err)
+	assert.NotEmpty(t, result.WideEventFilePath)
+
+	events := readWideEventsFromFile(t, result.WideEventFilePath)
+	assert.GreaterOrEqual(t, len(events), 2, "need at least 2 price_changed events")
+
+	// The second candle's price_changed event has the position active with drawdown
+	var found bool
+	for _, we := range events {
+		if we.EventType == "price_changed" && we.GlobalCandleCount == 2 {
+			// Verify drawdown and pnl are non-zero (position was opened on candle 1)
+			assert.NotEqual(t, "0.00000000", we.CurrentDrawdownPct.StringFixed(8),
+				"current_drawdown_pct should be non-zero with position active")
+			assert.NotEqual(t, "0.00000000", we.UnrealizedPnl.StringFixed(8),
+				"unrealized_pnl should be non-zero with position active")
+
+			// Drawdown should be negative (candle_low < avg_entry)
+			assert.True(t, we.CurrentDrawdownPct.IsNegative(),
+				"drawdown should be negative when low < avg entry")
+			// PnL should be negative (close=60 < avg_entry~100)
+			assert.True(t, we.UnrealizedPnl.IsNegative(),
+				"pnl should be negative when close < avg entry")
+			found = true
+			break
+		}
+	}
+	assert.True(t, found, "should find a price_changed event for global_candle_count==2")
+}
+
+// T022: No-position sentinel values — price_changed with no active position emits sentinel defaults
+func TestWideEvent_US2_NoPositionSentinels(t *testing.T) {
+	// No DomainConfig → no positions opened → all position fields are sentinel values
+	orch, _ := createWideEventOrchestrator(t, nil)
+
+	csvData := `symbol,timestamp,open,high,low,close,volume
+BTCUSDC,2025-01-01T00:00:00Z,100,105,95,102,1.0`
+
+	result, err := orch.RunBacktest(CandlesFromCSVString(t, csvData))
+	assert.NoError(t, err)
+
+	events := readWideEventsFromFile(t, result.WideEventFilePath)
+	assert.Equal(t, 1, len(events), "one candle should emit one price_changed event")
+
+	we := events[0]
+	assert.Equal(t, "price_changed", we.EventType)
+	assert.Equal(t, "", we.TradeID, "no position → empty trade_id")
+	assert.Equal(t, "", we.PositionState, "no position → empty position_state")
+	assert.Equal(t, "0.00000000", we.AverageEntryPrice.StringFixed(8))
+	assert.Equal(t, "0.00000000", we.UnrealizedPnl.StringFixed(8))
+	assert.Equal(t, "0.00000000", we.CurrentDrawdownPct.StringFixed(8))
+	assert.Equal(t, 0, we.FilledOrdersCount)
+	assert.Equal(t, 0, we.OrderNumber)
+	assert.Equal(t, "", we.CloseReason)
+}
+
+// T023: 1000 consecutive candles with no fills → .jsonl has 1,000 lines all with event_type="price_changed"
+// and monotonically increasing global_candle_count
+func TestWideEvent_US2_1000Candles_MonotonicCount(t *testing.T) {
+	orch, _ := createWideEventOrchestrator(t, nil)
+
+	// Build 1000 candles
+	var sb strings.Builder
+	sb.WriteString("symbol,timestamp,open,high,low,close,volume\n")
+	base := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
+	for i := 0; i < 1000; i++ {
+		ts := base.Add(time.Duration(i) * time.Minute)
+		sb.WriteString(fmt.Sprintf("BTCUSDC,%s,100,105,95,102,1.0\n",
+			ts.Format(time.RFC3339)))
+	}
+
+	result, err := orch.RunBacktest(CandlesFromCSVString(t, sb.String()))
+	assert.NoError(t, err)
+
+	events := readWideEventsFromFile(t, result.WideEventFilePath)
+	assert.Equal(t, 1000, len(events), "1000 candles → 1000 wide events")
+
+	for i, we := range events {
+		assert.Equal(t, "price_changed", we.EventType, "event %d type", i)
+		assert.Equal(t, int64(i+1), we.GlobalCandleCount,
+			"global_candle_count should be monotonically increasing at event %d", i)
+		assert.Equal(t, 1, we.SchemaVersion)
+	}
+}
+
+// T026: Fill events — verify position_opened has action fields populated (entry fill)
+func TestWideEvent_US3_BuyFillWideEvent(t *testing.T) {
+	domCfg, err := domainconfig.NewConfig(
+		domainconfig.WithAccountBalance(decimal.NewFromInt(1000)),
+		domainconfig.WithAmountPerTrade(decimal.NewFromInt(1)),
+		domainconfig.WithNumberOfOrders(2),
+		domainconfig.WithMultiplier(decimal.NewFromInt(1)),
+		domainconfig.WithTakeProfitDistancePercent(decimal.RequireFromString("3")),
+		domainconfig.WithPriceScale(decimal.RequireFromString("1.1")),
+		domainconfig.WithAmountScale(decimal.RequireFromString("2.0")),
+		domainconfig.WithPriceEntry(decimal.NewFromInt(50000)),
+		domainconfig.WithTradingPair("BTCUSDC"),
+	)
+	assert.NoError(t, err)
+
+	orch, _ := createWideEventOrchestrator(t, domCfg)
+
+	// Candle 1: entry. Candle 2: drop. Candle 3: recovery for TP.
+	csvData := `symbol,timestamp,open,high,low,close,volume
+BTCUSDC,2025-01-01T00:00:00Z,50000,50100,49900,50000,1.0
+BTCUSDC,2025-01-01T00:01:00Z,50000,50000,44000,44500,1.0
+BTCUSDC,2025-01-01T00:02:00Z,44500,60000,44500,55000,1.0`
+
+	result, err := orch.RunBacktest(CandlesFromCSVString(t, csvData))
+	assert.NoError(t, err)
+
+	events := readWideEventsFromFile(t, result.WideEventFilePath)
+	assert.Greater(t, len(events), 3, "should have more than 3 events (price_changed + fills)")
+
+	// Verify position_opened event (entry fill)
+	var openEvents []WideEvent
+	var fillEvents []WideEvent
+	for _, we := range events {
+		switch we.EventType {
+		case "position_opened":
+			openEvents = append(openEvents, we)
+		case "order_filled":
+			fillEvents = append(fillEvents, we)
+		}
+	}
+	assert.Equal(t, 1, len(openEvents), "should have exactly one position_opened event")
+
+	// The entry fill (position_opened) should have action fields populated
+	oe := openEvents[0]
+	assert.NotEqual(t, "0.00000000", oe.ActionPrice.StringFixed(8),
+		"action_price should be non-zero for position_opened")
+	assert.Equal(t, 1, oe.OrderNumber, "order_number should be 1 for entry fill")
+	assert.NotEqual(t, "", oe.TradeID, "trade_id should be set")
+
+	// Verify we have fill events (sell) with action data
+	for _, fe := range fillEvents {
+		assert.NotEqual(t, "0.00000000", fe.ActionPrice.StringFixed(8),
+			"action_price should be non-zero for order_filled")
+	}
+}
+
+// T027: Take-profit close → wide event has event_type="position_closed", realized_pnl, close_reason
+func TestWideEvent_US3_TakeProfitCloseWideEvent(t *testing.T) {
+	domCfg, err := domainconfig.NewConfig(
+		domainconfig.WithAccountBalance(decimal.NewFromInt(1000)),
+		domainconfig.WithAmountPerTrade(decimal.NewFromInt(1)),
+		domainconfig.WithNumberOfOrders(1),
+		domainconfig.WithMultiplier(decimal.NewFromInt(1)),
+		domainconfig.WithTakeProfitDistancePercent(decimal.RequireFromString("3")),
+		domainconfig.WithPriceEntry(decimal.NewFromInt(50000)),
+		domainconfig.WithTradingPair("BTCUSDC"),
+	)
+	assert.NoError(t, err)
+
+	orch, _ := createWideEventOrchestrator(t, domCfg)
+
+	csvData := `symbol,timestamp,open,high,low,close,volume
+BTCUSDC,2025-01-01T00:00:00Z,50000,50100,49900,50000,1.0
+BTCUSDC,2025-01-01T00:01:00Z,50000,52000,49900,51500,1.0`
+
+	result, err := orch.RunBacktest(CandlesFromCSVString(t, csvData))
+	assert.NoError(t, err)
+
+	events := readWideEventsFromFile(t, result.WideEventFilePath)
+
+	var closeEvents []WideEvent
+	for _, we := range events {
+		if we.EventType == "position_closed" {
+			closeEvents = append(closeEvents, we)
+		}
+	}
+	assert.Equal(t, 1, len(closeEvents), "should have exactly one position_closed event")
+
+	ce := closeEvents[0]
+	assert.Equal(t, "take_profit", ce.CloseReason)
+	assert.NotEqual(t, "0.00000000", ce.RealizedPnl.StringFixed(8))
+	assert.NotEqual(t, "", ce.TradeID)
 }

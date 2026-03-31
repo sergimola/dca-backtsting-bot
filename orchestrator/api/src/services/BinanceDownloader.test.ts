@@ -74,7 +74,7 @@ describe('BinanceDownloader', () => {
 
   const symbol = 'BTC/USDT';
   const startDate = new Date('2025-01-01T00:00:00Z');
-  const endDate = new Date('2025-01-01T01:00:00Z'); // 60 minute window
+  const endDate = new Date('2025-01-02T00:00:00Z'); // 24-hour window (covers multi-page test data)
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -167,6 +167,28 @@ describe('BinanceDownloader', () => {
 
     // sleep(50) must be called at least once between the pages
     expect(mockedSleep).toHaveBeenCalledWith(50);
+  });
+
+  it('BD8: download stops at end boundary — does not fetch past requested end date', async () => {
+    const start = new Date('2025-01-01T00:00:00Z').getTime();
+    const shortEnd = new Date('2025-01-01T00:05:00Z'); // only 5 minutes
+    // Page returns 10 candles, but only 6 fit within [start, start+5min]
+    mockExchange.fetchOHLCV
+      .mockResolvedValueOnce(makeOHLCV(10, start))
+      .mockResolvedValueOnce([]); // should not be called
+
+    await downloader.downloadAndStore(symbol, startDate, shortEnd);
+
+    // insertBatch called with rows up to endMs only
+    expect(mockWriter.insertBatch).toHaveBeenCalledTimes(1);
+    const insertedRows = mockWriter.insertBatch.mock.calls[0][0] as any[];
+    const endMs = shortEnd.getTime();
+    insertedRows.forEach((r: any) => {
+      const ts = new Date(r.timestamp.replace(' ', 'T') + 'Z').getTime();
+      expect(ts).toBeLessThanOrEqual(endMs);
+    });
+    // The loop should NOT have made a second fetchOHLCV call because since > endMs
+    expect(mockExchange.fetchOHLCV).toHaveBeenCalledTimes(1);
   });
 
   it('BD6: sync receipt is written to Postgres market_data_syncs on completion', async () => {

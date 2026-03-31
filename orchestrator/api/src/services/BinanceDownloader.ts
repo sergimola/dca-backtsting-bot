@@ -30,8 +30,9 @@ export class BinanceDownloader {
    * market_data_syncs so GapResolver skips re-downloading on future runs.
    * @returns Total number of candle rows stored.
    */
-  async downloadAndStore(symbol: string, start: Date, _end: Date): Promise<number> {
+  async downloadAndStore(symbol: string, start: Date, end: Date): Promise<number> {
     let since        = start.getTime();
+    const endMs      = end.getTime();
     let totalStored  = 0;
     let isFirstPage  = true;
     // Track the ACTUAL last-candle timestamp (not the user's end_date param)
@@ -40,7 +41,7 @@ export class BinanceDownloader {
     // eslint-disable-next-line no-constant-condition
     while (true) {
       if (!isFirstPage) {
-        await sleep(1); // 50ms pacing between pages (constitution gate)
+        await sleep(50); // 50ms pacing between pages (constitution gate)
       }
       isFirstPage = false;
 
@@ -53,8 +54,9 @@ export class BinanceDownloader {
       }
 
       // Discard any candle with timestamp >= current-minute floor (open candle)
+      // AND any candle past the requested end boundary.
       const nowMinuteFloor = Math.floor(Date.now() / 60_000) * 60_000;
-      const filtered = ohlcv.filter((c) => c[0] < nowMinuteFloor);
+      const filtered = ohlcv.filter((c) => c[0] < nowMinuteFloor && c[0] <= endMs);
 
       if (filtered.length > 0) {
         const rows: OHLCVRow[] = filtered.map((c) => ({
@@ -75,6 +77,9 @@ export class BinanceDownloader {
       const lastTs = ohlcv[ohlcv.length - 1][0];
       lastCandleTs = lastTs;
       since = lastTs + 60_000;
+
+      // Stop once we've passed the requested end boundary
+      if (since > endMs) break;
     }
 
     // Write sync receipt to Postgres so GapResolver trusts this range on future requests.

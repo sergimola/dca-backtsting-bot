@@ -141,6 +141,10 @@ export class BacktestService {
         ...flags,
       ];
 
+      // Pass --wide-event-dir if configured via environment (defaults to ./output/wide_events)
+      const wideEventDir = process.env.WIDE_EVENT_DIR || './output/wide_events';
+      engineFlags.push(`--wide-event-dir=${wideEventDir}`);
+
       if (this.binaryPath.endsWith('.js')) {
         // Node.js script (mock binary)
         command = 'node';
@@ -310,5 +314,6 @@ export function mapResultLine(line: EngineResultLine): BacktestExecutionResult {
     engineExecutionTimeMs: line.executionTimeMs,
     candleCount:          line.candleCount,
     eventCount:           line.eventCount,
+    wideEventFile:        line.wide_event_file,
   };
 }

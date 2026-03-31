@@ -142,6 +142,8 @@ export interface EngineResultLine {
   executionTimeMs: number;
   candleCount: number;
   eventCount: number;
+  wide_event_file?: string;
+  wide_event_stall_duration_ms?: number;
 }
 
 // ============== BacktestService Contract ==============
@@ -164,6 +166,8 @@ export interface BacktestExecutionResult {
   engineExecutionTimeMs: number;
   candleCount: number;
   eventCount: number;
+  /** Path to .jsonl wide event file (empty/undefined if enricher disabled). */
+  wideEventFile?: string;
 }
 
 // ============== PnlSummary Types ==============

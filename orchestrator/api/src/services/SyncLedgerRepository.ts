@@ -35,35 +35,44 @@ export class SyncLedgerRepository {
   }
 
   /**
-   * Insert or update the sync ledger for a symbol+startDate key.
+   * Insert or update the sync ledger for a symbol.
    *
-   * If a record for (symbol, start_date) already exists, updates end_date and
-   * updated_at if the new endDate is later (extending coverage forward).
-   * Otherwise inserts a new record.
+   * Finds any existing record whose range overlaps or is adjacent to
+   * [startDate, endDate] and merges the two ranges into one row.
+   * If no overlap exists, inserts a new record.
    *
    * @param symbol      Normalised symbol e.g. "BTCUSDC"
    * @param startDate   First candle timestamp of the downloaded range
    * @param endDate     Timestamp of the LAST downloaded candle (not user end param)
    */
   async upsert(symbol: string, startDate: Date, endDate: Date): Promise<void> {
-    // Check for existing record covering this start
+    // Find any existing record that overlaps or is adjacent to the new range.
+    // Adjacent means the existing endDate is within 1 minute of the new startDate.
+    const adjacencyMs = 60_000;
     const [existing] = await db
-      .select({ id: marketDataSyncs.id, endDate: marketDataSyncs.endDate })
+      .select({
+        id: marketDataSyncs.id,
+        startDate: marketDataSyncs.startDate,
+        endDate: marketDataSyncs.endDate,
+      })
       .from(marketDataSyncs)
       .where(
         and(
           eq(marketDataSyncs.symbol, symbol),
-          eq(marketDataSyncs.startDate, startDate),
+          lte(marketDataSyncs.startDate, new Date(endDate.getTime() + adjacencyMs)),
+          gte(marketDataSyncs.endDate, new Date(startDate.getTime() - adjacencyMs)),
         ),
       )
       .limit(1);
 
     if (existing) {
-      // Extend endDate forward if new download covers more
-      if (endDate > existing.endDate) {
+      // Merge ranges — take the earliest start and latest end
+      const mergedStart = existing.startDate < startDate ? existing.startDate : startDate;
+      const mergedEnd   = endDate > existing.endDate ? endDate : existing.endDate;
+      if (mergedStart < existing.startDate || mergedEnd > existing.endDate) {
         await db
           .update(marketDataSyncs)
-          .set({ endDate, updatedAt: new Date() })
+          .set({ startDate: mergedStart, endDate: mergedEnd, updatedAt: new Date() })
           .where(eq(marketDataSyncs.id, existing.id));
       }
     } else {

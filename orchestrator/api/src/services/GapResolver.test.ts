@@ -63,19 +63,24 @@ describe('GapResolver', () => {
     expect(result.expectedCount).toBe(expectedCount);
   });
 
-  it('GT2: under-count (swiss-cheese gap) returns { hasGap: true }', async () => {
+  it('GT2: under-count (swiss-cheese gap) returns { hasGap: true } with gapStart', async () => {
     const actualCount = expectedCount - 500;
+    const maxTs = endMs - 500 * 60_000; // 500 minutes before end
     mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: actualCount.toString() }])); // count: partial
+    mockedQuery
+      .mockResolvedValueOnce(fakeResultSet([{ cnt: actualCount.toString() }])) // count: partial
+      .mockResolvedValueOnce(fakeResultSet([{ max_ts: maxTs.toString() }]));   // MAX query
 
     const result = await resolver.check(symbol, new Date(startMs), new Date(endMs));
 
     expect(result.hasGap).toBe(true);
     expect(result.actualCount).toBe(actualCount);
     expect(result.expectedCount).toBe(expectedCount);
+    // gapStart should be MAX + 1 minute
+    expect(result.gapStart).toEqual(new Date(maxTs + 60_000));
   });
 
-  it('GT3: empty table (actualCount = 0) returns { hasGap: true }', async () => {
+  it('GT3: empty table (actualCount = 0) returns { hasGap: true, gapStart: undefined }', async () => {
     mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
     mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: '0' }]));   // count: empty
 
@@ -83,6 +88,8 @@ describe('GapResolver', () => {
 
     expect(result.hasGap).toBe(true);
     expect(result.actualCount).toBe(0);
+    // No existing data → gapStart undefined (download from range start)
+    expect(result.gapStart).toBeUndefined();
   });
 
   it('GT4: expectedCount uses floor((end - start) / 60_000) + 1 formula', async () => {
@@ -102,7 +109,7 @@ describe('GapResolver', () => {
 
   it('GT5: COUNT(*) FINAL query is used — not MIN/MAX', async () => {
     mockSyncLedger.checkCoverage.mockResolvedValueOnce(false);          // ledger miss
-    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: '1' }]));   // count query
+    mockedQuery.mockResolvedValueOnce(fakeResultSet([{ cnt: expectedCount.toString() }]));   // count query — full coverage
 
     await resolver.check(symbol, new Date(startMs), new Date(endMs));
 

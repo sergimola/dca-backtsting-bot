@@ -18,11 +18,12 @@ import { HealthMonitor } from './services/HealthMonitor.js';
 import { GapResolver } from './services/GapResolver.js';
 import { BinanceDownloader } from './services/BinanceDownloader.js';
 import { ClickHouseWriter } from './services/ClickHouseWriter.js';
-import { pingClickHouse } from './services/ClickHouseClient.js';
+import { chClient, database, pingClickHouse, initClickHouseSchema } from './services/ClickHouseClient.js';
 import { runMigrations } from './db/migrate.js';
 import { BacktestJobRepository } from './services/BacktestJobRepository.js';
 import { SyncLedgerRepository } from './services/SyncLedgerRepository.js';
 import { BackgroundWorker } from './services/BackgroundWorker.js';
+import { WideEventIngester } from './services/WideEventIngester.js';
 
 /**
  * Main server initialization and startup
@@ -42,9 +43,10 @@ async function main(): Promise<void> {
     await runMigrations();
     console.log('[main] ✓ Postgres migrations complete');
 
-    // 2. Verify ClickHouse connectivity
+    // 2. Verify ClickHouse connectivity & Schema
     await pingClickHouse();
-    console.log('[main] ✓ ClickHouse connection verified');
+    await initClickHouseSchema(); // <--- Add this line
+    console.log('[main] ✓ ClickHouse connection and schema verified');
 
     // 3. Build repositories
     const backtestJobRepository = new BacktestJobRepository();
@@ -70,11 +72,14 @@ async function main(): Promise<void> {
     });
 
     // 7. Start background worker (BEFORE server.listen so worker is ready)
+    const wideEventIngester = new WideEventIngester(chClient, database);
     const worker = new BackgroundWorker(
       backtestJobRepository,
       backtestService,
       gapResolver,
       downloader,
+      {},
+      wideEventIngester,
     );
     worker.start();
     console.log('[main] ✓ BackgroundWorker started');

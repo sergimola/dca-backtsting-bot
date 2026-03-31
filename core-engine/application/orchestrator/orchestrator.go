@@ -23,6 +23,7 @@ type Orchestrator struct {
 	position          *position.Position
 	globalCandleCount int64
 	runningBalance    decimal.Decimal
+	enricher          *WideEventEnricher // nil when wide-event output is disabled
 }
 
 // NewOrchestrator creates a new orchestrator instance
@@ -51,6 +52,15 @@ func NewOrchestrator(psm position.PositionStateMachine, config *OrchestratorConf
 		psm:      psm,
 		eventBus: eventBusPtr,
 		config:   config,
+	}
+
+	// Initialize wide-event enricher when output dir is configured
+	if config.WideEventOutputDir != "" {
+		enricher, enricherErr := NewWideEventEnricher(config.WideEventOutputDir, config.BacktestID)
+		if enricherErr != nil {
+			return nil, fmt.Errorf("wide event enricher: %w", enricherErr)
+		}
+		orchestrator.enricher = enricher
 	}
 
 	return orchestrator, nil
@@ -292,6 +302,11 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 							"order_number", boe.OrderNumber,
 						)
 					}
+
+					// T025: Emit fill wide events for actionable PSM events
+					if orch.enricher != nil {
+						orch.emitFillWideEvent(candle, backtest, psmEvent)
+					}
 				}
 			}
 
@@ -327,6 +342,11 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 			}
 		}
 
+		// T020: Emit price_changed wide event once per candle (after PSM processing)
+		if orch.enricher != nil {
+			orch.emitCandleWideEvent(candle, backtest)
+		}
+
 		// Notify progress hook (used by cmd/engine progress ticker).
 		if orch.config.OnCandleProcessed != nil {
 			orch.config.OnCandleProcessed(candleCount, candle.Timestamp, candle.Close)
@@ -350,7 +370,203 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 		backtest.FinalPosition = lastPosition
 	}
 
+	// Tear down wide-event enricher: flush file, record stall duration
+	if orch.enricher != nil {
+		stallDur, enricherErr := orch.enricher.Close()
+		if enricherErr != nil {
+			slog.Error("wide event enricher close error", "err", enricherErr)
+		}
+		backtest.WideEventStallDuration = stallDur
+		backtest.WideEventFilePath = orch.enricher.OutputPath()
+		if stallDur > 0 {
+			slog.Warn("wide event enricher: PSM stall detected",
+				"stall_duration", stallDur,
+			)
+		}
+	}
+
 	return backtest, nil
+}
+
+// emitFillWideEvent emits a fill-type WideEvent for actionable PSM events.
+// Only emits for: trade.opened, order.buy.executed, order.sell.executed, trade.closed.
+func (orch *Orchestrator) emitFillWideEvent(candle *Candle, backtest *BacktestRun, psmEvent position.Event) {
+	evtType := psmEvent.EventType()
+
+	// Map PSM event type to wide event_type
+	var wideEventType string
+	switch evtType {
+	case "trade.opened":
+		wideEventType = "position_opened"
+	case "order.buy.executed":
+		wideEventType = "order_filled"
+	case "order.sell.executed":
+		wideEventType = "order_filled"
+	case "trade.closed":
+		wideEventType = "position_closed"
+	default:
+		return // skip non-actionable events (liquidation.price.updated, price.changed, etc.)
+	}
+
+	we := WideEvent{
+		SchemaVersion:         1,
+		RunID:                 backtest.ID,
+		Timestamp:             candle.Timestamp,
+		EventType:             wideEventType,
+		Symbol:                backtest.Symbol,
+		CandleOpen:            NewWideDecimal(candle.Open),
+		CandleHigh:            NewWideDecimal(candle.High),
+		CandleLow:             NewWideDecimal(candle.Low),
+		CandleClose:           NewWideDecimal(candle.Close),
+		CandleVolume:          NewWideDecimal(candle.Volume),
+		RunningAccountBalance: NewWideDecimal(orch.runningBalance),
+		GlobalCandleCount:     orch.globalCandleCount,
+	}
+
+	// Populate position snapshot
+	if orch.position != nil {
+		pos := orch.position
+		we.TradeID = pos.TradeID
+		we.PositionState = positionStateString(pos.State)
+		we.AverageEntryPrice = NewWideDecimal(pos.AverageEntryPrice)
+		we.PositionQuantity = NewWideDecimal(pos.PositionQuantity)
+		we.FeesAccumulated = NewWideDecimal(pos.FeesAccumulated)
+		we.TakeProfitPrice = NewWideDecimal(pos.TakeProfitTarget)
+		we.LiquidationPrice = NewWideDecimal(pos.LiquidationPrice)
+		we.FilledOrdersCount = len(pos.Orders)
+
+		totalDeployed := decimal.Zero
+		for _, o := range pos.Orders {
+			totalDeployed = totalDeployed.Add(o.QuoteAmount).Add(o.Fee)
+		}
+		we.TotalCapitalDeployed = NewWideDecimal(totalDeployed)
+
+		if !pos.AverageEntryPrice.IsZero() {
+			we.UnrealizedPnl = NewWideDecimal(
+				candle.Close.Sub(pos.AverageEntryPrice).Mul(pos.PositionQuantity),
+			)
+			we.CurrentDrawdownPct = NewWideDecimal(
+				candle.Low.Sub(pos.AverageEntryPrice).Div(pos.AverageEntryPrice).Mul(decimal.NewFromInt(100)),
+			)
+		}
+	}
+
+	// Populate action fields based on event type
+	switch e := psmEvent.(type) {
+	case *position.TradeOpenedEvent:
+		// Position opened: entry price and fee from the first order
+		if fee, err := decimal.NewFromString(e.EntryFee); err == nil {
+			we.ActionFee = NewWideDecimal(fee)
+		}
+		if orch.position != nil && len(orch.position.Orders) > 0 {
+			first := orch.position.Orders[0]
+			we.ActionPrice = NewWideDecimal(first.ExecutedPrice)
+			we.ActionQuantity = NewWideDecimal(first.ExecutedQuantity)
+			we.OrderNumber = 1
+		}
+	case *position.BuyOrderExecutedEvent:
+		if price, err := decimal.NewFromString(e.Price); err == nil {
+			we.ActionPrice = NewWideDecimal(price)
+		}
+		if baseSize, err := decimal.NewFromString(e.BaseSize); err == nil {
+			we.ActionQuantity = NewWideDecimal(baseSize)
+		}
+		if fee, err := decimal.NewFromString(e.Fee); err == nil {
+			we.ActionFee = NewWideDecimal(fee)
+		}
+		we.OrderNumber = e.OrderNumber
+	case *position.SellOrderExecutedEvent:
+		if price, err := decimal.NewFromString(e.Price); err == nil {
+			we.ActionPrice = NewWideDecimal(price)
+		}
+		if baseSize, err := decimal.NewFromString(e.BaseSize); err == nil {
+			we.ActionQuantity = NewWideDecimal(baseSize)
+		}
+		if fee, err := decimal.NewFromString(e.Fee); err == nil {
+			we.ActionFee = NewWideDecimal(fee)
+		}
+		if profit, err := decimal.NewFromString(e.Profit); err == nil {
+			we.RealizedPnl = NewWideDecimal(profit)
+		}
+	case *position.TradeClosedEvent:
+		if profit, err := decimal.NewFromString(e.Profit); err == nil {
+			we.RealizedPnl = NewWideDecimal(profit)
+		}
+		if closingPrice, err := decimal.NewFromString(e.ClosingPrice); err == nil {
+			we.ActionPrice = NewWideDecimal(closingPrice)
+		}
+		we.CloseReason = e.Reason
+	}
+
+	orch.enricher.Emit(we)
+}
+
+// emitCandleWideEvent emits a "price_changed" WideEvent for the current candle.
+// Called once per candle tick regardless of whether PSM events fired.
+func (orch *Orchestrator) emitCandleWideEvent(candle *Candle, backtest *BacktestRun) {
+	we := WideEvent{
+		SchemaVersion:         1,
+		RunID:                 backtest.ID,
+		Timestamp:             candle.Timestamp,
+		EventType:             "price_changed",
+		Symbol:                backtest.Symbol,
+		CandleOpen:            NewWideDecimal(candle.Open),
+		CandleHigh:            NewWideDecimal(candle.High),
+		CandleLow:             NewWideDecimal(candle.Low),
+		CandleClose:           NewWideDecimal(candle.Close),
+		CandleVolume:          NewWideDecimal(candle.Volume),
+		RunningAccountBalance: NewWideDecimal(orch.runningBalance),
+		GlobalCandleCount:     orch.globalCandleCount,
+	}
+
+	if orch.position != nil {
+		pos := orch.position
+		we.TradeID = pos.TradeID
+		we.PositionState = positionStateString(pos.State)
+		we.AverageEntryPrice = NewWideDecimal(pos.AverageEntryPrice)
+		we.PositionQuantity = NewWideDecimal(pos.PositionQuantity)
+		we.FeesAccumulated = NewWideDecimal(pos.FeesAccumulated)
+		we.TakeProfitPrice = NewWideDecimal(pos.TakeProfitTarget)
+		we.LiquidationPrice = NewWideDecimal(pos.LiquidationPrice)
+		we.FilledOrdersCount = len(pos.Orders)
+
+		// total_capital_deployed = Σ(QuoteAmount + Fee) across all fills
+		totalDeployed := decimal.Zero
+		for _, o := range pos.Orders {
+			totalDeployed = totalDeployed.Add(o.QuoteAmount).Add(o.Fee)
+		}
+		we.TotalCapitalDeployed = NewWideDecimal(totalDeployed)
+
+		// Analytics: only compute when average entry is non-zero (avoid div-by-zero)
+		if !pos.AverageEntryPrice.IsZero() {
+			// unrealized_pnl = (candle_close − avg_entry) × qty
+			we.UnrealizedPnl = NewWideDecimal(
+				candle.Close.Sub(pos.AverageEntryPrice).Mul(pos.PositionQuantity),
+			)
+			// current_drawdown_pct = (candle_low − avg_entry) / avg_entry × 100
+			we.CurrentDrawdownPct = NewWideDecimal(
+				candle.Low.Sub(pos.AverageEntryPrice).Div(pos.AverageEntryPrice).Mul(decimal.NewFromInt(100)),
+			)
+		}
+	}
+
+	orch.enricher.Emit(we)
+}
+
+// positionStateString maps the PSM PositionState enum to the wide event string representation.
+func positionStateString(s position.PositionState) string {
+	switch s {
+	case position.StateIdle:
+		return "idle"
+	case position.StateOpening:
+		return "active"
+	case position.StateSafetyOrderWait:
+		return "active"
+	case position.StateClosed:
+		return "closed"
+	default:
+		return ""
+	}
 }
 
 // mapPSMEventToType converts PSM event type string to Orchestrator EventType
