@@ -27,6 +27,7 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - PostgreSQL (Drizzle ORM) — JSONB columns store config + result blobs; no migration required (012-monthly-capital-injection)
 - Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic) (013-psm-dynamic-trade-size)
 - N/A — pure in-memory domain computation (013-psm-dynamic-trade-size)
+- N/A — pure in-memory domain computation; no persistence changes (014-spot-no-liquidation)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -46,9 +47,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 014-spot-no-liquidation: Added Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic)
 - 013-psm-dynamic-trade-size: Added Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic)
 - 012-monthly-capital-injection: Added Go 1.22 (core engine) | TypeScript 5.x / React 18 (frontend + orchestrator API) + `shopspring/decimal` (Go fixed-point), `decimal.js` (TypeScript fixed-point), React 18, Tailwind CSS, Vite
-- 012-monthly-capital-injection: Added Go 1.21 (core engine) · TypeScript 5.x / React 18 (UI + API)
 
 
 <!-- MANUAL ADDITIONS START -->

@@ -153,6 +153,13 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 
 		events = append(events, tradeOpenedEvent)
 
+		// Spot bypass (FR-001): for Multiplier = 1, liquidation price is always 0.
+		// NewPosition already initialises LiquidationPrice to decimal.Zero; this guard
+		// makes the intent explicit and prevents future regressions.
+		if pos.Multiplier.Equal(decimal.NewFromInt(1)) {
+			pos.LiquidationPrice = decimal.Zero
+		}
+
 		// After market buy completed, fall through to pessimistic order check
 	}
 
@@ -175,9 +182,15 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			pos.PositionQuantity = CalculatePositionQuantity(pos.Orders)
 			pos.AverageEntryPrice = CalculateAverageEntryPrice(pos.Orders)
 
-			// Recalculate liquidation price (simplified for testing)
-			// CRITICAL ASSERTION: This must happen BEFORE Step 3c liquidation check
-			if !pos.AverageEntryPrice.IsZero() {
+			// Recalculate liquidation price.
+			// SPOT BYPASS (FR-002, FR-003): For Multiplier = 1 (spot trading), liquidation
+			// price is permanently 0. No formula is evaluated. This prevents the Step 3c
+			// check from ever firing for spot positions.
+			// For futures (Multiplier > 1 or unset), the simplified half-formula proxy is retained.
+			// CRITICAL ASSERTION: This recalculation must happen BEFORE Step 3c (T055).
+			if pos.Multiplier.Equal(decimal.NewFromInt(1)) {
+				pos.LiquidationPrice = decimal.Zero
+			} else if !pos.AverageEntryPrice.IsZero() {
 				half, _ := decimal.NewFromString("0.5")
 				pos.LiquidationPrice = pos.AverageEntryPrice.Mul(half)
 			}

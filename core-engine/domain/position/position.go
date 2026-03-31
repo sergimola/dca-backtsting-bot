@@ -54,6 +54,11 @@ type Position struct {
 	// Exit strategy (US6: Early Exit on Last Order Fill)
 	ExitOnLastOrder   bool            // If true, close position immediately when last order fills (SDD § 3.3 US6)
 
+	// Leverage configuration (set from domain config at position open)
+	// Multiplier = 1 means spot trading: no liquidation price is calculated or checked.
+	// Multiplier > 1 means futures/margin: liquidation price is computed and enforced.
+	Multiplier        decimal.Decimal
+
 	// Take-profit configuration (set from domain config; applies to all recalculations)
 	TakeProfitDistance decimal.Decimal // Percentage above average entry to set TP target (SDD § 2.4)
 

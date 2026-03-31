@@ -235,6 +235,7 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 					newPos.TakeProfitDistance = orch.config.DomainConfig.TakeProfitDistancePercent()
 					newPos.AccountBalance = orch.runningBalance
 					newPos.ExitOnLastOrder = orch.config.DomainConfig.ExitOnLastOrder()
+					newPos.Multiplier = orch.config.DomainConfig.Multiplier()
 				}
 				orch.position = newPos
 				lastPosition = orch.position
