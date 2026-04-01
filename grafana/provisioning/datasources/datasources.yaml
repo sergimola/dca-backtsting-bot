@@ -1,0 +1,37 @@
+apiVersion: 1
+
+datasources:
+  # ------------------------------------------------------------
+  # PostgreSQL — job queue, run configs & summary metrics
+  # ------------------------------------------------------------
+  - name: "PostgreSQL - DCA Bot"
+    type: postgres
+    uid: dca_postgres
+    url: postgres:5432
+    database: dca_bot
+    user: dca_user
+    secureJsonData:
+      password: dca_pass
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false
+    isDefault: true
+    editable: true
+
+  # ------------------------------------------------------------
+  # ClickHouse — OHLCV market data & wide event traces
+  # ------------------------------------------------------------
+  - name: "ClickHouse - Market Data"
+    type: grafana-clickhouse-datasource
+    uid: dca_clickhouse
+    jsonData:
+      server: quant-clickhouse
+      port: 8123
+      protocol: http
+      username: admin
+      defaultDatabase: data
+    secureJsonData:
+      password: admin
+    isDefault: false
+    editable: true

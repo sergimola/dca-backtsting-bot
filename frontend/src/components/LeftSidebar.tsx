@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { Plus } from 'lucide-react'
+import { useNavigate, useLocation } from 'react-router-dom'
 import type { Run } from '../services/types'
 import { RunCard } from './RunCard'
 
@@ -13,8 +14,12 @@ interface LeftSidebarProps {
 
 export function LeftSidebar({ runs, selectedRunId, onNewBacktest, onSelectRun, onViewDashboard }: LeftSidebarProps) {
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
+  const navigate = useNavigate()
+  const location = useLocation()
+  const isOptimizer = location.pathname === '/optimizer'
 
   const handleCardClick = (backtestId: string) => {
+    if (isOptimizer) navigate('/')
     onSelectRun(backtestId)
     setExpandedRunId(prev => prev === backtestId ? null : backtestId)
   }
@@ -30,6 +35,22 @@ export function LeftSidebar({ runs, selectedRunId, onNewBacktest, onSelectRun, o
           aria-label="New backtest"
         >
           <Plus className="w-4 h-4" />
+        </button>
+      </div>
+
+      {/* Nav tabs */}
+      <div className="flex border-b border-slate-800">
+        <button
+          onClick={() => navigate('/')}
+          className={`flex-1 py-2 text-xs font-medium text-center ${!isOptimizer ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-400'}`}
+        >
+          Backtests
+        </button>
+        <button
+          onClick={() => navigate('/optimizer')}
+          className={`flex-1 py-2 text-xs font-medium text-center ${isOptimizer ? 'text-blue-400 border-b-2 border-blue-400' : 'text-slate-500 hover:text-slate-400'}`}
+        >
+          Optimizer
         </button>
       </div>
 

@@ -185,15 +185,15 @@ func main() {
 	logLevel := flag.String("log-level", "INFO", "Log level: DEBUG, INFO, WARN, ERROR")
 	progressIntervalMs := flag.Int("progress-interval-ms", 250, "Progress tick interval in milliseconds")
 	wideEventDir := flag.String("wide-event-dir", "", "Directory for wide-event .jsonl output (empty = disabled)")
+	preflightMode := flag.Bool("preflight", false, "Pre-Flight mode: read single config from stdin, emit DCA ladder JSON to stdout, exit (no ClickHouse)")
+	batchPreflightPath := flag.String("batch-preflight", "", "Batch Pre-Flight mode: read JSON array of configs from file, emit JSON array of ladder results to stdout, exit (no ClickHouse)")
+	batchConfigPath := flag.String("batch-config", "", "Batch execution mode: read JSON array of configs from file, run all concurrently, stream tagged results to stdout")
 	flag.Parse()
 
 	// Configure structured logging immediately after flag parsing.
 	// All slog output goes to stderr; stdout carries only NDJSON lines.
 	configureSlog(*logLevel)
-	if *progressIntervalMs <= 0 {
-		slog.Warn("--progress-interval-ms must be >0; using default 250")
-		*progressIntervalMs = 250
-	}
+
 	// Recover from panics and log to stderr
 	defer func() {
 		if r := recover(); r != nil {
@@ -201,6 +201,27 @@ func main() {
 			os.Exit(1)
 		}
 	}()
+
+	// ── Dispatch: Pre-Flight modes (no ClickHouse I/O) ───────────────────────
+	if *preflightMode {
+		runSinglePreflight()
+		return
+	}
+	if *batchPreflightPath != "" {
+		runBatchPreflight(*batchPreflightPath)
+		return
+	}
+	// ── Dispatch: Batch execution mode ───────────────────────────────────────
+	if *batchConfigPath != "" {
+		runBatchBacktest(*batchConfigPath, *logLevel, *wideEventDir)
+		return
+	}
+
+	// ── Default: single-run backtest (reads from stdin) ──────────────────────
+	if *progressIntervalMs <= 0 {
+		slog.Warn("--progress-interval-ms must be >0; using default 250")
+		*progressIntervalMs = 250
+	}
 
 	// Read JSON request from stdin
 	var request EngineRequest
@@ -449,4 +470,139 @@ func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
 	return cfg, nil
 }
 
+// ── Pre-Flight Handlers ──────────────────────────────────────────────────────
 
+// runSinglePreflight reads a single EngineRequest from stdin, computes the
+// DCA Pre-Flight ladder, and emits a single JSON object to stdout.
+// No ClickHouse connection is opened.
+func runSinglePreflight() {
+	var request EngineRequest
+	if err := json.NewDecoder(os.Stdin).Decode(&request); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse JSON input: %v\n", err)
+		os.Exit(1)
+	}
+
+	cfg, err := buildConfigFromRequest(&request)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to build config: %v\n", err)
+		os.Exit(1)
+	}
+
+	result, err := config.ComputePreFlight(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Pre-Flight computation failed: %v\n", err)
+		os.Exit(1)
+	}
+
+	if err := json.NewEncoder(os.Stdout).Encode(result); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to write Pre-Flight result: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// runBatchPreflight reads a JSON array of EngineRequest objects from a file,
+// computes the DCA Pre-Flight ladder for each, and emits a JSON array of
+// results to stdout.  No ClickHouse connection is opened.
+func runBatchPreflight(filePath string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read batch-preflight file %q: %v\n", filePath, err)
+		os.Exit(1)
+	}
+
+	var requests []EngineRequest
+	if err := json.Unmarshal(data, &requests); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse batch-preflight JSON: %v\n", err)
+		os.Exit(1)
+	}
+
+	results := make([]*config.PreFlightResult, 0, len(requests))
+	for i, req := range requests {
+		cfg, err := buildConfigFromRequest(&req)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error for request[%d]: %v\n", i, err)
+			os.Exit(1)
+		}
+
+		result, err := config.ComputePreFlight(cfg)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Pre-Flight error for request[%d]: %v\n", i, err)
+			os.Exit(1)
+		}
+
+		if req.IdempotencyKey != "" {
+			result.RunID = req.IdempotencyKey
+		}
+		results = append(results, result)
+	}
+
+	if err := json.NewEncoder(os.Stdout).Encode(results); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to write batch Pre-Flight results: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+// ── Batch Execution Handler ──────────────────────────────────────────────────
+
+// runBatchBacktest reads a JSON array of BatchJobConfig from a file,
+// groups by (symbol, start_date, end_date), loads candles once per group,
+// and runs all configs concurrently via a worker pool.
+func runBatchBacktest(filePath, logLevel, wideEventDir string) {
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to read batch-config file %q: %v\n", filePath, err)
+		os.Exit(1)
+	}
+
+	var batchConfigs []BatchJobConfig
+	if err := json.Unmarshal(data, &batchConfigs); err != nil {
+		fmt.Fprintf(os.Stderr, "Failed to parse batch-config JSON: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Convert BatchJobConfig → orchestrator.BatchJob (parse EngineRequest → Config).
+	jobs := make([]orchestrator.BatchJob, 0, len(batchConfigs))
+	for i, bc := range batchConfigs {
+		cfg, err := buildConfigFromRequest(&bc.EngineRequest)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Config error for batch[%d] run_id=%q: %v\n", i, bc.RunID, err)
+			os.Exit(1)
+		}
+		symbol := strings.ReplaceAll(bc.TradingPair, "/", "")
+		jobs = append(jobs, orchestrator.BatchJob{
+			RunID:  bc.RunID,
+			Config: cfg,
+			Key: orchestrator.GroupKey{
+				Symbol:    symbol,
+				StartDate: bc.StartDate,
+				EndDate:   bc.EndDate,
+			},
+		})
+	}
+
+	// Candle loader function: creates a real ClickHouse connection per group.
+	loaderFunc := func(key orchestrator.GroupKey) ([]orchestrator.Candle, error) {
+		// Build ClickHouse config from the first batch config (all share the same CH settings).
+		chCfg := orchestrator.ClickHouseConfig{
+			Addr:     batchConfigs[0].ClickhouseAddr,
+			Database: batchConfigs[0].ClickhouseDb,
+			User:     batchConfigs[0].ClickhouseUser,
+			Password: batchConfigs[0].ClickhousePassword,
+		}
+		loader, err := orchestrator.NewClickHouseCandleLoader(chCfg, key.Symbol, key.StartDate, key.EndDate)
+		if err != nil {
+			return nil, err
+		}
+		defer loader.Close()
+		return loader.LoadAll()
+	}
+
+	// Execute batch with worker pool.
+	results := orchestrator.ExecuteBatch(jobs, loaderFunc, 0) // 0 = use runtime.NumCPU()
+
+	// Write each result line as NDJSON to stdout.
+	enc := json.NewEncoder(os.Stdout)
+	for _, line := range results {
+		enc.Encode(json.RawMessage(line))
+	}
+}

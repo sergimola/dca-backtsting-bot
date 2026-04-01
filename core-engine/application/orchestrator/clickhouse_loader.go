@@ -158,3 +158,21 @@ func (cl *ClickHouseCandleLoader) Close() error {
 	}
 	return rowErr
 }
+
+// LoadAll materializes all candles from the result set into a single []Candle slice.
+// Used by batch execution mode to cache candle data in RAM for sharing across workers.
+// After calling LoadAll, subsequent NextCandle calls will return (nil, nil) (EOF).
+func (cl *ClickHouseCandleLoader) LoadAll() ([]Candle, error) {
+	var candles []Candle
+	for {
+		c, err := cl.NextCandle()
+		if err != nil {
+			return nil, err
+		}
+		if c == nil {
+			break
+		}
+		candles = append(candles, *c)
+	}
+	return candles, nil
+}

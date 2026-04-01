@@ -15,6 +15,9 @@ import { requestLoggerMiddleware } from './middleware/request-logger.middleware.
 import { errorHandlerMiddleware } from './middleware/error-handler.middleware.js';
 import { createBacktestRouter } from './routes/backtest.routes.js';
 import { createHealthRouter } from './routes/health.routes.js';
+import { createOptimizerRouter } from './routes/optimizer.routes.js';
+import { SweepService } from './services/SweepService.js';
+import { OptimizerSessionStore } from './services/OptimizerSessionStore.js';
 
 /**
  * Create and configure Express app
@@ -48,6 +51,16 @@ export function createApp(services: AppServices): Express {
   app.use('/', createBacktestRouter(services.backtestJobRepository));
 
   app.use('/', createHealthRouter(services.healthMonitor));
+
+  // Optimizer routes (no DB; in-memory session store)
+  const enginePath =
+    process.env.ENGINE_PATH ||
+    process.env.ENGINE_BINARY_PATH ||
+    process.env.CORE_ENGINE_BINARY_PATH ||
+    './core-engine';
+  const sweepService = new SweepService(enginePath);
+  const sessionStore = new OptimizerSessionStore();
+  app.use('/optimizer', createOptimizerRouter(sweepService, sessionStore, services.backtestJobRepository));
 
   // 5. 404 handler
   app.use((req, res) => {
