@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"dca-bot/core-engine/domain/position"
@@ -126,7 +127,8 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 				"config_pair", configPair,
 				"close", candle.Close,
 			)
-			if candle.Symbol != "" && configPair != "" && candle.Symbol != configPair {
+			normalizedConfig := strings.ReplaceAll(configPair, "/", "")
+			if candle.Symbol != "" && normalizedConfig != "" && candle.Symbol != normalizedConfig {
 				slog.Warn("symbol mismatch — PSM may ignore candle data",
 					"candle_symbol", candle.Symbol,
 					"config_pair", configPair,

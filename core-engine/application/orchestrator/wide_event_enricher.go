@@ -2,8 +2,6 @@ package orchestrator
 
 import (
 	"bufio"
-	"encoding/json"
-	"log/slog"
 	"os"
 	"path/filepath"
 	"sync"
@@ -73,16 +71,14 @@ func (e *WideEventEnricher) Emit(event WideEvent) {
 }
 
 // worker drains the channel and writes each event as a JSON line.
+// Uses AppendJSON with a reusable buffer to avoid json.Marshal reflection overhead.
 func (e *WideEventEnricher) worker() {
 	defer close(e.done)
+	buf := make([]byte, 0, 1024) // reused across all events; grows once then stays
 	for event := range e.ch {
-		b, err := json.Marshal(event)
-		if err != nil {
-			slog.Warn("wide_event: marshal error", "err", err)
-			continue
-		}
-		e.bw.Write(b)    //nolint:errcheck // bufio sticky error checked at Flush
-		e.bw.WriteByte('\n') //nolint:errcheck
+		buf = event.AppendJSON(buf[:0])
+		buf = append(buf, '\n')
+		e.bw.Write(buf) //nolint:errcheck // bufio sticky error checked at Flush
 	}
 }
 

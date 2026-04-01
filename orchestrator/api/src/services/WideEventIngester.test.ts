@@ -7,13 +7,14 @@ import * as path from 'path';
 function makeMockClient() {
   return {
     command: jest.fn().mockResolvedValue({ query_id: 'test' }),
-    insert: jest.fn().mockImplementation(async (params: any) => {
-      // Suppress errors and destroy stream to prevent dangling file handles
+    exec: jest.fn().mockImplementation(async (params: any) => {
+      // Consume and destroy the file stream to prevent dangling handles
       if (params?.values && typeof params.values.destroy === 'function') {
         params.values.on('error', () => {});
+        params.values.resume();   // drain
         params.values.destroy();
       }
-      return { executed: true, query_id: 'test', summary: { written_rows: '3' } };
+      return { stream: { on: (_: string, cb: () => void) => { cb(); } }, query_id: 'test' };
     }),
   };
 }
@@ -48,7 +49,7 @@ describe('WideEventIngester', () => {
 
     expect(result.rowsInserted).toBe(0);
     expect(mock.command).not.toHaveBeenCalled();
-    expect(mock.insert).not.toHaveBeenCalled();
+    expect(mock.exec).not.toHaveBeenCalled();
   });
 
   it('schema_version !== 1 throws before any ClickHouse calls', async () => {
@@ -58,7 +59,7 @@ describe('WideEventIngester', () => {
 
     await expect(ingester.ingest('test-run-123', filePath)).rejects.toThrow('Unsupported schema_version: 99');
     expect(mock.command).not.toHaveBeenCalled();
-    expect(mock.insert).not.toHaveBeenCalled();
+    expect(mock.exec).not.toHaveBeenCalled();
   });
 
   it('valid file: DROP PARTITION called before insert', async () => {
@@ -69,19 +70,20 @@ describe('WideEventIngester', () => {
 
     const callOrder: string[] = [];
     mock.command.mockImplementation(async () => { callOrder.push('command'); return { query_id: 'test' }; });
-    mock.insert.mockImplementation(async (params: any) => {
+    mock.exec.mockImplementation(async (params: any) => {
       if (params?.values && typeof params.values.destroy === 'function') {
         params.values.on('error', () => {});
+        params.values.resume();
         params.values.destroy();
       }
-      callOrder.push('insert');
-      return { executed: true, query_id: 'test', summary: { written_rows: '3' } };
+      callOrder.push('exec');
+      return { stream: { on: (_: string, cb: () => void) => { cb(); } }, query_id: 'test' };
     });
 
     const result = await ingester.ingest('test-run-123', filePath);
 
-    expect(callOrder).toEqual(['command', 'insert']);
-    expect(result.rowsInserted).toBe(3);
+    expect(callOrder).toEqual(['command', 'exec']);
+    expect(result.rowsInserted).toBe(-1);
   });
 
   it('DROP PARTITION query contains the correct runId', async () => {

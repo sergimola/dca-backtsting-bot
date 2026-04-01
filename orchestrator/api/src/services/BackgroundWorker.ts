@@ -119,10 +119,19 @@ export class BackgroundWorker {
       const chUser    = process.env.CLICKHOUSE_USER    ?? 'default';
       const chPassword = process.env.CLICKHOUSE_PASSWORD ?? '';
 
+      // Scale engine timeout to the date range — background jobs can run much longer
+      // than the default 30s HTTP-oriented timeout.  Budget 100ms per day of data,
+      // minimum 5 minutes, so a 3-year backtest gets ~5 min and a 10-year run ~6 min.
+      const rangeDays = Math.ceil((end.getTime() - start.getTime()) / 86_400_000);
+      const engineTimeout = Math.max(300_000, rangeDays * 100);
+
       // T031: progressHandler updates DB progress on each tick (fire-and-forget)
+      // Ensure the engine always has a run ID for wide-event file naming.
+      // The user's config may omit idempotency_key; fall back to the DB job id.
       const execResult = await this.service.execute(
         {
           ...config,
+          idempotency_key:     config.idempotency_key ?? id,
           clickhouse_addr:     chAddr,
           clickhouse_db:       chDb,
           clickhouse_user:     chUser,
@@ -133,6 +142,7 @@ export class BackgroundWorker {
             await this.repo.updateProgress(id, line.percent, line);
           },
         },
+        engineTimeout,
       );
 
       // T032: Use engine result directly — no aggregation pass needed (done in Go)
@@ -143,7 +153,7 @@ export class BackgroundWorker {
         try {
           const runId = path.basename(execResult.wideEventFile, '.jsonl');
           const ingestResult = await this.ingester.ingest(runId, execResult.wideEventFile);
-          console.log(`[BackgroundWorker] Wide events ingested: ${ingestResult.rowsInserted} rows in ${ingestResult.durationMs}ms`);
+          console.log(`[BackgroundWorker] Wide events ingested in ${ingestResult.durationMs}ms`);
         } catch (err) {
           console.error(`[BackgroundWorker] Wide event ingestion failed for job ${id}:`, err);
         }
