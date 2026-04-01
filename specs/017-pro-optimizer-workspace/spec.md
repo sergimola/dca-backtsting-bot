@@ -19,6 +19,10 @@
 - Q: What happens if database persistence fails when a sweep completes? → A: Log the error and keep results available in-memory for the current session. Do not block the user or discard results. Retry persistence is deferred to a future spec.
 - Q: Can users delete sweep sessions from the history list? → A: Yes. Deleting a SweepSession cascade-deletes all child SweepRunSummary records.
 - Q: Should the global sidebar default to expanded or collapsed on first load? → A: Expanded on first load. Collapsed/expanded state persists within the session via local state.
+- Q: How is `capital_efficiency` calculated for `SweepRunSummary`? → A: `capital_efficiency = ROI / Max Capital Required × 100`. Measures return extracted per dollar at maximum exposure, comparable across configs with different ladder depths.
+- Q: How does the frontend know persistence failed to show the FR-012b warning banner? → A: The API emits a dedicated SSE event `{"type": "persistence_error", "message": "..."}` on the existing execution stream. The `useOptimizer` hook sets a `persistenceError` flag on receiving this event, which renders the warning banner.
+- Q: Is the `guaranteed_fee_loss` 0.2% threshold configurable per exchange or a fixed constant? → A: Fixed constant (0.2% round-trip) defined in this spec. Per-exchange configurability is deferred to a future spec.
+- Q: What Max ROI does a cancelled SweepSession show in the history list? → A: The max ROI of whatever partial SweepRunSummary records were persisted before cancellation. If zero runs completed, display `N/A`.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -71,10 +75,11 @@ To defend database health and prevent severe bloat during massive sweeps, the Op
 
 1. **Given** a sweep of 50 runs completes, **When** the database is queried, **Then** exactly 1 SweepSession record and 50 SweepRunSummary records exist for that sweep.
 2. **Given** a SweepRunSummary record is persisted, **When** its columns are inspected, **Then** it contains only: `id` (UUID), `session_id` (FK), `run_id`, `config_json`, `roi`, `max_drawdown`, `total_fees`, `win_rate` (positions closed at TP / total positions closed), `capital_efficiency`, `execution_time_ms`, and `created_at` — no tradeEvents, no safetyOrderUsage.
-3. **Given** a SweepSession record is persisted, **When** its columns are inspected, **Then** it contains: `id` (UUID), `trading_pair`, `start_date`, `end_date`, `total_runs`, `max_roi`, `total_execution_time_ms`, `created_at`, and `config_snapshot` (the sweep definition JSON).
+3. **Given** a SweepSession record is persisted, **When** its columns are inspected, **Then** it contains: `id` (UUID), `trading_pair`, `start_date`, `end_date`, `total_runs`, `max_roi`, `total_execution_time_ms`, `status` (`completed` | `cancelled`), `created_at`, and `config_snapshot` (the sweep definition JSON).
 4. **Given** the engine emits a `run_id` for each completed run, **When** the API persists the summary, **Then** the `run_id` field in SweepRunSummary maps to the engine's `run_id` (which equals the config's `idempotency_key`), while the row's primary `id` is a separately generated UUID.
 5. **Given** a sweep of 200 runs completes, **When** total database storage is measured, **Then** the sweep data consumes less than 100KB (no trade-level data persisted).
 6. **Given** the engine completes a run where zero positions were closed (e.g., severe drawdown with no take-profit exits), **When** the SweepRunSummary is persisted, **Then** `win_rate` is stored as `0` (or `null`) — the Go engine MUST NOT perform integer division by zero.
+7. **Given** database persistence fails after a sweep completes, **When** the API detects the failure, **Then** it emits a `{"type": "persistence_error"}` SSE event on the existing stream; the `useOptimizer` hook receives it and renders a visible warning banner without discarding in-memory results.
 
 ---
 
@@ -186,6 +191,24 @@ Every row in the completed Leaderboard Data Grid features a single action button
 
 ---
 
+### User Story 10 — Sweep Cancellation & Partial Persistence (Priority: P10)
+
+During an active sweep execution, the analyst can abort the sweep at any time by clicking a "Cancel Sweep" button on the Execution Dashboard. The API sends a termination signal (SIGTERM) to the running Go engine child process. All SweepRunSummary records for runs completed before termination are persisted, the SweepSession status is set to `cancelled`, and the UI automatically transitions from the Execution Dashboard to the Quant Matrix showing the partial results with a clear "Cancelled (N/Total)" indicator.
+
+**Why this priority**: Cancellation is a safety valve for long-running sweeps that are clearly converging on undesirable results. Without it, the analyst must wait for full completion or forcefully kill the process with no persistence of partial results.
+
+**Independent Test**: Can be fully tested by launching a sweep of 50 runs, clicking "Cancel Sweep" after 20 results stream in, and verifying: (a) the Go engine process terminates, (b) exactly 20 SweepRunSummary records are persisted, (c) the SweepSession `status` is `cancelled`, and (d) the Quant Matrix renders those 20 partial results.
+
+**Acceptance Scenarios**:
+
+1. **Given** a sweep of 64 runs is in the `running` phase, **When** the Execution Dashboard renders, **Then** a "Cancel Sweep" button is visible and enabled.
+2. **Given** a sweep has completed 30 of 100 runs, **When** the user clicks "Cancel Sweep", **Then** the frontend calls `DELETE /optimizer/session/:id` and the API terminates the Go engine child process.
+3. **Given** the sweep is cancelled after 30 runs complete, **When** the database is queried, **Then** exactly 30 SweepRunSummary records are persisted and the SweepSession `status` is `cancelled`.
+4. **Given** the sweep is cancelled, **When** the UI transitions after cancellation, **Then** the right pane displays the Quant Matrix with the 30 partial results and a visible "Cancelled (30/100)" indicator.
+5. **Given** a cancelled SweepSession appears in the history list, **When** the entry renders, **Then** it shows a `(cancelled)` badge alongside its KPIs; `Max ROI` displays the max ROI from partial results persisted before cancellation, or `N/A` if zero runs completed.
+
+---
+
 ### Canonical Test Data & Mathematical Proofs *(MANDATORY FOR CORE DOMAIN)*
 
 This spec inherits the Pre-Flight ladder calculations from spec 016. The following additional test cases are binding for the new persistence and ID mapping behavior.
@@ -197,6 +220,9 @@ This spec inherits the Pre-Flight ladder calculations from spec 016. The followi
 | Sweep of 10 runs completes | SweepSession.total_execution_time_ms | Wall-clock ms from first engine output to last | Measured by API, not summed from individual runs |
 | SweepRunSummary persisted for run with roi=14.35 | roi column | `14.35` | Direct from engine output, no re-computation |
 | Sweep of 200 runs, 30 pruned for capital, 10 for min order | Pruning breakdown JSON | `{"capital_exceeds_balance": 30, "base_order_below_minimum": 10}` | Grouped count per prune reason |
+| Engine env ENABLE_WIDE_EVENTS=false, config enable_wide_events=true | EmitWideEvents (FR-026 OR logic) | `true` | false OR true = true — config payload flag wins |
+| Engine env ENABLE_WIDE_EVENTS=true, config enable_wide_events=false | EmitWideEvents (FR-026 OR logic) | `true` | true OR false = true — environment wins |
+| Engine env ENABLE_WIDE_EVENTS=false, config enable_wide_events absent | EmitWideEvents (FR-026 OR logic) | `false` | false OR false = false — both absent/false |
 
 **Rationale**: These test cases validate the new persistence layer and ID mapping. Deviations indicate data integrity issues or incorrect mapping between engine output and database schema.
 
@@ -213,6 +239,9 @@ This spec inherits the Pre-Flight ladder calculations from spec 016. The followi
 - **Sidebar state persistence**: The collapsed/expanded state of the sidebar should persist across page navigation within the same session.
 - **Advanced pruning with extreme volume scale**: A config with a very high `volume_scale` (e.g., 5.0) combined with many safety orders may produce a deeply contracted ladder where late safety-order gaps compress below 0.1%. The `tick_size_violation` check MUST evaluate every consecutive pair in the Pre-Flight ladder, not only the deepest order. A config that passes all other rules but violates tick size at level 8 of 10 MUST still be pruned.
 - **All configs pruned exclusively by advanced rules**: If every generated config is pruned solely by the three advanced mathematical rules (with zero violations of capital or min-order rules), the `pruneReasons` breakdown MUST correctly attribute counts to the advanced keys only. Keys with zero violations MUST be present in the response with a count of `0` (not omitted), ensuring the UI tooltip displays all five categories consistently.
+- **Cancellation before first result**: If the user clicks "Cancel Sweep" before any run completes, the SweepSession MUST still be persisted as `cancelled` with `total_runs = 0` and no SweepRunSummary records. The Quant Matrix must display an appropriate empty-state message for cancelled sessions.
+- **Cancel during SweepRunSummary write**: If a cancellation signal arrives while the API is mid-write for a completed run result, the in-progress write MUST complete before the session is finalized as `cancelled`. The write MUST NOT be abandoned, ensuring no race condition between persistence and process kill.
+- **enable_wide_events absent from payload**: If the `enable_wide_events` field is absent from the Go engine's JSON payload (e.g., legacy callers), the engine MUST default to `false` and the OR logic (`env OR config`) handles the absence gracefully without error.
 
 ## Requirements *(mandatory)*
 
@@ -232,17 +261,17 @@ This spec inherits the Pre-Flight ladder calculations from spec 016. The followi
 **Part 2: Database & Summary-Only Persistence**
 
 - **FR-008**: The Optimizer MUST NOT persist full tradeEvents or safetyOrderUsage arrays to the database for sweep runs.
-- **FR-009**: Each completed sweep MUST persist a parent SweepSession record containing: `id` (UUID PK), `trading_pair`, `start_date`, `end_date`, `total_runs`, `max_roi`, `total_execution_time_ms`, `config_snapshot` (JSON), and `created_at`.
+- **FR-009**: Each sweep MUST persist a parent SweepSession record containing: `id` (UUID PK), `trading_pair`, `start_date`, `end_date`, `total_runs`, `max_roi`, `total_execution_time_ms`, `status` (`completed` | `cancelled`), `config_snapshot` (JSON), and `created_at`.
 - **FR-010**: Each completed run within a sweep MUST persist a child SweepRunSummary record containing: `id` (UUID PK), `session_id` (FK to SweepSession), `run_id` (mapped from engine's `run_id` / config's `idempotency_key`), `config_json`, `roi`, `max_drawdown`, `total_fees`, `win_rate`, `capital_efficiency`, `execution_time_ms`, and `created_at`.
 - **FR-011**: The API MUST explicitly map the engine's `run_id` to the config's `idempotency_key` for storage. The database MUST generate its own UUID primary `id` for each row independently.
 - **FR-012**: The total wall-clock execution time of the entire sweep MUST be recorded and persisted in the SweepSession's `total_execution_time_ms` field.
-- **FR-012b**: If database persistence fails when a sweep completes, the API MUST log the error and keep results available in-memory for the current session. Results MUST NOT be discarded on persistence failure. The UI MUST display a visible warning banner (e.g., "Warning: Database connection lost. Results are in-memory and will be lost on refresh.") so the user knows to export their CSV immediately.
+- **FR-012b**: If database persistence fails when a sweep completes, the API MUST log the error, emit a `{"type": "persistence_error"}` SSE event on the existing execution stream, and keep results available in-memory for the current session. Results MUST NOT be discarded on persistence failure. The UI `useOptimizer` hook MUST handle this event by displaying a visible warning banner (e.g., "Warning: Database connection lost. Results are in-memory and will be lost on refresh.") so the user knows to export their CSV immediately.
 - **FR-013**: The API MUST provide a GET endpoint to retrieve all SweepSession records (for the history list, paginated at 50 per page) and a GET endpoint to retrieve all SweepRunSummary records for a given session (for loading past results). The API MUST also provide a DELETE endpoint for SweepSession that cascade-deletes child SweepRunSummary records.
 
 **Part 3: Configuration & Pre-Flight Insights**
 
 - **FR-014**: The UI footer MUST display combined insights: "Generated: X | Pruned: Y | Valid: Z" alongside boundary metrics: "Drawdown Coverage Range: -X% to -Y%" and "Capital Required Range: $A to $B".
-- **FR-015**: The "Pruned: Y" metric MUST include a tooltip or expandable breakdown listing all concrete prune reasons with counts. The five categorised reasons are: `capital_exceeds_balance` ("↳ N exceeded Account Balance"), `base_order_below_minimum` ("↳ N violated Exchange Min Order ($10)"), `guaranteed_fee_loss` ("↳ N guaranteed fee loss (take profit ≤ 0.2%)"), `exceeds_100_percent_drawdown` ("↳ N negative asset price (drawdown > 100%)"), and `tick_size_violation` ("↳ N tick size violation (consecutive SO gap < 0.1%)").
+- **FR-015**: The "Pruned: Y" metric MUST include a tooltip or expandable breakdown listing all concrete prune reasons with counts. The five categorised reasons are: `capital_exceeds_balance` ("↳ N exceeded Account Balance"), `base_order_below_minimum` ("↳ N violated Exchange Min Order ($10)"), `guaranteed_fee_loss` ("↳ N guaranteed fee loss (take profit ≤ 0.2% — fixed constant)"), `exceeds_100_percent_drawdown` ("↳ N negative asset price (drawdown > 100%)"), and `tick_size_violation` ("↳ N tick size violation (consecutive SO gap < 0.1%)").
 - **FR-016**: The pruning API response MUST include a `pruneReasons` breakdown object mapping each of the five reason strings to its count, in addition to the aggregate `generated`, `pruned`, and `valid` counts. The three advanced mathematical rules (`guaranteed_fee_loss`, `exceeds_100_percent_drawdown`, `tick_size_violation`) MUST be evaluated using the Go Pre-Flight batch results.
 
 **Part 4: Execution & Real-Time Progress**
@@ -251,6 +280,9 @@ This spec inherits the Pre-Flight ladder calculations from spec 016. The followi
 - **FR-018**: The frontend `useOptimizer` hook MUST throttle or debounce state updates to the Leaderboard and Heatmap components, flushing buffered results at a controlled interval (e.g., every 250ms).
 - **FR-019**: The Master Progress Bar MUST increment smoothly with each incoming result, independently of the throttled Leaderboard/Heatmap updates.
 - **FR-020**: During high-speed streaming (50+ results/second), the UI MUST remain responsive to user interactions (scrolling, clicking, sorting) without perceptible freeze or input lag.
+- **FR-020b**: The Execution Dashboard MUST display a "Cancel Sweep" button while a sweep is in the `running` phase.
+- **FR-020c**: The API MUST provide a `DELETE /optimizer/session/:id` endpoint. When called, the API MUST send a kill signal (SIGTERM or equivalent process termination) to the Go engine child process associated with that session.
+- **FR-020d**: When a sweep is cancelled, the API MUST: (1) update the SweepSession `status` to `cancelled`; (2) persist all SweepRunSummary records for runs that completed before termination; (3) signal the frontend to transition the right pane to the Quant Matrix displaying the partial results with a visible "Cancelled (N/Total)" indicator.
 
 **Part 5: Selective Promotion Workflow**
 
@@ -258,12 +290,14 @@ This spec inherits the Pre-Flight ladder calculations from spec 016. The followi
 - **FR-022**: Clicking the action button MUST grab the row's configuration JSON, set `enable_wide_events: true`, and dispatch a full single backtest run opening in a new browser tab.
 - **FR-023**: The Go engine MUST respect `enable_wide_events: true` in the config payload regardless of environment variable defaults. Config-level flag MUST take precedence over environment settings.
 - **FR-024**: The promoted single run MUST persist full tradeEvents and safetyOrderUsage to the database (standard single-run behavior with wide events enabled).
+- **FR-025 (Engine Payload Update)**: The Go engine's `EngineRequest` JSON schema and internal `Config` struct MUST be updated to accept an optional boolean field: `enable_wide_events`. If absent from the payload, the field MUST default to `false`.
+- **FR-026 (Wide Event Logic Override)**: The engine's core event-emission logic MUST evaluate wide events using an OR condition: `EmitWideEvents = (EnvironmentVariable == true) OR (ConfigPayloadFlag == true)`. This guarantees the "Re-run with Details" UI action will always succeed regardless of the server's environment configuration.
 
 ### Key Entities
 
-- **SweepSession**: A parent record representing one completed optimizer sweep. Attributes: `id` (UUID PK), `trading_pair`, `start_date`, `end_date`, `total_runs`, `max_roi`, `total_execution_time_ms`, `config_snapshot` (the full sweep definition as JSON), `created_at`.
-- **SweepRunSummary**: A child record for one run within a sweep. Attributes: `id` (UUID PK), `session_id` (FK → SweepSession, cascade delete), `run_id` (engine-assigned, maps to idempotency_key), `config_json` (the individual run's config), `roi`, `max_drawdown`, `total_fees`, `win_rate` (defined as: positions closed at take-profit / total positions closed; safely returns `0` or `null` when total positions closed = 0 to prevent divide-by-zero), `capital_efficiency`, `execution_time_ms`, `created_at`. Explicitly excludes tradeEvents and safetyOrderUsage.
-- **PruneBreakdown**: The categorized counts of pruned configs. Structure: a map of reason string to count. The five defined reason keys are: `capital_exceeds_balance` (total capital required exceeds account balance), `base_order_below_minimum` (base order below exchange minimum of $10), `guaranteed_fee_loss` (`take_profit_distance_percent` ≤ 0.2% — too tight to cover round-trip fees), `exceeds_100_percent_drawdown` (Pre-Flight `max_drawdown_covered_pct` ≤ -100.0% — grid requires asset price below zero), and `tick_size_violation` (gap between any two consecutive safety orders in the Pre-Flight ladder compresses below 0.1% — violates exchange minimum tick sizes). Example: `{"capital_exceeds_balance": 30, "base_order_below_minimum": 10, "guaranteed_fee_loss": 5, "exceeds_100_percent_drawdown": 2, "tick_size_violation": 3}`.
+- **SweepSession**: A parent record representing one optimizer sweep (completed or cancelled). Attributes: `id` (UUID PK), `trading_pair`, `start_date`, `end_date`, `total_runs`, `max_roi`, `total_execution_time_ms`, `status` (`completed` | `cancelled`), `config_snapshot` (the full sweep definition as JSON), `created_at`.
+- **SweepRunSummary**: A child record for one run within a sweep. Attributes: `id` (UUID PK), `session_id` (FK → SweepSession, cascade delete), `run_id` (engine-assigned, maps to idempotency_key), `config_json` (the individual run's config), `roi`, `max_drawdown`, `total_fees`, `win_rate` (defined as: positions closed at take-profit / total positions closed; safely returns `0` or `null` when total positions closed = 0 to prevent divide-by-zero), `capital_efficiency` (defined as: `roi / max_capital_required × 100`, where `max_capital_required` is the Pre-Flight total capital for that config), `execution_time_ms`, `created_at`. Explicitly excludes tradeEvents and safetyOrderUsage.
+- **PruneBreakdown**: The categorized counts of pruned configs. Structure: a map of reason string to count. The five defined reason keys are: `capital_exceeds_balance` (total capital required exceeds account balance), `base_order_below_minimum` (base order below exchange minimum of $10), `guaranteed_fee_loss` (`take_profit_distance_percent` ≤ 0.2% — fixed constant representing standard round-trip exchange fee floor; not per-exchange configurable in this spec), `exceeds_100_percent_drawdown` (Pre-Flight `max_drawdown_covered_pct` ≤ -100.0% — grid requires asset price below zero), and `tick_size_violation` (gap between any two consecutive safety orders in the Pre-Flight ladder compresses below 0.1% — violates exchange minimum tick sizes). Example: `{"capital_exceeds_balance": 30, "base_order_below_minimum": 10, "guaranteed_fee_loss": 5, "exceeds_100_percent_drawdown": 2, "tick_size_violation": 3}`.
 - **SweepHistoryEntry**: A UI-facing projection of SweepSession for the history list. Fields: date, trading pair, total runs, max ROI.
 
 ## Success Criteria *(mandatory)*
@@ -289,6 +323,5 @@ This spec inherits the Pre-Flight ladder calculations from spec 016. The followi
 - The database system (PostgreSQL via Drizzle ORM) supports the new SweepSession and SweepRunSummary tables. Schema migrations will be created for these tables.
 - The Single Run view has an existing form that can accept pre-filled parameters via navigation state (already implemented via `navigate('/', { state: { prefillConfig } })`).
 - Exchange minimum order size defaults to $10 unless otherwise configured.
-- The Go engine already supports an `enable_wide_events` config field; this spec requires that config-level flags take precedence over environment defaults.
 - Only one sweep may execute at a time per user session (inherited constraint from spec 016).
 - The 10,000 combination hard limit from spec 016 remains in effect.
