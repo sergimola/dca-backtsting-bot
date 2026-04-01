@@ -41,16 +41,26 @@ export class WideEventIngester {
       query: `ALTER TABLE ${this.db}.wide_events DROP PARTITION '${runId}'`,
     });
 
-    // 4. Streaming bulk insert
+    // 4. Raw streaming insert via exec() — avoids the object-mode requirement
+    //    of insert() and the parse→stringify overhead for millions of events.
+    //    date_time_input_format=best_effort lets ClickHouse accept ISO 8601 timestamps
+    //    with the 'Z' suffix produced by Go's time.Time JSON marshalling.
     const stream = createReadStream(filePath);
-    const insertResult = await this.client.insert({
-      table: `${this.db}.wide_events`,
+    const execResult = await this.client.exec({
+      query: `INSERT INTO ${this.db}.wide_events FORMAT JSONEachRow`,
       values: stream,
-      format: 'JSONEachRow',
-    });
+      clickhouse_settings: {
+        date_time_input_format: 'best_effort',
+      },
+    } as any);
+    // Drain the response stream to release the HTTP connection
+    if (execResult?.stream) {
+      execResult.stream.on('data', () => {});
+      await new Promise<void>((resolve) => execResult.stream.on('end', resolve));
+    }
 
     return {
-      rowsInserted: parseInt(String(insertResult.summary?.written_rows ?? '0'), 10),
+      rowsInserted: -1, // exec() does not return row count; -1 signals success
       durationMs: Date.now() - startMs,
     };
   }

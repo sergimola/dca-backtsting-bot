@@ -232,3 +232,139 @@ func TestWideEvent_US4_NoConfigDuplication(t *testing.T) {
 		assert.False(t, exists, "config field %q must NOT appear in WideEvent JSON", key)
 	}
 }
+
+// TestWideEvent_AppendJSON_MatchesMarshal verifies that AppendJSON produces
+// output that is field-for-field identical to encoding/json.Marshal.
+func TestWideEvent_AppendJSON_MatchesMarshal(t *testing.T) {
+	we := WideEvent{
+		SchemaVersion:         1,
+		RunID:                 "run-abc",
+		TradeID:               "trade-xyz",
+		Timestamp:             time.Date(2025, 6, 15, 12, 30, 0, 0, time.UTC),
+		EventType:             "order_filled",
+		Symbol:                "BTCUSDC",
+		CandleOpen:            NewWideDecimal(decimal.RequireFromString("97123.45")),
+		CandleHigh:            NewWideDecimal(decimal.RequireFromString("97500.00")),
+		CandleLow:             NewWideDecimal(decimal.RequireFromString("96800.12345")),
+		CandleClose:           NewWideDecimal(decimal.RequireFromString("97200.999")),
+		CandleVolume:          NewWideDecimal(decimal.RequireFromString("12.3456789")),
+		RunningAccountBalance: NewWideDecimal(decimal.NewFromInt(10000)),
+		GlobalCandleCount:     9999,
+		PositionState:         "active",
+		AverageEntryPrice:     NewWideDecimal(decimal.NewFromInt(97000)),
+		PositionQuantity:      NewWideDecimal(decimal.RequireFromString("0.01020000")),
+		TotalCapitalDeployed:  NewWideDecimal(decimal.RequireFromString("989.40")),
+		FeesAccumulated:       NewWideDecimal(decimal.RequireFromString("0.989")),
+		TakeProfitPrice:       NewWideDecimal(decimal.RequireFromString("99910")),
+		LiquidationPrice:      NewWideDecimal(decimal.RequireFromString("48500")),
+		FilledOrdersCount:     3,
+		UnrealizedPnl:         NewWideDecimal(decimal.RequireFromString("2.04")),
+		CurrentDrawdownPct:    NewWideDecimal(decimal.RequireFromString("-0.20618557")),
+		ActionPrice:           NewWideDecimal(decimal.RequireFromString("97200.999")),
+		ActionQuantity:        NewWideDecimal(decimal.RequireFromString("0.00510000")),
+		ActionFee:             NewWideDecimal(decimal.RequireFromString("0.495")),
+		OrderNumber:           2,
+		RealizedPnl:           NewWideDecimal(decimal.RequireFromString("50.12")),
+		CloseReason:           "take_profit",
+	}
+
+	// Marshal with encoding/json (reference)
+	marshalBytes, err := json.Marshal(we)
+	require.NoError(t, err)
+
+	// Marshal with AppendJSON
+	appendBytes := we.AppendJSON(nil)
+
+	// Parse both into maps for field-by-field comparison
+	var marshalMap, appendMap map[string]interface{}
+	require.NoError(t, json.Unmarshal(marshalBytes, &marshalMap))
+	require.NoError(t, json.Unmarshal(appendBytes, &appendMap))
+
+	assert.Equal(t, len(marshalMap), len(appendMap), "field count must match")
+	for key, expected := range marshalMap {
+		actual, ok := appendMap[key]
+		assert.True(t, ok, "AppendJSON missing field %q", key)
+		assert.Equal(t, expected, actual, "field %q value mismatch", key)
+	}
+}
+
+// TestWideEvent_AppendJSON_ZeroValue verifies zero-value AppendJSON matches json.Marshal.
+func TestWideEvent_AppendJSON_ZeroValue(t *testing.T) {
+	var we WideEvent
+
+	marshalBytes, err := json.Marshal(we)
+	require.NoError(t, err)
+	appendBytes := we.AppendJSON(nil)
+
+	var marshalMap, appendMap map[string]interface{}
+	require.NoError(t, json.Unmarshal(marshalBytes, &marshalMap))
+	require.NoError(t, json.Unmarshal(appendBytes, &appendMap))
+
+	assert.Equal(t, len(marshalMap), len(appendMap), "field count must match")
+	for key, expected := range marshalMap {
+		actual, ok := appendMap[key]
+		assert.True(t, ok, "AppendJSON missing field %q", key)
+		assert.Equal(t, expected, actual, "field %q value mismatch", key)
+	}
+}
+
+// BenchmarkWideEvent_JSONMarshal measures json.Marshal performance (baseline).
+func BenchmarkWideEvent_JSONMarshal(b *testing.B) {
+	we := WideEvent{
+		SchemaVersion:         1,
+		RunID:                 "bench-run",
+		TradeID:               "bench-trade",
+		Timestamp:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		EventType:             "price_changed",
+		Symbol:                "BTCUSDC",
+		CandleOpen:            NewWideDecimal(decimal.NewFromInt(97000)),
+		CandleHigh:            NewWideDecimal(decimal.NewFromInt(97500)),
+		CandleLow:             NewWideDecimal(decimal.NewFromInt(96800)),
+		CandleClose:           NewWideDecimal(decimal.NewFromInt(97200)),
+		CandleVolume:          NewWideDecimal(decimal.RequireFromString("12.3456789")),
+		RunningAccountBalance: NewWideDecimal(decimal.NewFromInt(10000)),
+		GlobalCandleCount:     1000,
+		PositionState:         "active",
+		AverageEntryPrice:     NewWideDecimal(decimal.NewFromInt(97000)),
+		PositionQuantity:      NewWideDecimal(decimal.RequireFromString("0.0102")),
+		FilledOrdersCount:     3,
+		UnrealizedPnl:         NewWideDecimal(decimal.RequireFromString("2.04")),
+		CurrentDrawdownPct:    NewWideDecimal(decimal.RequireFromString("-0.206")),
+	}
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = json.Marshal(we)
+	}
+}
+
+// BenchmarkWideEvent_AppendJSON measures AppendJSON performance (optimized).
+func BenchmarkWideEvent_AppendJSON(b *testing.B) {
+	we := WideEvent{
+		SchemaVersion:         1,
+		RunID:                 "bench-run",
+		TradeID:               "bench-trade",
+		Timestamp:             time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC),
+		EventType:             "price_changed",
+		Symbol:                "BTCUSDC",
+		CandleOpen:            NewWideDecimal(decimal.NewFromInt(97000)),
+		CandleHigh:            NewWideDecimal(decimal.NewFromInt(97500)),
+		CandleLow:             NewWideDecimal(decimal.NewFromInt(96800)),
+		CandleClose:           NewWideDecimal(decimal.NewFromInt(97200)),
+		CandleVolume:          NewWideDecimal(decimal.RequireFromString("12.3456789")),
+		RunningAccountBalance: NewWideDecimal(decimal.NewFromInt(10000)),
+		GlobalCandleCount:     1000,
+		PositionState:         "active",
+		AverageEntryPrice:     NewWideDecimal(decimal.NewFromInt(97000)),
+		PositionQuantity:      NewWideDecimal(decimal.RequireFromString("0.0102")),
+		FilledOrdersCount:     3,
+		UnrealizedPnl:         NewWideDecimal(decimal.RequireFromString("2.04")),
+		CurrentDrawdownPct:    NewWideDecimal(decimal.RequireFromString("-0.206")),
+	}
+
+	buf := make([]byte, 0, 1024)
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		buf = we.AppendJSON(buf[:0])
+	}
+}

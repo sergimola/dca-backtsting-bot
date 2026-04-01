@@ -142,8 +142,12 @@ export class BacktestService {
       ];
 
       // Pass --wide-event-dir if configured via environment (defaults to ./output/wide_events)
-      const wideEventDir = process.env.WIDE_EVENT_DIR || './output/wide_events';
-      engineFlags.push(`--wide-event-dir=${wideEventDir}`);
+      // Set WIDE_EVENTS_ENABLED=false to disable wide-event enrichment entirely (faster backtests)
+      const wideEventsEnabled = (process.env.WIDE_EVENTS_ENABLED ?? 'true').toLowerCase() !== 'false';
+      if (wideEventsEnabled) {
+        const wideEventDir = process.env.WIDE_EVENT_DIR || './output/wide_events';
+        engineFlags.push(`--wide-event-dir=${wideEventDir}`);
+      }
 
       if (this.binaryPath.endsWith('.js')) {
         // Node.js script (mock binary)

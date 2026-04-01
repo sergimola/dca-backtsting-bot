@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Routes, Route, useLocation } from 'react-router-dom'
 import type { BacktestFormState, BacktestResults, Run } from './services/types'
 import { submitBacktest, listBacktests, getResults } from './services/backtest-api'
 import { ErrorBoundary } from './components/ErrorBoundary'
@@ -7,6 +8,7 @@ import { ConfigFormView } from './components/ConfigFormView'
 import { LiveTerminalView } from './components/LiveTerminalView'
 import { DashboardView } from './components/DashboardView'
 import { RunPollingController } from './components/RunPollingController'
+import { OptimizerPage } from './pages/OptimizerPage'
 
 export default function App() {
   const [runs, setRuns] = useState<Run[]>([])
@@ -181,7 +183,10 @@ export default function App() {
         />
 
         <main className="flex-1 overflow-y-auto custom-scrollbar">
-          {renderMainPane()}
+          <Routes>
+            <Route path="/optimizer" element={<OptimizerPage />} />
+            <Route path="*" element={renderMainPane()} />
+          </Routes>
         </main>
       </div>
     </ErrorBoundary>

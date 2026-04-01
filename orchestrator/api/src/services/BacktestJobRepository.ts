@@ -29,6 +29,34 @@ export class BacktestJobRepository {
   }
 
   /**
+   * Persist an already-computed run directly as `completed`.
+   * Used by optimizer batch execution so rows are written atomically without
+   * entering the pending/running worker queue lifecycle.
+   */
+  async createCompletedFromResult(
+    config: ApiBacktestRequest,
+    summary: StoredPnlSummary,
+    trades: StoredTradeEvent[],
+    safetyOrders: SafetyOrderUsageEntry[],
+    executionTimeMs: number,
+  ): Promise<BacktestRow> {
+    const [row] = await db
+      .insert(backtests)
+      .values({
+        status: 'completed',
+        config,
+        summary,
+        trades,
+        safetyOrders,
+        executionTimeMs,
+        progress: 100,
+        currentMetrics: null,
+      })
+      .returning();
+    return row;
+  }
+
+  /**
    * Fetch a single job by UUID. Returns null if not found.
    */
   async findById(id: string): Promise<BacktestRow | null> {
@@ -148,6 +176,8 @@ export class BacktestJobRepository {
         trades,
         safetyOrders,
         executionTimeMs,
+        progress:        100,
+        currentMetrics:  null,
         updatedAt:       new Date(),
       })
       .where(eq(backtests.id, id));

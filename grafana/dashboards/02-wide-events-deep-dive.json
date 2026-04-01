@@ -1,0 +1,547 @@
+{
+  "annotations": { "list": [] },
+  "description": "Tick-level analysis of a single backtest run using wide event traces. Only runs with wide events enabled appear in the Run ID dropdown.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "includeVars": false,
+      "keepTime": false,
+      "tags": ["dca"],
+      "targetBlank": true,
+      "title": "Run Overview",
+      "tooltip": "Back to the run overview table",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "text",
+      "title": "",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 2 },
+      "options": {
+        "mode": "markdown",
+        "content": "### Wide Events Trace — `${run_id}` &nbsp;&nbsp;·&nbsp;&nbsp; Symbol: `${symbol}`\nOnly runs with `WIDE_EVENTS_ENABLED=true` appear in the dropdown. Use the **Run Overview** dashboard to find a Run ID."
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Total Events",
+      "gridPos": { "x": 0, "y": 2, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT COUNT(*) AS \"Total Events\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Final Account Balance",
+      "gridPos": { "x": 6, "y": 2, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toFloat64(running_account_balance) AS \"Final Balance\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' ORDER BY timestamp DESC LIMIT 1",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Total Realized PnL",
+      "gridPos": { "x": 12, "y": 2, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toFloat64(sumIf(realized_pnl, event_type = 'PositionClosed')) AS \"Total Realized PnL\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Peak Drawdown",
+      "description": "Worst unrealised drawdown recorded during the run.",
+      "gridPos": { "x": 18, "y": 2, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 10 },
+              { "color": "red", "value": 25 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toFloat64(max(current_drawdown_pct)) AS \"Peak Drawdown\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Account Balance Over Time",
+      "description": "Running account balance (sampled at 1-minute intervals to manage volume).",
+      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 9 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "pointSize": 3,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS timestamp, avg(toFloat64(running_account_balance)) AS \"Account Balance\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' GROUP BY timestamp ORDER BY timestamp",
+          "refId": "A",
+          "format": 0
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Price & Capital Deployed",
+      "description": "Market close price (candle) vs total capital deployed into the position. Gap-ups indicate safety order fills.",
+      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 9 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "pointSize": 3,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Close Price" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "custom.axisPlacement", "value": "left" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Capital Deployed" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "custom.axisPlacement", "value": "right" },
+              { "id": "custom.fillOpacity", "value": 25 }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS timestamp, avg(toFloat64(candle_close)) AS \"Close Price\", avg(toFloat64(total_capital_deployed)) AS \"Capital Deployed\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' GROUP BY timestamp ORDER BY timestamp",
+          "refId": "A",
+          "format": 0
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Unrealized PnL & Drawdown %",
+      "description": "Unrealised P&L and drawdown percentage over the run timeline.",
+      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 9 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "pointSize": 3,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Unrealized PnL" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "custom.axisPlacement", "value": "left" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Drawdown %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 2 },
+              { "id": "custom.axisPlacement", "value": "right" },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "green", "value": null },
+                    { "color": "yellow", "value": 10 },
+                    { "color": "red", "value": 25 }
+                  ]
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS timestamp, avg(toFloat64(unrealized_pnl)) AS \"Unrealized PnL\", avg(toFloat64(current_drawdown_pct)) AS \"Drawdown %\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' GROUP BY timestamp ORDER BY timestamp",
+          "refId": "A",
+          "format": 0
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Filled Orders Count (Safety Order Depth)",
+      "description": "Number of safety orders filled at any point in time. Higher = deeper in the DCA ladder.",
+      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 7 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "unit": "short",
+          "decimals": 0,
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "pointSize": 3,
+            "showPoints": "never",
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toStartOfMinute(timestamp) AS timestamp, max(toFloat64(filled_orders_count)) AS \"Max Filled Orders\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' GROUP BY timestamp ORDER BY timestamp",
+          "refId": "A",
+          "format": 0
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Individual Trades (Position Opens & Closes)",
+      "description": "Each completed trade cycle: entry, exit, realized PnL and close reason.",
+      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 12 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Realized PnL" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background", "applyToRow": false }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "rgba(245,54,54,0.7)", "value": null },
+                    { "color": "rgba(50,172,45,0.7)", "value": 0 }
+                  ]
+                }
+              },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Close Price" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Fee" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 6 }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT timestamp AS \"Closed At\", trade_id AS \"Trade ID\", toFloat64(action_price) AS \"Close Price\", toFloat64(action_quantity) AS \"Quantity\", toFloat64(action_fee) AS \"Fee\", toFloat64(realized_pnl) AS \"Realized PnL\", close_reason AS \"Close Reason\", toUInt16(filled_orders_count) AS \"SO Depth\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'PositionClosed' ORDER BY timestamp",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Liquidation Events",
+      "description": "Empty when no liquidations occurred — a good sign!",
+      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 8 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Liquidation Price" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Capital Deployed" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT timestamp AS \"Liquidated At\", trade_id AS \"Trade ID\", toFloat64(action_price) AS \"Liquidation Price\", toFloat64(total_capital_deployed) AS \"Capital Deployed\", toFloat64(fees_accumulated) AS \"Fees Lost\", toUInt16(filled_orders_count) AS \"SO Depth At Liquidation\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'LiquidationEvent' ORDER BY timestamp",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "barchart",
+      "title": "Safety Order Level Usage",
+      "description": "How many times each safety order level was filled across all trades in this run.",
+      "gridPos": { "x": 0, "y": 60, "w": 12, "h": 8 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": 0,
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "xField": "SO Level"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toString(order_number) AS \"SO Level\", countIf(event_type = 'OrderFilled') AS \"Times Filled\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'OrderFilled' AND order_number > 0 GROUP BY order_number ORDER BY order_number",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "piechart",
+      "title": "Close Reason Breakdown",
+      "description": "How positions were closed: take-profit hits vs liquidations.",
+      "gridPos": { "x": 12, "y": 60, "w": 12, "h": 8 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "pieType": "pie",
+        "displayLabels": ["name", "percent"],
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "table", "placement": "right", "showLegend": true, "values": ["value", "percent"] }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT close_reason AS \"Close Reason\", count() AS \"Count\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type IN ('PositionClosed', 'LiquidationEvent') AND close_reason != '' GROUP BY close_reason ORDER BY 2 DESC",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["dca", "wide-events", "deep-dive"],
+  "templating": {
+    "list": [
+      {
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+        "definition": "SELECT DISTINCT run_id FROM data.wide_events ORDER BY run_id DESC LIMIT 500",
+        "includeAll": false,
+        "multi": false,
+        "name": "run_id",
+        "label": "Run ID",
+        "options": [],
+        "query": "SELECT DISTINCT run_id FROM data.wide_events ORDER BY run_id DESC LIMIT 500",
+        "refresh": 2,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+        "definition": "SELECT DISTINCT symbol FROM data.wide_events WHERE run_id = '${run_id}' ORDER BY symbol",
+        "includeAll": false,
+        "multi": false,
+        "name": "symbol",
+        "label": "Symbol",
+        "options": [],
+        "query": "SELECT DISTINCT symbol FROM data.wide_events WHERE run_id = '${run_id}' ORDER BY symbol",
+        "refresh": 2,
+        "regex": "",
+        "sort": 1,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-2y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Wide Events Deep Dive",
+  "uid": "dca-wide-events",
+  "version": 1
+}

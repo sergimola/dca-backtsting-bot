@@ -1,0 +1,671 @@
+{
+  "annotations": { "list": [] },
+  "description": "Per-run time-based view using narrow trade events stored in PostgreSQL. Shows execution prices, cumulative PnL, capital deployed and fees as they evolved across the backtest period.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "tags": ["dca"],
+      "targetBlank": true,
+      "title": "Run Overview",
+      "type": "dashboards",
+      "url": ""
+    },
+    {
+      "asDropdown": false,
+      "icon": "external link",
+      "tags": ["dca"],
+      "targetBlank": true,
+      "title": "Wide Events Deep Dive",
+      "type": "dashboards",
+      "url": ""
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Total Trade Events",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "blue", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT jsonb_array_length(trades) AS \"Total Events\" FROM backtests WHERE id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Completed Trades (Exits)",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "green", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) FILTER (WHERE t->>'eventType' = 'EXIT') AS \"Exits\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Safety Order Fills",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT COUNT(*) FILTER (WHERE t->>'eventType' = 'SAFETY_ORDER') AS \"SO Fills\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Net Realized PnL",
+      "description": "Sum of profit from all EXIT events in this run.",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(SUM(CASE WHEN t->>'eventType' = 'EXIT' THEN (t->>'balance')::numeric ELSE 0 END), 4) AS \"Net PnL\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Run Configuration",
+      "description": "Parameters used for this backtest run.",
+      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "showHeader": true
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" } }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Final ROI %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background" }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "rgba(245,54,54,0.7)", "value": null },
+                    { "color": "rgba(50,172,45,0.7)", "value": 0 }
+                  ]
+                }
+              },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Max Drawdown %" },
+            "properties": [{ "id": "unit", "value": "percent" }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT config->>'trading_pair' AS \"Pair\", LEFT(config->>'start_date',10) AS \"Start\", LEFT(config->>'end_date',10) AS \"End\", config->>'account_balance' AS \"Account Balance\", config->>'number_of_orders' AS \"Orders\", config->>'price_entry' AS \"Entry Price\", config->>'take_profit_distance_percent' AS \"TP %\", config->>'price_scale' AS \"Price Scale\", config->>'amount_scale' AS \"Amount Scale\", config->>'multiplier' AS \"Leverage\", ROUND((summary->>'roi')::numeric, 2) AS \"Final ROI %\", ROUND((summary->>'maxDrawdown')::numeric, 2) AS \"Max Drawdown %\" FROM backtests WHERE id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Market Price & Execution Events",
+      "description": "Grey line = actual market close price from ClickHouse candles. Green dots = initial entries, orange = safety order fills, purple = exits. Shows exactly where on the price curve each DCA action occurred.",
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 12 },
+      "datasource": { "type": "datasource", "uid": "-- Mixed --" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 0,
+            "fillOpacity": 0,
+            "pointSize": 10,
+            "showPoints": "always",
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Market Price" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "rgba(150,150,150,0.6)", "mode": "fixed" } },
+              { "id": "custom.lineWidth", "value": 1 },
+              { "id": "custom.fillOpacity", "value": 5 },
+              { "id": "custom.pointSize", "value": 1 },
+              { "id": "custom.showPoints", "value": "never" },
+              { "id": "custom.spanNulls", "value": true }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Entry" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "green", "mode": "fixed" } },
+              { "id": "custom.pointSize", "value": 12 },
+              { "id": "custom.lineWidth", "value": 0 },
+              { "id": "custom.showPoints", "value": "always" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Safety Order" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "orange", "mode": "fixed" } },
+              { "id": "custom.pointSize", "value": 9 },
+              { "id": "custom.lineWidth", "value": 0 },
+              { "id": "custom.showPoints", "value": "always" }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Exit" },
+            "properties": [
+              { "id": "color", "value": { "fixedColor": "purple", "mode": "fixed" } },
+              { "id": "custom.pointSize", "value": 12 },
+              { "id": "custom.lineWidth", "value": 0 },
+              { "id": "custom.showPoints", "value": "always" }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toStartOfFifteenMinutes(timestamp) AS timestamp, avg(toFloat64(close)) AS \"Market Price\" FROM data.market_data WHERE symbol = '${symbol}' AND timestamp >= parseDateTimeBestEffort('${backtest_start}') AND timestamp < parseDateTimeBestEffort('${backtest_end}') + INTERVAL 2 DAY GROUP BY timestamp ORDER BY timestamp",
+          "refId": "D",
+          "format": 0
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT (t->>'rawTimestamp')::timestamptz AS time, (t->>'price')::numeric AS \"Entry\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}' AND t->>'eventType' = 'ENTRY' ORDER BY time",
+          "refId": "A"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT (t->>'rawTimestamp')::timestamptz AS time, (t->>'price')::numeric AS \"Safety Order\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}' AND t->>'eventType' = 'SAFETY_ORDER' ORDER BY time",
+          "refId": "B"
+        },
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT (t->>'rawTimestamp')::timestamptz AS time, (t->>'price')::numeric AS \"Exit\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}' AND t->>'eventType' = 'EXIT' ORDER BY time",
+          "refId": "C"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Cumulative Realized PnL",
+      "description": "Running total of profit from exits over the backtest period. Flat sections = open/holding. Steps up = profitable close. Steps down = loss on close.",
+      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "color": { "mode": "thresholds" },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 20,
+            "pointSize": 6,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "drawStyle": "stepAfter"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH ev AS (SELECT (t->>'rawTimestamp')::timestamptz AS time, CASE WHEN t->>'eventType' = 'EXIT' THEN (t->>'balance')::numeric ELSE 0 END AS pnl FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}') SELECT time, SUM(pnl) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS \"Cumulative PnL\" FROM ev ORDER BY time",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "timeseries",
+      "title": "Cumulative Capital Deployed",
+      "description": "Running total of capital committed to open positions (ENTRY + SAFETY_ORDER costs). Shows how deep into the DCA ladder capital was deployed over time.",
+      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2,
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 25,
+            "pointSize": 5,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "drawStyle": "stepAfter"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH ev AS (SELECT (t->>'rawTimestamp')::timestamptz AS time, CASE WHEN t->>'eventType' IN ('ENTRY', 'SAFETY_ORDER') THEN (t->>'balance')::numeric ELSE 0 END AS cost FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}') SELECT time, SUM(cost) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS \"Cumulative Capital Deployed\" FROM ev ORDER BY time",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "type": "barchart",
+      "title": "Profit / Loss Per Trade",
+      "description": "Each bar is one completed trade cycle (EXIT event). Ordered chronologically left to right. Green = profit, red = loss.",
+      "gridPos": { "x": 0, "y": 26, "w": 16, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "orientation": "vertical",
+        "xTickLabelRotation": -45,
+        "xTickLabelMaxLength": 12,
+        "groupWidth": 0.8,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": { "mode": "single", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "xField": "Trade #"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "green", "value": 0 }
+            ]
+          },
+          "color": { "mode": "thresholds" },
+          "custom": {
+            "cellOptions": { "type": "color-background" }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROW_NUMBER() OVER (ORDER BY (t->>'rawTimestamp')::timestamptz)::text AS \"Trade #\", ROUND((t->>'balance')::numeric, 4) AS \"P/L\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}' AND t->>'eventType' = 'EXIT' ORDER BY (t->>'rawTimestamp')::timestamptz",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "Cumulative Fees Paid",
+      "description": "Running total of fees across all events (entries, fills, exits).",
+      "gridPos": { "x": 16, "y": 26, "w": 8, "h": 8 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "none" },
+        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6,
+          "color": { "fixedColor": "red", "mode": "fixed" },
+          "custom": {
+            "lineWidth": 2,
+            "fillOpacity": 15,
+            "pointSize": 4,
+            "showPoints": "auto",
+            "spanNulls": false,
+            "drawStyle": "stepAfter"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "WITH ev AS (SELECT (t->>'rawTimestamp')::timestamptz AS time, COALESCE((t->>'fee')::numeric, 0) AS fee FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}') SELECT time, SUM(fee) OVER (ORDER BY time ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS \"Cumulative Fees\" FROM ev ORDER BY time",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Closed Trades",
+      "description": "One row per completed trade cycle (EXIT events). Profit/Loss column is color-coded.",
+      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 10 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": {
+          "show": true,
+          "reducer": ["sum"],
+          "enablePagination": false,
+          "countRows": false,
+          "fields": ["Profit/Loss", "Fee"]
+        },
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Closed At", "desc": false }]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Profit/Loss" },
+            "properties": [
+              { "id": "unit", "value": "currencyUSD" },
+              { "id": "decimals", "value": 4 },
+              {
+                "id": "custom.cellOptions",
+                "value": { "type": "color-background", "applyToRow": false }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "rgba(245,54,54,0.7)", "value": null },
+                    { "color": "rgba(50,172,45,0.7)", "value": 0 }
+                  ]
+                }
+              },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Exit Price" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 4 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Fee" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 6 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Quantity" },
+            "properties": [{ "id": "decimals", "value": 8 }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROW_NUMBER() OVER (ORDER BY (t->>'rawTimestamp')::timestamptz) AS \"#\", (t->>'rawTimestamp')::timestamptz AS \"Closed At\", t->>'trade_id' AS \"Trade ID\", ROUND((t->>'price')::numeric, 4) AS \"Exit Price\", ROUND((t->>'quantity')::numeric, 8) AS \"Quantity\", ROUND((t->>'balance')::numeric, 4) AS \"Profit/Loss\", ROUND((t->>'fee')::numeric, 6) AS \"Fee\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}' AND t->>'eventType' = 'EXIT' ORDER BY (t->>'rawTimestamp')::timestamptz",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "All Events",
+      "description": "Complete narrow event log for this run. ENTRY = position opened, SAFETY_ORDER = DCA fill, EXIT = trade closed. Balance column = capital deployed for entries/SOs, profit realized for exits.",
+      "gridPos": { "x": 0, "y": 44, "w": 24, "h": 12 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "show": false },
+        "showHeader": true,
+        "sortBy": [{ "displayName": "Time", "desc": false }]
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "Type" },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  { "type": "value", "options": { "ENTRY":        { "color": "green",  "text": "ENTRY",        "index": 0 } } },
+                  { "type": "value", "options": { "SAFETY_ORDER": { "color": "orange", "text": "SAFETY_ORDER", "index": 1 } } },
+                  { "type": "value", "options": { "EXIT":         { "color": "purple", "text": "EXIT",         "index": 2 } } }
+                ]
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Price" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 4 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Balance / Profit" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 4 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Fee" },
+            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 6 }]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (t->>'rawTimestamp')::timestamptz AS \"Time\", t->>'eventType' AS \"Type\", t->>'trade_id' AS \"Trade ID\", ROUND((t->>'price')::numeric, 4) AS \"Price\", ROUND((t->>'quantity')::numeric, 8) AS \"Quantity\", ROUND((t->>'balance')::numeric, 4) AS \"Balance / Profit\", ROUND((t->>'fee')::numeric, 6) AS \"Fee\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}' ORDER BY 1",
+          "refId": "A"
+        }
+      ]
+    }
+  ],
+  "refresh": "",
+  "schemaVersion": 39,
+  "tags": ["dca", "backtest", "timeline", "narrow-events"],
+  "templating": {
+    "list": [
+      {
+        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "definition": "SELECT id::text FROM backtests WHERE status = 'completed' AND trades IS NOT NULL AND jsonb_typeof(trades) = 'array' AND jsonb_array_length(trades) > 0 ORDER BY created_at DESC LIMIT 500",
+        "includeAll": false,
+        "multi": false,
+        "name": "run_id",
+        "label": "Run ID",
+        "options": [],
+        "query": "SELECT id::text FROM backtests WHERE status = 'completed' AND trades IS NOT NULL AND jsonb_typeof(trades) = 'array' AND jsonb_array_length(trades) > 0 ORDER BY created_at DESC LIMIT 500",
+        "refresh": 2,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "definition": "SELECT UPPER(REPLACE(config->>'trading_pair', '/', '')) FROM backtests WHERE id::text = '${run_id}'",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "symbol",
+        "label": "Symbol",
+        "options": [],
+        "query": "SELECT UPPER(REPLACE(config->>'trading_pair', '/', '')) FROM backtests WHERE id::text = '${run_id}'",
+        "refresh": 2,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "definition": "SELECT config->>'start_date' FROM backtests WHERE id::text = '${run_id}'",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "backtest_start",
+        "label": "Backtest Start",
+        "options": [],
+        "query": "SELECT config->>'start_date' FROM backtests WHERE id::text = '${run_id}'",
+        "refresh": 2,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "definition": "SELECT config->>'end_date' FROM backtests WHERE id::text = '${run_id}'",
+        "hide": 2,
+        "includeAll": false,
+        "multi": false,
+        "name": "backtest_end",
+        "label": "Backtest End",
+        "options": [],
+        "query": "SELECT config->>'end_date' FROM backtests WHERE id::text = '${run_id}'",
+        "refresh": 2,
+        "regex": "",
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-5y", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Narrow Events Timeline",
+  "uid": "dca-narrow-timeline",
+  "version": 1
+}
