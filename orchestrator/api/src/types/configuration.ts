@@ -58,6 +58,9 @@ export interface ApiBacktestRequest {
   /** Exit on last order flag (boolean: end simulation when last order fills) */
   exit_on_last_order: boolean;
 
+  /** T070: Enable wide events — pass to Go engine so full trade-event JSONB is captured. */
+  enable_wide_events?: boolean;
+
   /** Optional idempotency key (UUID RFC 4122) for duplicate suppression */
   idempotency_key?: string;
 }
@@ -448,5 +451,6 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
     monthly_addition: validatedMonthlyAddition,
     exit_on_last_order: request.exit_on_last_order,
     idempotency_key: validatedIdempotencyKey,
+    enable_wide_events: typeof request.enable_wide_events === 'boolean' ? request.enable_wide_events : undefined,
   };
 }

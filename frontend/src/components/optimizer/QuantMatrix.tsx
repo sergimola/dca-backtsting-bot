@@ -11,17 +11,18 @@ interface Props {
   results: EnrichedResult[]
   sweptParams: string[]
   phase: SweepPhase
+  totalRuns?: number
   onNewSweep: () => void
   onOpenInSingleRun?: (result: BatchRunResult) => void
 }
 
-export function QuantMatrix({ results, sweptParams, phase, onNewSweep, onOpenInSingleRun }: Props) {
+export function QuantMatrix({ results, sweptParams, phase, totalRuns, onNewSweep, onOpenInSingleRun }: Props) {
   return (
     <div className="flex flex-col h-full">
       {/* Banner */}
       {phase === 'cancelled' && (
-        <div className="mx-4 mt-3 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
-          Sweep was cancelled. Showing partial results ({results.length} completed runs).
+        <div role="status" className="mx-4 mt-3 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
+          Cancelled ({results.length} / {totalRuns ?? '?'} runs)
         </div>
       )}
 

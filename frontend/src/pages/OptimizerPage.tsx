@@ -2,8 +2,8 @@
  * OptimizerPage — Main page layout: left panel (configurator) + right panel
  * (phase-based: PreFlight idle → ExecutionDashboard running → QuantMatrix complete).
  */
-import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useOptimizer } from '../hooks/useOptimizer'
 import type { BatchRunResult } from '../hooks/useOptimizer'
 import { OptimizerConfigurator } from '../components/optimizer/OptimizerConfigurator'
@@ -13,6 +13,7 @@ import { QuantMatrix } from '../components/optimizer/QuantMatrix'
 
 export function OptimizerPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
   const {
     formState,
     updateField,
@@ -27,10 +28,21 @@ export function OptimizerPage() {
     launch,
     cancel,
     resetPhase,
+    selectHistorySweep,
+    persistenceError,
   } = useOptimizer()
 
+  // T045: Load history session when ?session=<id> query param is present.
+  useEffect(() => {
+    const sessionId = searchParams.get('session')
+    if (sessionId) {
+      selectHistorySweep(sessionId)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   const handleOpenInSingleRun = (result: BatchRunResult) => {
-    navigate('/', { state: { prefillConfig: result } })
+    // T068: Navigate to single-run view with config + enable_wide_events:true prefilled.
+    navigate('/', { state: { prefillConfig: { ...result.config, enable_wide_events: true } } })
   }
 
   const renderRightPanel = () => {
@@ -47,6 +59,7 @@ export function OptimizerPage() {
             results={enrichedResults}
             sweptParams={sweptParams}
             phase={phase}
+            totalRuns={session?.totalRuns}
             onNewSweep={resetPhase}
             onOpenInSingleRun={handleOpenInSingleRun}
           />
@@ -76,22 +89,31 @@ export function OptimizerPage() {
   }
 
   return (
-    <div className="flex h-full">
-      {/* Left panel — Configurator (25% width) */}
-      <div className="w-80 flex-shrink-0 border-r border-slate-700 bg-[#0a0e1a]">
-        <OptimizerConfigurator
-          formState={formState}
-          sweepCounts={sweepCounts}
-          onUpdateField={updateField}
-          onUpdateFormField={updateFormField}
-          onLaunch={launch}
-          isLaunching={phase === 'validating'}
-        />
-      </div>
+    <div className="flex h-full flex-col">
+      {/* T060: Persistence error banner */}
+      {persistenceError && (
+        <div role="alert" className="px-4 py-2 bg-amber-900/60 border-b border-amber-600 text-amber-300 text-xs">
+          Warning: Database connection lost. Results are in-memory and will be lost on refresh. Export your results to CSV immediately.
+        </div>
+      )}
 
-      {/* Right panel — Phase-dependent content */}
-      <div className="flex-1 overflow-hidden">
-        {renderRightPanel()}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left panel — Configurator (25% width) */}
+        <div className="w-80 flex-shrink-0 border-r border-slate-700 bg-[#0a0e1a]">
+          <OptimizerConfigurator
+            formState={formState}
+            sweepCounts={sweepCounts}
+            onUpdateField={updateField}
+            onUpdateFormField={updateFormField}
+            onLaunch={launch}
+            isLaunching={phase === 'validating'}
+          />
+        </div>
+
+        {/* Right panel — Phase-dependent content */}
+        <div className="flex-1 overflow-hidden">
+          {renderRightPanel()}
+        </div>
       </div>
     </div>
   )

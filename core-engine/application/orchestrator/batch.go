@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"runtime"
 	"sync"
@@ -201,6 +202,100 @@ type batchJobResult struct {
 	isErr bool
 }
 
+// ExecuteBatchToWriter is identical to ExecuteBatch but streams each result
+// directly to out as workers complete, instead of buffering all results.
+// It uses a sync.Mutex-protected json.Encoder so concurrent workers can write
+// safely without interleaving. batch_summary is written last after all workers
+// finish. This fulfils T014 / FR-017 (non-blocking stdout streaming).
+func ExecuteBatchToWriter(jobs []BatchJob, loaderFunc CandleLoaderFunc, workerCount int, out io.Writer) {
+	if len(jobs) == 0 {
+		slog.Warn("Empty batch: no configs to execute")
+		enc := json.NewEncoder(out)
+		_ = enc.Encode(struct {
+			Type       string `json:"type"`
+			TotalRuns  int    `json:"total_runs"`
+			Successful int    `json:"successful"`
+			Failed     int    `json:"failed"`
+		}{Type: "batch_summary"})
+		return
+	}
+
+	if workerCount <= 0 {
+		workerCount = runtime.NumCPU()
+	}
+
+	// Phase 1: load candles grouped by key (same as ExecuteBatch).
+	groups := make(map[GroupKey][]Candle)
+	for _, job := range jobs {
+		if _, loaded := groups[job.Key]; !loaded {
+			candles, err := loaderFunc(job.Key)
+			if err != nil {
+				slog.Error("failed to load candles",
+					"symbol", job.Key.Symbol, "err", err)
+				groups[job.Key] = nil
+			} else {
+				groups[job.Key] = candles
+			}
+		}
+	}
+
+	// Phase 2: worker pool — each worker writes its result directly via the
+	// shared encoder under a mutex as soon as the run completes.
+	var (
+		mu         sync.Mutex
+		enc        = json.NewEncoder(out)
+		successful int
+		failed     int
+		wg         sync.WaitGroup
+	)
+
+	jobCh := make(chan int, len(jobs))
+	for w := 0; w < workerCount; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for idx := range jobCh {
+				job := jobs[idx]
+				candles := groups[job.Key]
+				var result batchJobResult
+				if candles == nil {
+					result = makeErrorResult(job.RunID, "candle loading failed for group")
+				} else {
+					result = runSingleBatchJob(job, candles)
+				}
+
+				mu.Lock()
+				_ = enc.Encode(json.RawMessage(result.data))
+				if result.isErr {
+					failed++
+				} else {
+					successful++
+				}
+				mu.Unlock()
+			}
+		}()
+	}
+
+	for i := range jobs {
+		jobCh <- i
+	}
+	close(jobCh)
+	wg.Wait()
+
+	// Write batch_summary last.
+	_ = enc.Encode(struct {
+		Type       string `json:"type"`
+		TotalRuns  int    `json:"total_runs"`
+		Successful int    `json:"successful"`
+		Failed     int    `json:"failed"`
+	}{
+		Type:       "batch_summary",
+		TotalRuns:  len(jobs),
+		Successful: successful,
+		Failed:     failed,
+	})
+}
+
 // runSingleBatchJob executes a single backtest with a fresh Orchestrator + PSM.
 // The candles slice is shared read-only across workers (no mutation).
 func runSingleBatchJob(job BatchJob, candles []Candle) batchJobResult {
@@ -259,6 +354,8 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 		totalAdditions decimal.Decimal
 		peakEquity     decimal.Decimal
 		maxDrawdown    decimal.Decimal
+		tpCloses       int
+		totalCloses    int
 	)
 
 	startBalance := cfg.AccountBalance()
@@ -282,6 +379,10 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 
 		case EventTypePositionClosed:
 			if tce, ok := ev.Data.(*position.TradeClosedEvent); ok {
+				totalCloses++
+				if tce.Reason == "take_profit" {
+					tpCloses++
+				}
 				realizedPnl = realizedPnl.Add(decStr(tce.Profit))
 
 				runningEquity := startBalance.Add(realizedPnl)
@@ -310,6 +411,14 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 		roi = realizedPnl.Div(roiDenominator).Mul(decimal.NewFromInt(100))
 	}
 
+	// Win rate: use shopspring/decimal for the division; FP only at serialisation boundary.
+	var winRatePtr *float64
+	if totalCloses > 0 {
+		wr := decimal.New(int64(tpCloses), 0).Div(decimal.New(int64(totalCloses), 0))
+		f := wr.InexactFloat64()
+		winRatePtr = &f
+	}
+
 	return struct {
 		RunID   string  `json:"run_id"`
 		Type    string  `json:"type"`
@@ -318,9 +427,11 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 			MaxDrawdown float64 `json:"maxDrawdown"`
 			TotalFees   float64 `json:"totalFees"`
 		} `json:"pnlSummary"`
-		ExecMs      int64 `json:"executionTimeMs"`
-		CandleCount int   `json:"candleCount"`
-		EventCount  int   `json:"eventCount"`
+		ExecMs               int64    `json:"executionTimeMs"`
+		CandleCount          int      `json:"candleCount"`
+		EventCount           int      `json:"eventCount"`
+		WinRate              *float64 `json:"winRate,omitempty"`
+		TotalPositionsClosed int      `json:"totalPositionsClosed,omitempty"`
 	}{
 		RunID: runID,
 		Type:  "result",
@@ -333,9 +444,11 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 			MaxDrawdown: maxDrawdown.InexactFloat64(),
 			TotalFees:   totalFees.InexactFloat64(),
 		},
-		ExecMs:      execMs,
-		CandleCount: candleCount,
-		EventCount:  eventCount,
+		ExecMs:               execMs,
+		CandleCount:          candleCount,
+		EventCount:           eventCount,
+		WinRate:              winRatePtr,
+		TotalPositionsClosed: totalCloses,
 	}
 }
 

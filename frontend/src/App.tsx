@@ -1,21 +1,65 @@
-import React, { useState, useEffect } from 'react'
-import { Routes, Route, useLocation } from 'react-router-dom'
+import React, { useState, useEffect, useCallback } from 'react'
+import { Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import type { BacktestFormState, BacktestResults, Run } from './services/types'
 import { submitBacktest, listBacktests, getResults } from './services/backtest-api'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LeftSidebar } from './components/LeftSidebar'
+import type { SweepHistoryEntry } from './components/optimizer/SweepHistoryList'
 import { ConfigFormView } from './components/ConfigFormView'
 import { LiveTerminalView } from './components/LiveTerminalView'
 import { DashboardView } from './components/DashboardView'
 import { RunPollingController } from './components/RunPollingController'
 import { OptimizerPage } from './pages/OptimizerPage'
 
+const API_BASE = String(import.meta.env['VITE_API_URL'] || 'http://localhost:4000').trim()
+
 export default function App() {
+  const navigate = useNavigate()
   const [runs, setRuns] = useState<Run[]>([])
   const [selectedRunId, setSelectedRunId] = useState<string | null>(null)
   const [activeView, setActiveView] = useState<'history' | 'config'>('config')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // T072: Sweep history state at App level so LeftSidebar has access.
+  const [sweepHistory, setSweepHistory] = useState<SweepHistoryEntry[]>([])
+  const [hasMoreSweeps, setHasMoreSweeps] = useState(false)
+  const [sweepHistoryPage, setSweepHistoryPage] = useState(1)
+
+  const loadSweepHistory = useCallback(async (page = 1) => {
+    try {
+      const res = await fetch(`${API_BASE}/optimizer/sessions?page=${page}&limit=50`)
+      if (!res.ok) return
+      const data = await res.json()
+      const entries: SweepHistoryEntry[] = (data.sessions ?? []).map((s: Record<string, unknown>) => ({
+        id: String(s['id'] ?? ''),
+        tradingPair: String(s['tradingPair'] ?? s['trading_pair'] ?? ''),
+        startDate: String(s['startDate'] ?? s['start_date'] ?? ''),
+        endDate: String(s['endDate'] ?? s['end_date'] ?? ''),
+        totalRuns: Number(s['totalRuns'] ?? s['total_runs'] ?? 0),
+        maxRoi: s['maxRoi'] != null ? Number(s['maxRoi']) : s['max_roi'] != null ? Number(s['max_roi']) : null,
+        status: (s['status'] as 'completed' | 'cancelled' | 'running'),
+        createdAt: String(s['createdAt'] ?? s['created_at'] ?? ''),
+      }))
+      if (page === 1) setSweepHistory(entries)
+      else setSweepHistory(prev => [...prev, ...entries])
+      setHasMoreSweeps(Boolean(data.hasMore))
+      setSweepHistoryPage(page)
+    } catch { /* silently ignore on startup */ }
+  }, [])
+
+  const handleLoadMoreSweeps = useCallback(() => loadSweepHistory(sweepHistoryPage + 1), [loadSweepHistory, sweepHistoryPage])
+
+  const handleDeleteSweep = useCallback(async (id: string) => {
+    try {
+      await fetch(`${API_BASE}/optimizer/session/${id}`, { method: 'DELETE' })
+      setSweepHistory(prev => prev.filter(e => e.id !== id))
+    } catch { /* best effort */ }
+  }, [])
+
+  const handleSelectSweep = useCallback((id: string) => {
+    navigate(`/optimizer?session=${id}`)
+  }, [navigate])
 
   // Load existing backtests from server on mount
   useEffect(() => {
@@ -25,6 +69,9 @@ export default function App() {
       })
       .catch(() => { /* silently ignore network errors on startup */ })
   }, [])
+
+  // T072: Load sweep history on mount.
+  useEffect(() => { loadSweepHistory(1) }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Lazy-fetch full results when a completed run with no trade events is selected
   useEffect(() => {
@@ -180,6 +227,11 @@ export default function App() {
           onNewBacktest={handleNewBacktest}
           onSelectRun={handleSelectRun}
           onViewDashboard={handleViewDashboard}
+          sweepHistory={sweepHistory}
+          onSelectSweep={handleSelectSweep}
+          onLoadMoreSweeps={handleLoadMoreSweeps}
+          hasMoreSweeps={hasMoreSweeps}
+          onDeleteSweep={handleDeleteSweep}
         />
 
         <main className="flex-1 overflow-y-auto custom-scrollbar">

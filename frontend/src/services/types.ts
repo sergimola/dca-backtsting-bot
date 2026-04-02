@@ -36,6 +36,8 @@ export interface BacktestFormState {
   monthlyAddition: string
   /** End simulation when the last order fills */
   exitOnLastOrder: boolean
+  /** Emit wide events for this run (enables full trade-event capture) */
+  enable_wide_events?: boolean
 }
 
 /** @deprecated Use BacktestFormState */

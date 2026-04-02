@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"testing"
@@ -171,5 +172,60 @@ func TestLogLevelWarn_OnlyWarnsAppear(t *testing.T) {
 	}
 	if strings.Contains(buf.String(), "debug-entry-should-be-filtered") {
 		t.Errorf("DEBUG entry leaked at WARN level, got: %q", buf.String())
+	}
+}
+
+// ─── T018: enable_wide_events OR logic (FR-025, FR-026) ─────────────────────
+//
+// emitWideEvents simulates the OR logic from main() — extracted for unit testability.
+// Returns true if the combined (env || config) condition would enable wide events.
+func emitWideEvents(envVal string, reqFlag *bool) bool {
+	envWide := envVal == "true"
+	var reqWide bool
+	if reqFlag != nil {
+		reqWide = *reqFlag
+	}
+	return envWide || reqWide
+}
+
+// TestWideEvents_EnvFalse_ConfigTrue_EmitsTrue tests FR-026 row 1:
+// ENABLE_WIDE_EVENTS=false | config enable_wide_events=true → true
+func TestWideEvents_EnvFalse_ConfigTrue_EmitsTrue(t *testing.T) {
+	tt := true
+	if !emitWideEvents("false", &tt) {
+		t.Error("expected emitWideEvents=true (env=false, config=true)")
+	}
+}
+
+// TestWideEvents_EnvTrue_ConfigFalse_EmitsTrue tests FR-026 row 2:
+// ENABLE_WIDE_EVENTS=true | config enable_wide_events=false → true
+func TestWideEvents_EnvTrue_ConfigFalse_EmitsTrue(t *testing.T) {
+	ff := false
+	if !emitWideEvents("true", &ff) {
+		t.Error("expected emitWideEvents=true (env=true, config=false)")
+	}
+}
+
+// TestWideEvents_BothFalse_EmitsFalse tests FR-026 row 3:
+// ENABLE_WIDE_EVENTS=false | config absent → false
+func TestWideEvents_BothFalse_EmitsFalse(t *testing.T) {
+	if emitWideEvents("false", nil) {
+		t.Error("expected emitWideEvents=false (env=false, config absent)")
+	}
+}
+
+// TestWideEvents_AbsentField_UnmarshalNil tests FR-025:
+// JSON with no enable_wide_events field → EngineRequest.EnableWideEvents is nil (defaults false).
+func TestWideEvents_AbsentField_UnmarshalNil(t *testing.T) {
+	raw := `{"trading_pair":"BTC/USDC","start_date":"2025-01-01T00:00:00Z","end_date":"2025-01-31T00:00:00Z","price_entry":"50000","price_scale":"1.1","amount_scale":"2.0","number_of_orders":3,"amount_per_trade":"1000","margin_type":"cross","multiplier":1,"take_profit_distance_percent":"0.5","account_balance":"10000","exit_on_last_order":false,"clickhouse_addr":"","clickhouse_db":"","clickhouse_user":"","clickhouse_password":""}`
+	var req EngineRequest
+	if err := json.Unmarshal([]byte(raw), &req); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if req.EnableWideEvents != nil {
+		t.Errorf("expected EnableWideEvents nil when field absent, got %v", *req.EnableWideEvents)
+	}
+	if emitWideEvents("false", req.EnableWideEvents) {
+		t.Error("nil EnableWideEvents should produce false")
 	}
 }

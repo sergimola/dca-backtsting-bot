@@ -26,17 +26,6 @@ import type {
   SweepCountResponse,
 } from '../types/optimizer.js';
 
-const SWEEP_LIMIT = 10_000;
-
-export class SweepLimitExceededError extends Error {
-  public readonly count: number;
-  constructor(count: number) {
-    super(`Sweep limit exceeded: ${count} combinations (max ${SWEEP_LIMIT})`);
-    this.name = 'SweepLimitExceededError';
-    this.count = count;
-  }
-}
-
 export class SweepService {
   private binaryPath: string;
 
@@ -63,7 +52,7 @@ export class SweepService {
         count *= values.length;
       }
     }
-    return { count, overLimit: count > SWEEP_LIMIT };
+    return { count, overLimit: false };
   }
 
   // ── 2. Range Expansion (decimal.js) ──────────────────────────────────────
@@ -185,6 +174,16 @@ export class SweepService {
     for (const cfg of configs) {
       const pf = preFlightMap.get(cfg.run_id);
 
+      // T031(b): guaranteed_fee_loss — TP distance ≤ 0.2% makes take-profit unreachable after fees.
+      if (new Decimal(cfg.take_profit_distance_percent).lte(new Decimal('0.2'))) {
+        prunedConfigs.push({
+          run_id: cfg.run_id,
+          reason: 'guaranteed_fee_loss' as PruneReason,
+          detail: `TP distance ${cfg.take_profit_distance_percent}% ≤ 0.2% fee threshold`,
+        });
+        continue;
+      }
+
       // Check base order minimum.
       const baseOrderAmount = this.computeBaseOrderAmount(cfg, balance);
       if (baseOrderAmount.lt(minBaseOrder)) {
@@ -209,8 +208,51 @@ export class SweepService {
         }
       }
 
+      // T031(c): exceeds_100_percent_drawdown — drawdown ≤ -100% means full account wipeout.
+      if (pf && new Decimal(pf.max_drawdown_covered_pct).lte(new Decimal('-100'))) {
+        prunedConfigs.push({
+          run_id: cfg.run_id,
+          reason: 'exceeds_100_percent_drawdown' as PruneReason,
+          detail: `Max drawdown ${pf.max_drawdown_covered_pct}% ≤ -100%; account would be wiped`,
+        });
+        continue;
+      }
+
+      // T031(d): tick_size_violation — any consecutive ladder price gap < 0.1%.
+      if (pf && pf.ladder.length > 1) {
+        let violated = false;
+        for (let i = 1; i < pf.ladder.length; i++) {
+          const prev = new Decimal(pf.ladder[i - 1].trigger_price);
+          const curr = new Decimal(pf.ladder[i].trigger_price);
+          if (prev.gt(0)) {
+            const gap = prev.minus(curr).div(prev).mul(100).abs();
+            if (gap.lt(new Decimal('0.1'))) {
+              violated = true;
+              break;
+            }
+          }
+        }
+        if (violated) {
+          prunedConfigs.push({
+            run_id: cfg.run_id,
+            reason: 'tick_size_violation' as PruneReason,
+            detail: 'Consecutive ladder entries have price gap < 0.1% (tick size too small)',
+          });
+          continue;
+        }
+      }
+
       validConfigs.push(cfg);
     }
+
+    // T031–T035 (US6): compute per-reason breakdown — all 5 keys always present.
+    const pruneReasons = {
+      capital_exceeds_balance: prunedConfigs.filter(c => c.reason === 'capital_exceeds_balance').length,
+      base_order_below_minimum: prunedConfigs.filter(c => c.reason === 'base_order_below_minimum').length,
+      guaranteed_fee_loss: prunedConfigs.filter(c => c.reason === 'guaranteed_fee_loss').length,
+      exceeds_100_percent_drawdown: prunedConfigs.filter(c => c.reason === 'exceeds_100_percent_drawdown').length,
+      tick_size_violation: prunedConfigs.filter(c => c.reason === 'tick_size_violation').length,
+    };
 
     return {
       generated: configs.length,
@@ -218,6 +260,7 @@ export class SweepService {
       valid: validConfigs.length,
       validConfigs,
       prunedConfigs,
+      pruneReasons,
     };
   }
 

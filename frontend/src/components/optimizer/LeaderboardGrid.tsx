@@ -134,9 +134,9 @@ export function LeaderboardGrid({ results, onOpenInSingleRun }: Props) {
                   {r.type !== 'error' && onOpenInSingleRun && (
                     <button
                       onClick={() => onOpenInSingleRun(r)}
-                      className="text-xs text-blue-400 hover:text-blue-300"
+                      className="text-xs text-blue-400 hover:text-blue-300 whitespace-nowrap"
                     >
-                      Open
+                      Re-run with Details
                     </button>
                   )}
                 </td>

@@ -2,6 +2,14 @@ import React from 'react'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ConfigFormView } from '../../components/ConfigFormView'
 
+// Mock react-router-dom to avoid ESM parse issues and Router context requirements.
+let mockLocationState: unknown = null
+jest.mock('react-router-dom', () => ({
+  useLocation: () => ({ pathname: '/', state: mockLocationState }),
+  useNavigate: () => jest.fn(),
+  useSearchParams: () => [new URLSearchParams(), jest.fn()],
+}))
+
 const noop = jest.fn().mockResolvedValue(undefined)
 
 const fillAllFields = () => {
@@ -38,8 +46,8 @@ describe('ConfigFormView', () => {
     expect(screen.getByLabelText(/account balance/i)).toBeInTheDocument()
     // marginType select
     expect(screen.getByLabelText(/margin type/i)).toBeInTheDocument()
-    // exitOnLastOrder toggle (role=switch)
-    expect(screen.getByRole('switch')).toBeInTheDocument()
+    // toggles (exitOnLastOrder + enable_wide_events)
+    expect(screen.getAllByRole('switch').length).toBeGreaterThanOrEqual(1)
   })
 
   it('startDate and endDate inputs have type datetime-local', () => {
@@ -79,9 +87,11 @@ describe('ConfigFormView', () => {
 
   it('exitOnLastOrder renders a toggle switch (role=switch, no type=checkbox)', () => {
     render(<ConfigFormView onSubmit={noop} isSubmitting={false} error={null} />)
-    const toggle = screen.getByRole('switch')
-    expect(toggle.tagName).not.toBe('INPUT')
-    expect(toggle).toHaveAttribute('aria-checked')
+    const switches = screen.getAllByRole('switch')
+    expect(switches.length).toBeGreaterThanOrEqual(1)
+    const exitToggle = switches[0]
+    expect(exitToggle.tagName).not.toBe('INPUT')
+    expect(exitToggle).toHaveAttribute('aria-checked')
   })
 
   it('marginType renders select with isolated and cross options', () => {
@@ -128,5 +138,66 @@ describe('ConfigFormView', () => {
   it('submit button shows loading text and is disabled during isSubmitting=true', () => {
     render(<ConfigFormView onSubmit={noop} isSubmitting={true} error={null} />)
     expect(screen.getByRole('button', { name: /submitting/i })).toBeDisabled()
+  })
+})
+
+// T054: US5 Import/Export tests
+describe('ConfigFormView — Import/Export (US5, T054)', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockLocationState = null
+    // mock clipboard
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: jest.fn().mockResolvedValue(undefined) },
+      writable: true,
+      configurable: true,
+    })
+  })
+
+  it('T054-AC1: Import Config and Export Config buttons are present', () => {
+    render(<ConfigFormView onSubmit={jest.fn().mockResolvedValue(undefined)} isSubmitting={false} error={null} />)
+    expect(screen.getByRole('button', { name: /import config/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /export config/i })).toBeInTheDocument()
+  })
+
+  it('T054-AC2: clicking Import Config reveals a textarea with placeholder', () => {
+    render(<ConfigFormView onSubmit={jest.fn().mockResolvedValue(undefined)} isSubmitting={false} error={null} />)
+    fireEvent.click(screen.getByRole('button', { name: /import config/i }))
+    expect(screen.getByLabelText(/import config json/i)).toBeInTheDocument()
+  })
+
+  it('T054-AC3: clicking Export Config calls navigator.clipboard.writeText with valid JSON', async () => {
+    render(<ConfigFormView onSubmit={jest.fn().mockResolvedValue(undefined)} isSubmitting={false} error={null} />)
+    fireEvent.click(screen.getByRole('button', { name: /export config/i }))
+    await waitFor(() => {
+      expect(navigator.clipboard.writeText).toHaveBeenCalledTimes(1)
+    })
+    const written = (navigator.clipboard.writeText as jest.Mock).mock.calls[0][0]
+    expect(() => JSON.parse(written)).not.toThrow()
+  })
+
+  it('T054-AC4: Apply import button populates form from valid JSON', () => {
+    render(<ConfigFormView onSubmit={jest.fn().mockResolvedValue(undefined)} isSubmitting={false} error={null} />)
+    fireEvent.click(screen.getByRole('button', { name: /import config/i }))
+    const textarea = screen.getByLabelText(/import config json/i)
+    const payload = JSON.stringify({ trading_pair: 'ETH/USDT', account_balance: '5000', enable_wide_events: true })
+    fireEvent.change(textarea, { target: { value: payload } })
+    fireEvent.click(screen.getByRole('button', { name: /apply/i }))
+    expect(screen.queryByLabelText(/import config json/i)).not.toBeInTheDocument()
+  })
+
+  it('T054-AC5: Cancel import hides textarea without mutating form', () => {
+    render(<ConfigFormView onSubmit={jest.fn().mockResolvedValue(undefined)} isSubmitting={false} error={null} />)
+    fireEvent.click(screen.getByRole('button', { name: /import config/i }))
+    expect(screen.getByLabelText(/import config json/i)).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(screen.queryByLabelText(/import config json/i)).not.toBeInTheDocument()
+  })
+
+  it('T054-AC6 (T069): prefillConfig from location.state populates enable_wide_events', () => {
+    mockLocationState = { prefillConfig: { tradingPair: 'SOL/USDT', enable_wide_events: true } }
+    render(<ConfigFormView onSubmit={jest.fn().mockResolvedValue(undefined)} isSubmitting={false} error={null} />)
+    const wideEventsSwitch = screen.getByRole('switch', { name: /enable wide events/i })
+    expect(wideEventsSwitch).toHaveAttribute('aria-checked', 'true')
   })
 })

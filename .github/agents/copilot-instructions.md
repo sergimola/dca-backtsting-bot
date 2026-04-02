@@ -32,6 +32,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - ClickHouse (OLAP, JSONL bulk insert) · PostgreSQL (job queue, no change) (015-wide-events-analytics)
 - Go 1.22 (core engine) · TypeScript 5.x + Node.js 20 (orchestrator API) · TypeScript 5.x + React 18 (frontend) + shopspring/decimal (Go fixed-point) · Express 4 (API) · Vite + Tailwind CSS (frontend) · Headless UI (popovers) (016-optimizer-workspace)
 - ClickHouse (candle data — read-only in this feature) · In-memory only for sweep results (FR-034; no DB writes for optimizer runs) (016-optimizer-workspace)
+- Go 1.22 (core-engine) + TypeScript 5.x/Node.js 22 (orchestrator/api) + TypeScript 5.x/React 18 (frontend) + `shopspring/decimal` (Go), `decimal.js` (Node.js), `drizzle-orm` + `pg` (API), React Router v6, Tailwind CSS (017-pro-optimizer-workspace)
+- PostgreSQL via Drizzle ORM — two new tables: `sweep_sessions`, `sweep_run_summaries` (017-pro-optimizer-workspace)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -51,9 +53,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 017-pro-optimizer-workspace: Added Go 1.22 (core-engine) + TypeScript 5.x/Node.js 22 (orchestrator/api) + TypeScript 5.x/React 18 (frontend) + `shopspring/decimal` (Go), `decimal.js` (Node.js), `drizzle-orm` + `pg` (API), React Router v6, Tailwind CSS
 - 016-optimizer-workspace: Added Go 1.22 (core engine) · TypeScript 5.x + Node.js 20 (orchestrator API) · TypeScript 5.x + React 18 (frontend) + shopspring/decimal (Go fixed-point) · Express 4 (API) · Vite + Tailwind CSS (frontend) · Headless UI (popovers)
 - 015-wide-events-analytics: Added Go 1.22 (core engine) · TypeScript 5.x / Node.js 20 (orchestrator API) + `shopspring/decimal` (Go), `bufio` stdlib, `encoding/json` stdlib, `@clickhouse/client` (Node.js, already present), `clickhouse-go/v2` (Go, already present)
-- 014-spot-no-liquidation: Added Go 1.22 (core-engine module) + `github.com/shopspring/decimal` (fixed-point arithmetic)
 
 
 <!-- MANUAL ADDITIONS START -->
