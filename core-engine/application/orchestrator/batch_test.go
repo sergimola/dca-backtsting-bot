@@ -1,10 +1,13 @@
 package orchestrator
 
 import (
+	"bytes"
 	"encoding/json"
+	"strings"
 	"testing"
 
 	"dca-bot/core-engine/domain/config"
+	"dca-bot/core-engine/domain/position"
 
 	"github.com/shopspring/decimal"
 )
@@ -315,4 +318,152 @@ func isBatchSummary(data json.RawMessage) bool {
 	}
 	json.Unmarshal(data, &probe)
 	return probe.Type == "batch_summary"
+}
+
+// ─── Test: T016 — ExecuteBatchToWriter streams results before batch_summary ──
+// Verifies non-buffered streaming: first result line written before batch_summary,
+// total lines = N results + 1 batch_summary.
+
+func TestBatchToWriter_StreamsBeforeSummary(t *testing.T) {
+	cfg := minimalConfig(t)
+	const numJobs = 5
+	jobs := make([]BatchJob, numJobs)
+	for i := range jobs {
+		jobs[i] = makeBatchJob(
+			"stream-"+string(rune('a'+i)),
+			"BTCUSDT", "2025-01-01T00:00:00Z", "2025-01-31T00:00:00Z", cfg,
+		)
+	}
+	factory := newMockBatchLoaderFactory(map[string][]Candle{
+		"BTCUSDT|2025-01-01T00:00:00Z|2025-01-31T00:00:00Z": makeBatchCandles("BTCUSDT", 5),
+	})
+
+	var buf bytes.Buffer
+	ExecuteBatchToWriter(jobs, factory.load, 2, &buf)
+
+	lines := splitNDJSON(&buf)
+	// last line must be batch_summary
+	if len(lines) < 2 {
+		t.Fatalf("expected at least 2 lines, got %d", len(lines))
+	}
+	lastLine := lines[len(lines)-1]
+	var lastProbe struct {
+		Type string `json:"type"`
+	}
+	if err := json.Unmarshal([]byte(lastLine), &lastProbe); err != nil || lastProbe.Type != "batch_summary" {
+		t.Errorf("last line should be batch_summary, got: %s", lastLine)
+	}
+
+	// all lines before summary must be results
+	resultLines := lines[:len(lines)-1]
+	if len(resultLines) != numJobs {
+		t.Errorf("expected %d result lines before summary, got %d", numJobs, len(resultLines))
+	}
+	for _, rl := range resultLines {
+		var r runIDProbe
+		if err := json.Unmarshal([]byte(rl), &r); err != nil {
+			t.Errorf("failed to parse result line: %s", rl)
+		}
+		if r.Type != "result" && r.Type != "error" {
+			t.Errorf("expected result/error type, got %q in line: %s", r.Type, rl)
+		}
+	}
+}
+
+// ─── Test: T020 — Win rate tracking ──────────────────────────────────────────
+
+func TestBatch_WinRate_ThreeTPOneLiquidation(t *testing.T) {
+	// Verify win rate = 0.75 for 3 TP closes + 1 liquidation
+	// This test uses buildBatchResultPayload directly via a synthetic event set.
+	cfg := minimalConfig(t)
+	events := []Event{
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("liquidation"),
+	}
+	result := buildBatchResultPayload("wr-test", events, cfg, 10, 5, 4)
+	data, _ := json.Marshal(result)
+	var probe winRateProbe
+	if err := json.Unmarshal(data, &probe); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if probe.WinRate == nil {
+		t.Fatal("winRate is nil, expected 0.75")
+	}
+	const want = 0.75
+	const eps = 0.0001
+	if *probe.WinRate < want-eps || *probe.WinRate > want+eps {
+		t.Errorf("winRate = %v, want %v", *probe.WinRate, want)
+	}
+	if probe.TotalPositionsClosed != 4 {
+		t.Errorf("totalPositionsClosed = %d, want 4", probe.TotalPositionsClosed)
+	}
+}
+
+func TestBatch_WinRate_ZeroCloses_NilNotPanic(t *testing.T) {
+	// Verify win rate is nil (not 0) when zero positions closed — no divide-by-zero
+	cfg := minimalConfig(t)
+	events := []Event{} // no PositionClosed events
+	result := buildBatchResultPayload("wr-nil-test", events, cfg, 10, 5, 0)
+	data, _ := json.Marshal(result)
+	var probe winRateProbe
+	json.Unmarshal(data, &probe)
+	if probe.WinRate != nil {
+		t.Errorf("expected winRate nil for 0 closes, got %v", *probe.WinRate)
+	}
+	if probe.TotalPositionsClosed != 0 {
+		t.Errorf("totalPositionsClosed = %d, want 0", probe.TotalPositionsClosed)
+	}
+}
+
+func TestBatch_WinRate_AllTP_One(t *testing.T) {
+	// Verify win rate = 1.0 when all 5 closes are take_profit
+	cfg := minimalConfig(t)
+	events := []Event{
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("take_profit"),
+		makeClosedEvent("take_profit"),
+	}
+	result := buildBatchResultPayload("wr-full-test", events, cfg, 10, 5, 5)
+	data, _ := json.Marshal(result)
+	var probe winRateProbe
+	json.Unmarshal(data, &probe)
+	if probe.WinRate == nil {
+		t.Fatal("winRate is nil, expected 1.0")
+	}
+	const eps = 0.0001
+	if *probe.WinRate < 1.0-eps || *probe.WinRate > 1.0+eps {
+		t.Errorf("winRate = %v, want 1.0", *probe.WinRate)
+	}
+}
+
+// ─── Helpers for new tests ────────────────────────────────────────────────────
+
+type winRateProbe struct {
+	WinRate              *float64 `json:"winRate"`
+	TotalPositionsClosed int      `json:"totalPositionsClosed"`
+}
+
+func makeClosedEvent(reason string) Event {
+	return Event{
+		Type: EventTypePositionClosed,
+		Data: &position.TradeClosedEvent{
+			Profit: "0",
+			Reason: reason,
+		},
+	}
+}
+
+func splitNDJSON(buf interface{ String() string }) []string {
+	raw := buf.String()
+	var lines []string
+	for _, l := range strings.Split(raw, "\n") {
+		if strings.TrimSpace(l) != "" {
+			lines = append(lines, l)
+		}
+	}
+	return lines
 }

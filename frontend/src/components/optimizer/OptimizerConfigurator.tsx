@@ -47,6 +47,28 @@ export function OptimizerConfigurator({
     onUpdateFormField('endDate', now.toISOString().replace(/\.\d{3}Z$/, 'Z'))
   }
 
+  // T049: Generate "Since [Y]" and "[Y] Only" buttons for the last 5 years.
+  const generateYearButtons = () => {
+    const currentYear = new Date().getFullYear()
+    const buttons: Array<{ label: string; start: string; end: string }> = []
+    for (let y = currentYear - 5; y <= currentYear - 1; y++) {
+      const today = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+      buttons.push({
+        label: `Since ${y}`,
+        start: `${y}-01-01T00:00:00Z`,
+        end: today,
+      })
+      buttons.push({
+        label: `${y} Only`,
+        start: `${y}-01-01T00:00:00Z`,
+        end: `${y}-12-31T23:59:59Z`,
+      })
+    }
+    return buttons
+  }
+
+  const yearButtons = generateYearButtons()
+
   const handleExport = () => {
     const exportData: Record<string, any> = {
       symbol: formState.symbol,
@@ -204,6 +226,22 @@ export function OptimizerConfigurator({
             <button onClick={() => setQuickDate('ytd')} className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400">YTD</button>
             <button onClick={() => setQuickDate('6m')} className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400">Last 6M</button>
             <button onClick={() => setQuickDate('30d')} className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400">Last 30D</button>
+          </div>
+
+          {/* T049: Year-based quick dates — dynamically generated for last 5 years */}
+          <div className="flex gap-1 flex-wrap overflow-x-auto pb-0.5">
+            {yearButtons.map(btn => (
+              <button
+                key={btn.label}
+                onClick={() => {
+                  onUpdateFormField('startDate', btn.start)
+                  onUpdateFormField('endDate', btn.end)
+                }}
+                className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400 whitespace-nowrap shrink-0"
+              >
+                {btn.label}
+              </button>
+            ))}
           </div>
         </div>
 

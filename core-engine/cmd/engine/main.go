@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"math"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync/atomic"
 	"time"
@@ -40,6 +41,7 @@ type EngineRequest struct {
 	ClickhouseUser                string `json:"clickhouse_user"`                 // ClickHouse username
 	ClickhousePassword            string `json:"clickhouse_password"`             // ClickHouse password
 	IdempotencyKey                string `json:"idempotency_key"`                 // Optional UUID
+	EnableWideEvents              *bool  `json:"enable_wide_events,omitempty"`    // Optional: override env-var OR logic
 }
 
 // ProgressPayload is emitted to stdout every --progress-interval-ms milliseconds.
@@ -246,6 +248,14 @@ func main() {
 	if request.ClickhouseDb == "" {
 		fmt.Fprintf(os.Stderr, "Missing required field: clickhouse_db is required\n")
 		os.Exit(1)
+	}
+
+	// FR-026: enable_wide_events OR logic — env var OR config payload flag.
+	// Config-level flag takes precedence over environment defaults (spec §FR-023).
+	envWideEvents := os.Getenv("ENABLE_WIDE_EVENTS") == "true"
+	reqWideEvents := request.EnableWideEvents != nil && *request.EnableWideEvents
+	if (envWideEvents || reqWideEvents) && *wideEventDir == "" {
+		*wideEventDir = filepath.Join(os.TempDir(), "dca-wide-events", request.IdempotencyKey)
 	}
 
 	// Build Config from EngineRequest
@@ -597,12 +607,7 @@ func runBatchBacktest(filePath, logLevel, wideEventDir string) {
 		return loader.LoadAll()
 	}
 
-	// Execute batch with worker pool.
-	results := orchestrator.ExecuteBatch(jobs, loaderFunc, 0) // 0 = use runtime.NumCPU()
-
-	// Write each result line as NDJSON to stdout.
-	enc := json.NewEncoder(os.Stdout)
-	for _, line := range results {
-		enc.Encode(json.RawMessage(line))
-	}
+	// Execute batch with streaming writer — each result is written to stdout
+	// immediately as workers complete (T015 / FR-017 non-blocking streaming).
+	orchestrator.ExecuteBatchToWriter(jobs, loaderFunc, 0, os.Stdout)
 }

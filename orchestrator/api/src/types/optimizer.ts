@@ -94,7 +94,21 @@ export interface PreFlightLadderEntry {
 // ── Pruning Types ──────────────────────────────────────────────────────────
 
 /** Reasons a config can be pruned. */
-export type PruneReason = 'capital_exceeds_balance' | 'base_order_below_minimum';
+export type PruneReason =
+  | 'capital_exceeds_balance'
+  | 'base_order_below_minimum'
+  | 'guaranteed_fee_loss'
+  | 'exceeds_100_percent_drawdown'
+  | 'tick_size_violation';
+
+/** Categorised counts of pruned configs — all 5 keys always present (FR-015). */
+export interface PruneBreakdown {
+  capital_exceeds_balance: number;
+  base_order_below_minimum: number;
+  guaranteed_fee_loss: number;
+  exceeds_100_percent_drawdown: number;
+  tick_size_violation: number;
+}
 
 /** A config that was pruned with an explanation. */
 export interface PrunedConfig {
@@ -110,6 +124,7 @@ export interface PruningResult {
   valid: number;
   validConfigs: GeneratedConfig[];
   prunedConfigs: PrunedConfig[];
+  pruneReasons: PruneBreakdown;
 }
 
 // ── Count Endpoint ─────────────────────────────────────────────────────────
@@ -132,6 +147,7 @@ export interface OptimizerSession {
   sweepDefinition?: SweepDefinition;
   validConfigs: GeneratedConfig[];
   pruningResult?: PruningResult;
+  preFlightMap?: Map<string, PreFlightSummary>;
   results: BatchRunResult[];
   engineProcess?: ChildProcess;
   createdAt: Date;
@@ -139,11 +155,25 @@ export interface OptimizerSession {
   cancelledAt?: Date;
 }
 
+/** A UI-facing projection of SweepSession for the history list (FR-004). */
+export interface SweepHistoryEntry {
+  id: string;
+  tradingPair: string;
+  startDate: string;
+  endDate: string;
+  totalRuns: number;
+  maxRoi: number | null;
+  status: 'completed' | 'cancelled' | 'running';
+  createdAt: string;
+}
+
 /** Result of a single run within a batch (streamed via SSE). */
 export interface BatchRunResult {
   run_id: string;
   type: 'result' | 'error';
   error?: string;
+  winRate?: number | null;
+  totalPositionsClosed?: number;
   pnlSummary?: {
     roi: number;
     maxDrawdown: number;

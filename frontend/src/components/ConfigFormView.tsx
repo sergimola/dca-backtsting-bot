@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { Settings2, Loader2 } from 'lucide-react'
 import type { BacktestFormState } from '../services/types'
 
@@ -23,6 +24,7 @@ const EMPTY_FORM: Record<string, string | boolean> = {
   accountBalance: '',
   monthlyAddition: '',
   exitOnLastOrder: false,
+  enable_wide_events: false,
 }
 
 function isNumericValid(val: string) {
@@ -45,10 +47,79 @@ function toRfc3339(datetimeLocal: string): string {
 }
 
 export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormViewProps) {
-  const [form, setForm] = useState<Record<string, string | boolean>>({ ...EMPTY_FORM })
+  const location = useLocation()
+  const [form, setForm] = useState<Record<string, string | boolean>>(() => {
+    const prefill = (location.state as { prefillConfig?: Partial<BacktestFormState> } | null)?.prefillConfig
+    if (!prefill) return { ...EMPTY_FORM }
+    return {
+      ...EMPTY_FORM,
+      ...Object.fromEntries(
+        Object.entries(prefill).map(([k, v]) => [k, v == null ? EMPTY_FORM[k] ?? '' : v])
+      ),
+    }
+  })
+  const [showImport, setShowImport] = useState(false)
+  const [importText, setImportText] = useState('')
+
+  // T069: re-apply prefillConfig when navigation state changes
+  useEffect(() => {
+    const prefill = (location.state as { prefillConfig?: Partial<BacktestFormState> } | null)?.prefillConfig
+    if (!prefill) return
+    setForm(prev => ({
+      ...prev,
+      ...Object.fromEntries(
+        Object.entries(prefill).map(([k, v]) => [k, v == null ? EMPTY_FORM[k] ?? '' : v])
+      ),
+    }))
+  }, [location.state])
 
   const setField = (key: string, value: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: value }))
+
+  // T052: Export current form state to clipboard as JSON.
+  const handleExport = () => {
+    const exportData: Record<string, string | boolean> = { ...form }
+    navigator.clipboard.writeText(JSON.stringify(exportData, null, 2)).catch(() => { /* ignore */ })
+  }
+
+  // T053: Import — parse JSON, populate matching form fields; use first array element for sweep params.
+  const handleImport = () => {
+    try {
+      const data = JSON.parse(importText) as Record<string, unknown>
+      const fieldMap: Record<string, string> = {
+        trading_pair: 'tradingPair', symbol: 'tradingPair', tradingPair: 'tradingPair',
+        start_date: 'startDate', startDate: 'startDate',
+        end_date: 'endDate', endDate: 'endDate',
+        price_entry: 'priceEntry', priceEntry: 'priceEntry',
+        price_scale: 'priceScale', priceScale: 'priceScale',
+        amount_scale: 'amountScale', amountScale: 'amountScale',
+        number_of_orders: 'numberOfOrders', numberOfOrders: 'numberOfOrders',
+        amount_per_trade: 'amountPerTrade', amountPerTrade: 'amountPerTrade',
+        margin_type: 'marginType', marginType: 'marginType',
+        multiplier: 'multiplier',
+        take_profit_distance_percent: 'takeProfitDistancePercent', takeProfitDistancePercent: 'takeProfitDistancePercent',
+        account_balance: 'accountBalance', accountBalance: 'accountBalance',
+        monthly_addition: 'monthlyAddition', monthlyAddition: 'monthlyAddition',
+        exit_on_last_order: 'exitOnLastOrder', exitOnLastOrder: 'exitOnLastOrder',
+        enable_wide_events: 'enable_wide_events',
+      }
+      const updates: Record<string, string | boolean> = {}
+      for (const [srcKey, formKey] of Object.entries(fieldMap)) {
+        if (data[srcKey] == null) continue
+        let raw = data[srcKey]
+        // Use first element for array values (sweep → single-run compatibility).
+        if (Array.isArray(raw)) raw = raw[0]
+        if (formKey === 'exitOnLastOrder' || formKey === 'enable_wide_events') {
+          updates[formKey] = Boolean(raw)
+        } else {
+          updates[formKey] = String(raw)
+        }
+      }
+      setForm(prev => ({ ...prev, ...updates }))
+      setShowImport(false)
+      setImportText('')
+    } catch { /* ignore parse errors */ }
+  }
 
   const numericFields = ['priceEntry', 'priceScale', 'amountScale', 'numberOfOrders',
     'amountPerTrade', 'multiplier', 'takeProfitDistancePercent', 'accountBalance']
@@ -79,6 +150,7 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
       accountBalance:            form.accountBalance as string,
       monthlyAddition:           form.monthlyAddition as string,
       exitOnLastOrder:           form.exitOnLastOrder as boolean,
+      enable_wide_events:        (form.enable_wide_events as boolean) || false,
     }
     await onSubmit(config)
   }
@@ -96,6 +168,53 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
 
       {/* Right form panel */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-8">
+        {/* T051: Import/Export toolbar */}
+        <div className="flex justify-end gap-1 mb-3">
+          <button
+            type="button"
+            onClick={() => setShowImport(v => !v)}
+            className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400"
+          >
+            Import Config
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400"
+          >
+            Export Config
+          </button>
+        </div>
+
+        {/* T053: Import modal */}
+        {showImport && (
+          <div className="mb-4 p-3 bg-slate-900 border border-slate-700 rounded">
+            <textarea
+              aria-label="Import config JSON"
+              className="w-full bg-slate-800 border border-slate-700 rounded px-2 py-1.5 text-slate-200 text-xs font-mono h-28 focus:border-blue-500 focus:outline-none"
+              placeholder="Paste exported JSON here…"
+              value={importText}
+              onChange={e => setImportText(e.target.value)}
+            />
+            <div className="flex gap-1 mt-1.5 justify-end">
+              <button
+                type="button"
+                onClick={() => { setShowImport(false); setImportText('') }}
+                className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleImport}
+                className="text-[10px] px-2 py-0.5 bg-blue-700 hover:bg-blue-600 rounded text-white"
+              >
+                Apply
+              </button>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} noValidate>
           <div className="grid grid-cols-2 gap-4">
 
@@ -341,6 +460,35 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
                 className="sr-only"
                 checked={form.exitOnLastOrder as boolean}
                 onChange={e => setField('exitOnLastOrder', e.target.checked)}
+                aria-hidden="true"
+                tabIndex={-1}
+              />
+            </div>
+
+            {/* Enable wide events toggle */}
+            <div className="col-span-2 flex items-center gap-3">
+              <span className="text-xs uppercase tracking-widest text-slate-400">Enable Wide Events</span>
+              <button
+                type="button"
+                role="switch"
+                aria-label="Enable Wide Events"
+                aria-checked={form.enable_wide_events as boolean}
+                onClick={() => setField('enable_wide_events', !(form.enable_wide_events as boolean))}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  form.enable_wide_events ? 'bg-blue-500' : 'bg-slate-700'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    form.enable_wide_events ? 'translate-x-4' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+              <input
+                type="checkbox"
+                className="sr-only"
+                checked={form.enable_wide_events as boolean}
+                onChange={e => setField('enable_wide_events', e.target.checked)}
                 aria-hidden="true"
                 tabIndex={-1}
               />

@@ -13,15 +13,17 @@ type BatchJobConfig struct {
 
 // BatchResultPayload is the NDJSON line emitted for each completed batch run.
 type BatchResultPayload struct {
-	RunID            string               `json:"run_id"`
-	Type             string               `json:"type"` // "result" or "error"
-	Error            string               `json:"error,omitempty"`
-	PnlSummary       *PnlSummaryOutput    `json:"pnlSummary,omitempty"`
-	TradeEvents      []TradeEventOutput    `json:"tradeEvents,omitempty"`
-	SafetyOrderUsage []SafetyOrderUsageEntry `json:"safetyOrderUsage,omitempty"`
-	ExecutionTimeMs  int64                 `json:"executionTimeMs,omitempty"`
-	CandleCount      int                   `json:"candleCount,omitempty"`
-	EventCount       int                   `json:"eventCount,omitempty"`
+	RunID                string               `json:"run_id"`
+	Type                 string               `json:"type"` // "result" or "error"
+	Error                string               `json:"error,omitempty"`
+	PnlSummary           *PnlSummaryOutput    `json:"pnlSummary,omitempty"`
+	TradeEvents          []TradeEventOutput    `json:"tradeEvents,omitempty"`
+	SafetyOrderUsage     []SafetyOrderUsageEntry `json:"safetyOrderUsage,omitempty"`
+	ExecutionTimeMs      int64                 `json:"executionTimeMs,omitempty"`
+	CandleCount          int                   `json:"candleCount,omitempty"`
+	EventCount           int                   `json:"eventCount,omitempty"`
+	WinRate              *float64              `json:"winRate,omitempty"`
+	TotalPositionsClosed int                   `json:"totalPositionsClosed,omitempty"`
 }
 
 // BatchSummary is the final line emitted after all batch runs complete.

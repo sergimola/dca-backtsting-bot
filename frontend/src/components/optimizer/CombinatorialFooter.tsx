@@ -1,8 +1,16 @@
 /**
  * CombinatorialFooter — Sticky footer with Generated/Pruned/Valid counts + Launch button.
  */
-import React from 'react'
-import type { SweepCounts } from '../../hooks/useOptimizer'
+import React, { useState } from 'react'
+import type { SweepCounts, PruneBreakdown } from '../../hooks/useOptimizer'
+
+const PRUNE_LABELS: Record<keyof PruneBreakdown, string> = {
+  capital_exceeds_balance: 'Exceeded Account Balance',
+  base_order_below_minimum: 'Base Order Below $10',
+  guaranteed_fee_loss: 'Guaranteed Fee Loss (TP ≤ 0.2%)',
+  exceeds_100_percent_drawdown: 'Exceeds 100% Drawdown',
+  tick_size_violation: 'Tick Size Violation',
+}
 
 interface Props {
   sweepCounts: SweepCounts | null
@@ -12,7 +20,11 @@ interface Props {
 
 export function CombinatorialFooter({ sweepCounts, onLaunch, isLoading }: Props) {
   const valid = sweepCounts?.valid ?? sweepCounts?.count ?? 0
-  const canLaunch = Boolean(sweepCounts && !sweepCounts.overLimit && valid > 0)
+  const canLaunch = Boolean(sweepCounts && valid > 0)
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  const hasPruneReasons = sweepCounts?.pruneReasons != null
+  const pruneReasons = sweepCounts?.pruneReasons
 
   return (
     <div className="sticky bottom-0 px-4 py-3 bg-slate-900/95 border-t border-slate-700 backdrop-blur-sm">
@@ -22,16 +34,34 @@ export function CombinatorialFooter({ sweepCounts, onLaunch, isLoading }: Props)
             Generated: <span className="text-slate-200 font-medium">{sweepCounts.generated ?? sweepCounts.count}</span>
           </span>
           {sweepCounts.pruned != null && (
-            <span className="text-slate-400">
-              Pruned: <span className="text-amber-400 font-medium">{sweepCounts.pruned}</span>
+            <span
+              className="relative text-slate-400 cursor-pointer"
+              onMouseEnter={() => { if (hasPruneReasons) setShowTooltip(true) }}
+              onMouseLeave={() => setShowTooltip(false)}
+            >
+              Pruned:{' '}
+              <span className={`font-medium ${hasPruneReasons ? 'underline decoration-dotted text-amber-400' : 'text-amber-400'}`}>
+                {sweepCounts.pruned}
+              </span>
+              {hasPruneReasons && showTooltip && pruneReasons && (
+                <div className="absolute bottom-full left-0 mb-1 z-50 bg-slate-800 border border-slate-600 rounded p-2 w-64 shadow-lg">
+                  <div className="text-slate-300 font-medium mb-1">Prune Breakdown</div>
+                  {(Object.keys(PRUNE_LABELS) as Array<keyof PruneBreakdown>).map(key => (
+                    <div key={key} className="flex justify-between text-xs text-slate-400 py-0.5">
+                      <span>↳ {PRUNE_LABELS[key]}</span>
+                      <span className={pruneReasons[key] > 0 ? 'text-amber-300' : 'text-slate-500'}>
+                        {pruneReasons[key]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </span>
           )}
           <span className="text-slate-400">
             Valid: <span className="text-emerald-400 font-medium">{valid}</span>
           </span>
-          {sweepCounts.overLimit && (
-            <span className="text-red-400 font-medium">⚠ Over 10,000 limit</span>
-          )}
+
         </div>
       )}
       <button

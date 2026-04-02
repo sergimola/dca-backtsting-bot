@@ -28,12 +28,32 @@ export interface OptimizerFormState {
   parameters: ParameterField[]
 }
 
+export interface PruneBreakdown {
+  capital_exceeds_balance: number
+  base_order_below_minimum: number
+  guaranteed_fee_loss: number
+  exceeds_100_percent_drawdown: number
+  tick_size_violation: number
+}
+
+export interface SweepHistoryEntry {
+  id: string
+  tradingPair: string
+  startDate: string
+  endDate: string
+  totalRuns: number
+  maxRoi: number | null
+  status: 'completed' | 'cancelled' | 'running'
+  createdAt: string
+}
+
 export interface SweepCounts {
   count: number
   overLimit: boolean
   generated?: number
   pruned?: number
   valid?: number
+  pruneReasons?: PruneBreakdown
 }
 
 export interface BatchRunResult {
@@ -100,9 +120,21 @@ export function useOptimizer() {
   const [session, setSession] = useState<OptimizerSession | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [configMap, setConfigMap] = useState<Map<string, Record<string, string | number>>>(new Map())
+  // T059: persistence error flag
+  const [persistenceError, setPersistenceError] = useState(false)
+
+  // T044: Sweep history state.
+  const [sweepHistory, setSweepHistory] = useState<SweepHistoryEntry[]>([])
+  const [historyPage, setHistoryPage] = useState(1)
+  const [hasMoreHistory, setHasMoreHistory] = useState(false)
 
   const abortRef = useRef<AbortController | null>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // T055: throttle result rendering
+  const resultBufferRef = useRef<BatchRunResult[]>([])
+  const flushTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // T057: independent completed count ref (no re-render)
+  const completedCountRef = useRef(0)
 
   const fetchOptimizer = useCallback(async (path: string, init?: RequestInit): Promise<Response> => {
     const candidates = [apiBase, ...DEFAULT_API_BASES.filter(base => base !== apiBase)]
@@ -123,6 +155,34 @@ export function useOptimizer() {
     throw lastError instanceof Error ? lastError : new Error('Optimizer API unreachable')
   }, [apiBase])
 
+  // T056: 250ms flush interval — batch buffer into state only when running
+  useEffect(() => {
+    if (phase !== 'running') {
+      if (flushTimerRef.current != null) {
+        clearInterval(flushTimerRef.current)
+        flushTimerRef.current = null
+      }
+      // Final flush: drain any remaining buffer when sweep ends/cancels.
+      const remaining = resultBufferRef.current.splice(0)
+      if (remaining.length > 0) {
+        setSession(prev => prev ? { ...prev, results: [...prev.results, ...remaining] } : prev)
+      }
+      return
+    }
+    flushTimerRef.current = setInterval(() => {
+      const buffered = resultBufferRef.current.splice(0)
+      if (buffered.length > 0) {
+        setSession(prev => prev ? { ...prev, results: [...prev.results, ...buffered] } : prev)
+      }
+    }, 250)
+    return () => {
+      if (flushTimerRef.current != null) {
+        clearInterval(flushTimerRef.current)
+        flushTimerRef.current = null
+      }
+    }
+  }, [phase])
+
   // ── beforeunload warning when sweep is running ────────────────────────────
   useEffect(() => {
     if (phase !== 'running') return
@@ -130,6 +190,64 @@ export function useOptimizer() {
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [phase])
+
+  // T044: Load sweep history on mount.
+  const loadHistory = useCallback(async (page = 1) => {
+    try {
+      const res = await fetchOptimizer(`/optimizer/sessions?page=${page}&limit=50`)
+      if (!res.ok) return
+      const data = await res.json()
+      const entries: SweepHistoryEntry[] = (data.sessions ?? []).map((s: any) => ({
+        id: s.id,
+        tradingPair: s.tradingPair ?? s.trading_pair,
+        startDate: s.startDate ?? s.start_date,
+        endDate: s.endDate ?? s.end_date,
+        totalRuns: s.totalRuns ?? s.total_runs ?? 0,
+        maxRoi: s.maxRoi ?? s.max_roi ?? null,
+        status: s.status,
+        createdAt: s.createdAt ?? s.created_at,
+      }))
+      if (page === 1) {
+        setSweepHistory(entries)
+      } else {
+        setSweepHistory(prev => [...prev, ...entries])
+      }
+      setHasMoreHistory(Boolean(data.hasMore))
+      setHistoryPage(page)
+    } catch { /* silently ignore */ }
+  }, [fetchOptimizer])
+
+  useEffect(() => { loadHistory(1) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const loadMoreHistory = useCallback(() => loadHistory(historyPage + 1), [loadHistory, historyPage])
+
+  // T045: Select a past sweep — load its run summaries and show Quant Matrix.
+  const selectHistorySweep = useCallback(async (id: string) => {
+    try {
+      const res = await fetchOptimizer(`/optimizer/sessions/${id}/results`)
+      if (!res.ok) return
+      const data = await res.json()
+      const results: BatchRunResult[] = (data.results ?? []).map((r: any) => ({
+        run_id: r.runId ?? r.run_id,
+        type: 'result' as const,
+        pnlSummary: {
+          roi: parseFloat(r.roi ?? '0'),
+          maxDrawdown: parseFloat(r.maxDrawdown ?? r.max_drawdown ?? '0'),
+          totalFees: parseFloat(r.totalFees ?? r.total_fees ?? '0'),
+        },
+        winRate: r.winRate ?? r.win_rate,
+        totalPositionsClosed: r.totalPositionsClosed ?? 0,
+        executionTimeMs: r.executionTimeMs ?? r.execution_time_ms ?? 0,
+      }))
+      const loadedSession: OptimizerSession = {
+        sessionId: id,
+        results,
+        totalRuns: results.length,
+      }
+      setSession(loadedSession)
+      setPhase('complete')
+    } catch { /* silently ignore */ }
+  }, [fetchOptimizer])
 
   // ── Field update + debounced count ────────────────────────────────────────
 
@@ -251,6 +369,7 @@ export function useOptimizer() {
         generated: pruningResult.generated,
         pruned: pruningResult.pruned,
         valid: pruningResult.valid,
+        pruneReasons: pruningResult.pruneReasons,
       })
 
       if (Number(pruningResult.valid ?? 0) <= 0) {
@@ -306,11 +425,15 @@ export function useOptimizer() {
               setPhase('complete')
               break
             }
+            if (event.type === 'persistence_error') {
+              // T059: DB layer dropped — results are in-memory only
+              setPersistenceError(true)
+            }
             if (event.type === 'result' || event.type === 'error') {
-              setSession(prev => prev ? {
-                ...prev,
-                results: [...prev.results, event as unknown as BatchRunResult],
-              } : prev)
+              // T055: push to buffer; flush interval handles setSession
+              resultBufferRef.current.push(event as unknown as BatchRunResult)
+              // T057: increment independent counter
+              completedCountRef.current += 1
             }
           } catch { /* skip malformed lines */ }
         }
@@ -376,5 +499,14 @@ export function useOptimizer() {
     launch,
     cancel,
     resetPhase,
+    // T059: persistence error flag
+    persistenceError,
+    // T044/T045/T046: Sweep history
+    sweepHistory,
+    hasMoreSweeps: hasMoreHistory,
+    onLoadMoreSweeps: loadMoreHistory,
+    selectHistorySweep,
+    // T057: Independent progress counter ref
+    completedCountRef,
   }
 }

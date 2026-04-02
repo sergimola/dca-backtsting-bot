@@ -12,42 +12,20 @@ import { spawn } from 'child_process';
 import { writeFileSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { SweepService, SweepLimitExceededError } from '../services/SweepService.js';
+import { trace, SpanStatusCode } from '@opentelemetry/api';
+import { SweepService } from '../services/SweepService.js';
 import { OptimizerSessionStore } from '../services/OptimizerSessionStore.js';
+import { SweepPersistenceService } from '../services/SweepPersistenceService.js';
 import { randomUUID } from 'crypto';
 import type { SweepDefinition, OptimizerSession, GeneratedConfig } from '../types/optimizer.js';
-import { BacktestJobRepository } from '../services/BacktestJobRepository.js';
-import type {
-  ApiBacktestRequest,
-  StoredPnlSummary,
-  StoredTradeEvent,
-  SafetyOrderUsageEntry,
-} from '../types/index.js';
 
-function toApiBacktestRequest(cfg: GeneratedConfig): ApiBacktestRequest {
-  return {
-    trading_pair: cfg.trading_pair,
-    start_date: cfg.start_date,
-    end_date: cfg.end_date,
-    price_entry: cfg.price_entry,
-    price_scale: cfg.price_scale,
-    amount_scale: cfg.amount_scale,
-    number_of_orders: cfg.number_of_orders,
-    amount_per_trade: cfg.amount_per_trade,
-    margin_type: cfg.margin_type as 'cross' | 'isolated',
-    multiplier: cfg.multiplier,
-    take_profit_distance_percent: cfg.take_profit_distance_percent,
-    account_balance: cfg.account_balance,
-    monthly_addition: cfg.monthly_addition,
-    exit_on_last_order: cfg.exit_on_last_order,
-    idempotency_key: cfg.run_id,
-  };
-}
+// T079: Non-blocking route tracer. Returns no-op spans when no SDK provider is registered.
+const routeTracer = trace.getTracer('dca-bot.optimizer-routes', '1.0.0');
 
 export function createOptimizerRouter(
   sweepService: SweepService,
   sessionStore: OptimizerSessionStore,
-  backtestJobRepository?: BacktestJobRepository,
+  sweepPersistence?: SweepPersistenceService,
 ): Router {
   const router = Router();
 
@@ -57,6 +35,17 @@ export function createOptimizerRouter(
     clickhouse_user: process.env.CLICKHOUSE_USER ?? 'default',
     clickhouse_password: process.env.CLICKHOUSE_PASSWORD ?? '',
   });
+
+  // T063: Active engine processes keyed by sessionId — shared between execute and DELETE routes.
+  const activeProcesses = new Map<string, {
+    child: ReturnType<typeof spawn>;
+    sseRes: Response;
+    cancelledAt: number | null;
+    execStartTime: number;
+    completedCount: number;
+    maxRoi: number | null;
+    totalConfigs: number;
+  }>();
 
   // POST /sweep/count — O(k) combination count check
   router.post('/sweep/count', (req: Request, res: Response) => {
@@ -108,15 +97,8 @@ export function createOptimizerRouter(
         },
       };
 
-      // Step 1: Count check.
+      // Step 1: Count (informational only — no hard limit enforced).
       const countResult = sweepService.calculateCombinationCount(normalizedDefinition.parameters);
-      if (countResult.overLimit) {
-        return res.status(400).json({
-          error: `Combination count ${countResult.count} exceeds limit of 10,000`,
-          count: countResult.count,
-          overLimit: true,
-        });
-      }
 
       // Step 2: Cartesian expansion.
       const configs = sweepService.buildCartesianProduct(normalizedDefinition);
@@ -146,7 +128,7 @@ export function createOptimizerRouter(
         }
       }
 
-      // Step 6: Create session.
+      // Step 6: Create session (store preFlightMap for capital_efficiency computation — T011).
       const sessionId = randomUUID();
       const session: OptimizerSession = {
         sessionId,
@@ -154,6 +136,7 @@ export function createOptimizerRouter(
         sweepDefinition: normalizedDefinition,
         validConfigs: pruningResult.validConfigs,
         pruningResult,
+        preFlightMap,
         results: [],
         createdAt: new Date(),
       };
@@ -166,6 +149,7 @@ export function createOptimizerRouter(
           pruned: pruningResult.pruned,
           valid: pruningResult.valid,
           prunedConfigs: pruningResult.prunedConfigs,
+          pruneReasons: pruningResult.pruneReasons,
         },
         validConfigs: pruningResult.validConfigs,
         preFlightSummary: {
@@ -175,15 +159,56 @@ export function createOptimizerRouter(
         },
       });
     } catch (err: any) {
-      if (err instanceof SweepLimitExceededError) {
-        return res.status(400).json({ error: err.message, count: err.count, overLimit: true });
-      }
       return res.status(500).json({ error: err.message });
     }
   });
 
+  // GET /sessions — Paginated list of sweep sessions sorted by created_at DESC (T042)
+  router.get('/sessions', async (req: Request, res: Response) => {
+    if (!sweepPersistence) {
+      return res.status(503).json({ error: 'Persistence not configured' });
+    }
+    const span = routeTracer.startSpan('optimizer.get_sessions');
+    try {
+      const page = Math.max(1, parseInt(String(req.query['page'] ?? '1'), 10));
+      const limit = Math.min(50, Math.max(1, parseInt(String(req.query['limit'] ?? '50'), 10)));
+      const result = await sweepPersistence.getSessions(page, limit);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return res.json(result);
+    } catch (err: any) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      return res.status(500).json({ error: err.message });
+    } finally {
+      span.end();
+    }
+  });
+
+  // GET /sessions/:id/results — All run summaries for a session (T043)
+  router.get('/sessions/:id/results', async (req: Request, res: Response) => {
+    if (!sweepPersistence) {
+      return res.status(503).json({ error: 'Persistence not configured' });
+    }
+    const span = routeTracer.startSpan('optimizer.get_session_results');
+    try {
+      const sessionId = req.params['id'] as string;
+      const results = await sweepPersistence.getRunSummaries(sessionId);
+      span.setStatus({ code: SpanStatusCode.OK });
+      if (results.length === 0) {
+        // Verify session exists to distinguish 404 vs empty result set.
+        // We still return empty array if session exists but has no results.
+        return res.json({ results, count: 0 });
+      }
+      return res.json({ results, count: results.length });
+    } catch (err: any) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: err.message });
+      return res.status(500).json({ error: err.message });
+    } finally {
+      span.end();
+    }
+  });
+
   // POST /session/:sessionId/execute — SSE stream of batch execution results
-  router.post('/session/:sessionId/execute', (req: Request, res: Response): void => {
+  router.post('/session/:sessionId/execute', async (req: Request, res: Response): Promise<void> => {
     const sessionId = req.params.sessionId as string;
     const session = sessionStore.get(sessionId);
     if (!session) {
@@ -210,6 +235,26 @@ export function createOptimizerRouter(
     res.flushHeaders();
 
     sessionStore.update(sessionId, { phase: 'running' });
+
+    // T028(d): execStartTime initialized BEFORE engine spawn — always defined even if cancelled
+    // before the first result arrives.
+    const execStartTime = Date.now();
+
+    // T028(b): create DB session record before spawning engine.
+    if (sweepPersistence && session.sweepDefinition) {
+      try {
+        await sweepPersistence.createSession(
+          sessionId,
+          session.sweepDefinition,
+          session.sweepDefinition.fixedParams.trading_pair,
+          session.sweepDefinition.fixedParams.start_date,
+          session.sweepDefinition.fixedParams.end_date,
+        );
+      } catch (persistErr: any) {
+        console.error(`[optimizer persist] failed to create session ${sessionId}: ${persistErr?.message}`);
+        res.write(`data: ${JSON.stringify({ type: 'persistence_error', message: persistErr?.message ?? 'createSession failed' })}\n\n`);
+      }
+    }
 
     // Build batch config file for the Go engine
     const batchConfigs = session.validConfigs.map((cfg: GeneratedConfig) => ({
@@ -243,8 +288,21 @@ export function createOptimizerRouter(
     });
     let executionFinished = false;
 
+    // T063: Register procEntry in activeProcesses so DELETE route can kill and write to sseRes.
+    const procEntry = {
+      child,
+      sseRes: res,
+      cancelledAt: null as number | null,
+      execStartTime,
+      completedCount: 0,
+      maxRoi: null as number | null,
+      totalConfigs: session.validConfigs.length,
+    };
+    activeProcesses.set(sessionId, procEntry);
+
     let buffer = '';
 
+    // T028(c): per-result persistence via SweepPersistenceService (replaces backtestJobRepository).
     child.stdout.on('data', (chunk: Buffer) => {
       buffer += chunk.toString();
       const lines = buffer.split('\n');
@@ -256,32 +314,19 @@ export function createOptimizerRouter(
           const event = JSON.parse(line);
           sessionStore.addResult(sessionId, event);
 
-          if (backtestJobRepository && event?.type === 'result' && typeof event?.run_id === 'string') {
-            const cfg = runConfigMap.get(event.run_id);
-            if (cfg) {
-              const summary: StoredPnlSummary = {
-                roi: Number(event?.pnlSummary?.roi ?? 0),
-                maxDrawdown: Number(event?.pnlSummary?.maxDrawdown ?? 0),
-                totalFees: Number(event?.pnlSummary?.totalFees ?? 0),
-              };
-              const tradeEvents = Array.isArray(event?.tradeEvents)
-                ? (event.tradeEvents as StoredTradeEvent[])
-                : [];
-              const safetyOrderUsage = Array.isArray(event?.safetyOrderUsage)
-                ? (event.safetyOrderUsage as SafetyOrderUsageEntry[])
-                : [];
-              const executionTimeMs = Number(event?.executionTimeMs ?? 0);
-              const persistTask = backtestJobRepository
-                .createCompletedFromResult(
-                  toApiBacktestRequest(cfg),
-                  summary,
-                  tradeEvents,
-                  safetyOrderUsage,
-                  executionTimeMs,
-                )
-                .then(() => undefined)
+          if (event?.type === 'result' && typeof event?.run_id === 'string') {
+            procEntry.completedCount++;
+            const roi = event?.pnlSummary?.roi;
+            if (roi != null && (procEntry.maxRoi === null || roi > procEntry.maxRoi)) {
+              procEntry.maxRoi = roi;
+            }
+            if (sweepPersistence) {
+              const cfg = runConfigMap.get(event.run_id);
+              const preFlightCapital = session.preFlightMap?.get(event.run_id)?.total_capital_required ?? null;
+              const persistTask = sweepPersistence
+                .persistRunSummary(sessionId, event, cfg ?? ({} as GeneratedConfig), preFlightCapital)
                 .catch((persistErr: any) => {
-                  console.error(`[optimizer persist] failed to persist run ${event.run_id}: ${persistErr?.message ?? persistErr}`);
+                  res.write(`data: ${JSON.stringify({ type: 'persistence_error', message: persistErr?.message })}\n\n`);
                 });
               persistenceTasks.push(persistTask);
             }
@@ -299,6 +344,7 @@ export function createOptimizerRouter(
 
     child.on('close', async (code) => {
       executionFinished = true;
+      activeProcesses.delete(sessionId);
 
       // Clean up temp file
       try { unlinkSync(tmpFile); } catch { /* ignore */ }
@@ -306,6 +352,25 @@ export function createOptimizerRouter(
       if (persistenceTasks.length > 0) {
         await Promise.allSettled(persistenceTasks);
       }
+
+      // T028(e): finalize in DB — skip if already cancelled by DELETE or client disconnect.
+      if (sweepPersistence && procEntry.cancelledAt === null) {
+        try {
+          const status = (code !== 0 && code !== null) ? 'failed' : 'completed';
+          await sweepPersistence.finalizeSession(
+            sessionId,
+            status,
+            procEntry.maxRoi,
+            procEntry.completedCount,
+            Date.now() - procEntry.execStartTime,
+          );
+        } catch (finalizeErr: any) {
+          console.error(`[optimizer persist] failed to finalize session ${sessionId}: ${finalizeErr?.message}`);
+        }
+      }
+
+      // If cancelled externally (DELETE route already wrote cancelled SSE and ended stream).
+      if (procEntry.cancelledAt !== null) return;
 
       if (code !== 0 && code !== null) {
         // Engine crash resilience (T041)
@@ -323,25 +388,71 @@ export function createOptimizerRouter(
       res.end();
     });
 
-    // Handle client disconnect while stream is still in progress.
-    res.on('close', () => {
+    // T029: Handle client disconnect — guard prevents double-cancel when DELETE fires first.
+    res.on('close', async () => {
       if (executionFinished) return;
-      child.kill('SIGTERM');
+      const proc = activeProcesses.get(sessionId);
+      if (!proc || proc.cancelledAt !== null) return;
+      proc.cancelledAt = Date.now();
+      proc.child.kill('SIGTERM');
       sessionStore.update(sessionId, { phase: 'cancelled' });
       try { unlinkSync(tmpFile); } catch { /* ignore */ }
+      if (sweepPersistence) {
+        try {
+          await sweepPersistence.finalizeSession(
+            sessionId,
+            'cancelled',
+            proc.maxRoi,
+            proc.completedCount,
+            proc.cancelledAt - proc.execStartTime,
+          );
+        } catch (e: any) {
+          console.error(`[optimizer persist] finalizeSession(cancelled) failed: ${e?.message}`);
+        }
+      }
     });
   });
 
   // DELETE /session/:sessionId — Cancel running sweep and delete session
-  router.delete('/session/:sessionId', (req: Request, res: Response) => {
+  // T062/T063: Kills engine process, emits cancelled SSE event, persists partial state.
+  router.delete('/session/:sessionId', async (req: Request, res: Response): Promise<void> => {
     const sessionId = req.params.sessionId as string;
     const session = sessionStore.get(sessionId);
     if (!session) {
-      return res.status(404).json({ error: 'Session not found' });
+      res.status(404).json({ error: 'Session not found' });
+      return;
     }
+
+    const proc = activeProcesses.get(sessionId);
+    if (proc && proc.cancelledAt === null) {
+      proc.cancelledAt = Date.now();
+      proc.child.kill('SIGTERM');
+      // Emit cancelled event to the still-open SSE stream before ending it.
+      if (!proc.sseRes.writableEnded) {
+        proc.sseRes.write(
+          `data: ${JSON.stringify({ type: 'cancelled', completed: proc.completedCount, total: proc.totalConfigs })}\n\n`,
+        );
+        proc.sseRes.end();
+      }
+      if (sweepPersistence) {
+        try {
+          await sweepPersistence.finalizeSession(
+            sessionId,
+            'cancelled',
+            proc.maxRoi,
+            proc.completedCount,
+            proc.cancelledAt - proc.execStartTime,
+          );
+        } catch (e: any) {
+          console.error(`[optimizer persist] DELETE finalizeSession failed: ${e?.message}`);
+        }
+      }
+      activeProcesses.delete(sessionId);
+    }
+
     sessionStore.update(sessionId, { phase: 'cancelled' });
     sessionStore.delete(sessionId);
-    return res.json({ status: 'cancelled' });
+    res.status(204).end();
   });
 
   return router;

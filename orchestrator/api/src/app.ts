@@ -18,6 +18,7 @@ import { createHealthRouter } from './routes/health.routes.js';
 import { createOptimizerRouter } from './routes/optimizer.routes.js';
 import { SweepService } from './services/SweepService.js';
 import { OptimizerSessionStore } from './services/OptimizerSessionStore.js';
+import { SweepPersistenceService } from './services/SweepPersistenceService.js';
 
 /**
  * Create and configure Express app
@@ -60,7 +61,8 @@ export function createApp(services: AppServices): Express {
     './core-engine';
   const sweepService = new SweepService(enginePath);
   const sessionStore = new OptimizerSessionStore();
-  app.use('/optimizer', createOptimizerRouter(sweepService, sessionStore, services.backtestJobRepository));
+  const sweepPersistence = new SweepPersistenceService();
+  app.use('/optimizer', createOptimizerRouter(sweepService, sessionStore, sweepPersistence));
 
   // 5. 404 handler
   app.use((req, res) => {
