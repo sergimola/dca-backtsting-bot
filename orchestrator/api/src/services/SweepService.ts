@@ -15,6 +15,25 @@ import { randomUUID } from 'crypto';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+
+/**
+ * Writes a JSON array to a file item-by-item to avoid hitting V8's ~1 GB string length
+ * limit when JSON.stringify()-ing very large arrays (> ~500k items).
+ * Each item is serialised individually; no single string larger than one item is created.
+ */
+export function writeJsonArrayToFile(filePath: string, items: unknown[]): void {
+  const fd = fs.openSync(filePath, 'w');
+  try {
+    fs.writeSync(fd, '[');
+    for (let i = 0; i < items.length; i++) {
+      if (i > 0) fs.writeSync(fd, ',');
+      fs.writeSync(fd, JSON.stringify(items[i]));
+    }
+    fs.writeSync(fd, ']');
+  } finally {
+    fs.closeSync(fd);
+  }
+}
 import type {
   SweepParameter,
   SweepDefinition,
@@ -109,14 +128,48 @@ export class SweepService {
 
   // ── 4. Batch Pre-Flight ──────────────────────────────────────────────────
 
+  /**
+   * Invokes the Go engine `--batch-preflight` for the given configs.
+   *
+   * Fast-path JS pruning (guaranteed_fee_loss + base_order_below_minimum) is
+   * applied BEFORE sending to Go so that cheap-to-detect bad configs never
+   * consume Go CPU or contribute to the output stream size.
+   *
+   * The Go engine now emits one JSON object per line (NDJSON) so Node parses
+   * results line-by-line as they arrive — memory usage is O(1) per result
+   * regardless of the total number of configs.
+   *
+   * Returns a Map of run_id → PreFlightSummary for ONLY the configs that were
+   * sent to Go (i.e. configs that survived JS-side fast pruning).
+   * Configs eliminated by JS-fast-pruning will simply not appear in the map;
+   * pruneConfigs() already handles the case where pf is undefined.
+   */
   async invokeBatchPreFlight(
-    configs: GeneratedConfig[]
+    configs: GeneratedConfig[],
+    accountBalance: string,
   ): Promise<Map<string, PreFlightSummary>> {
-    // Write configs to a temp file.
+    const balance = new Decimal(accountBalance);
+    const minBaseOrder = new Decimal('10');
+    const feeThreshold = new Decimal('0.2');
+
+    // Fast-path JS prune: eliminate configs that never need Go involvement.
+    const needsGo: GeneratedConfig[] = [];
+    for (const cfg of configs) {
+      // guaranteed_fee_loss — pure comparison, no Go needed
+      if (new Decimal(cfg.take_profit_distance_percent).lte(feeThreshold)) continue;
+      // base_order_below_minimum — arithmetic only, no Go needed
+      if (this.computeBaseOrderAmount(cfg, balance).lt(minBaseOrder)) continue;
+      needsGo.push(cfg);
+    }
+
+    if (needsGo.length === 0) {
+      return new Map();
+    }
+
     const tmpDir = os.tmpdir();
     const tmpFile = path.join(tmpDir, `preflight-${randomUUID()}.json`);
 
-    const batchInput = configs.map((c) => ({
+    writeJsonArrayToFile(tmpFile, needsGo.map((c) => ({
       run_id: c.run_id,
       trading_pair: c.trading_pair,
       start_date: c.start_date,
@@ -141,17 +194,11 @@ export class SweepService {
       clickhouse_user: c.clickhouse_user || '',
       clickhouse_password: c.clickhouse_password || '',
       idempotency_key: c.run_id,
-    }));
-
-    fs.writeFileSync(tmpFile, JSON.stringify(batchInput));
+    })));
 
     try {
-      const output = await this.spawnEngine(['--batch-preflight', tmpFile]);
-      const results: PreFlightSummary[] = JSON.parse(output);
-      const map = new Map<string, PreFlightSummary>();
-      for (const r of results) {
-        map.set(r.run_id, r);
-      }
+      // Stream-parse NDJSON line-by-line — never concatenates the full output.
+      const map = await this.spawnEngineNDJSON(['--batch-preflight', tmpFile]);
       return map;
     } finally {
       try { fs.unlinkSync(tmpFile); } catch { /* ignore */ }
@@ -219,7 +266,7 @@ export class SweepService {
       }
 
       // T031(d): tick_size_violation — any consecutive ladder price gap < 0.1%.
-      if (pf && pf.ladder.length > 1) {
+      if (pf && pf.ladder && pf.ladder.length > 1) {
         let violated = false;
         for (let i = 1; i < pf.ladder.length; i++) {
           const prev = new Decimal(pf.ladder[i - 1].trigger_price);
@@ -330,19 +377,45 @@ export class SweepService {
     return totalVolume.div(normalization);
   }
 
-  private spawnEngine(args: string[]): Promise<string> {
+  /**
+   * Spawns the engine process and parses its stdout as NDJSON (one JSON object
+   * per line). Each parsed object is indexed by its `run_id` field into the
+   * returned Map. Memory usage is O(N) in the number of *results*, not in the
+   * total string length — eliminates the V8 string length crash on large sweeps.
+   */
+  private spawnEngineNDJSON(args: string[]): Promise<Map<string, PreFlightSummary>> {
     return new Promise((resolve, reject) => {
       const proc = spawn(this.binaryPath, args);
-      let stdout = '';
+      const map = new Map<string, PreFlightSummary>();
+      let lineBuffer = '';
       let stderr = '';
 
-      proc.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+      proc.stdout.on('data', (chunk: Buffer) => {
+        lineBuffer += chunk.toString();
+        const lines = lineBuffer.split('\n');
+        lineBuffer = lines.pop() ?? ''; // keep incomplete trailing line
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const result = JSON.parse(trimmed) as PreFlightSummary;
+            if (result.run_id) map.set(result.run_id, result);
+          } catch { /* skip malformed lines */ }
+        }
+      });
       proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
       proc.on('close', (code: number | null) => {
+        // Flush any final partial line
+        if (lineBuffer.trim()) {
+          try {
+            const result = JSON.parse(lineBuffer.trim()) as PreFlightSummary;
+            if (result.run_id) map.set(result.run_id, result);
+          } catch { /* ignore */ }
+        }
         if (code !== 0) {
           reject(new Error(`Engine exited with code ${code}: ${stderr}`));
         } else {
-          resolve(stdout);
+          resolve(map);
         }
       });
       proc.on('error', (err: Error) => reject(err));

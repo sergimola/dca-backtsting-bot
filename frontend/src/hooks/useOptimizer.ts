@@ -5,11 +5,11 @@
  *          combinatorial count debounce, and Pre-Flight summary.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react'
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react'
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
-export type SweepPhase = 'idle' | 'validating' | 'running' | 'complete' | 'cancelled' | 'partial'
+export type SweepPhase = 'idle' | 'validating' | 'loading' | 'running' | 'complete' | 'cancelled' | 'partial'
 
 export interface ParameterField {
   name: string
@@ -64,6 +64,9 @@ export interface BatchRunResult {
   executionTimeMs?: number
   candleCount?: number
   eventCount?: number
+  longest_trade_duration_ms?: number
+  max_safety_orders_used?: number
+  promoted_at?: string | null
 }
 
 export interface SweepSummary {
@@ -81,6 +84,15 @@ export interface OptimizerSession {
 /** BatchRunResult enriched with original config params for heatmap/leaderboard display. */
 export interface EnrichedResult extends BatchRunResult {
   config: Record<string, string | number>
+}
+
+export interface BatchPromotionStatus {
+  session_id: string
+  total: number
+  completed: number
+  failed: number
+  status: 'running' | 'completed' | 'failed' | 'cancelled'
+  errors: Array<{ run_id: string; error: string }>
 }
 
 const ENV_API_BASE = String(import.meta.env.VITE_API_URL || '').trim()
@@ -122,6 +134,14 @@ export function useOptimizer() {
   const [configMap, setConfigMap] = useState<Map<string, Record<string, string | number>>>(new Map())
   // T059: persistence error flag
   const [persistenceError, setPersistenceError] = useState(false)
+
+  // 018: Row selection state for batch promotion
+  const [selectedRunIds, setSelectedRunIds] = useState<Set<string>>(new Set())
+  // Swept params inferred from history load (empty = derive from formState)
+  const [inferredSweptParams, setInferredSweptParams] = useState<string[]>([])
+
+  // 018: Promotion status
+  const [promotionStatus, setPromotionStatus] = useState<BatchPromotionStatus | null>(null)
 
   // T044: Sweep history state.
   const [sweepHistory, setSweepHistory] = useState<SweepHistoryEntry[]>([])
@@ -223,9 +243,10 @@ export function useOptimizer() {
 
   // T045: Select a past sweep — load its run summaries and show Quant Matrix.
   const selectHistorySweep = useCallback(async (id: string) => {
+    setPhase('loading')
     try {
       const res = await fetchOptimizer(`/optimizer/sessions/${id}/results`)
-      if (!res.ok) return
+      if (!res.ok) { setPhase('idle'); return }
       const data = await res.json()
       const results: BatchRunResult[] = (data.results ?? []).map((r: any) => ({
         run_id: r.runId ?? r.run_id,
@@ -238,7 +259,35 @@ export function useOptimizer() {
         winRate: r.winRate ?? r.win_rate,
         totalPositionsClosed: r.totalPositionsClosed ?? 0,
         executionTimeMs: r.executionTimeMs ?? r.execution_time_ms ?? 0,
+        longest_trade_duration_ms: r.longestTradeDurationMs ?? r.longest_trade_duration_ms ?? 0,
+        max_safety_orders_used: r.maxSafetyOrdersUsed ?? r.max_safety_orders_used ?? 0,
+        promoted_at: r.promotedAt ?? r.promoted_at ?? null,
       }))
+
+      // Rebuild configMap from persisted configJson so EnrichedResult has config data
+      const cfgMap = new Map<string, Record<string, string | number>>()
+      for (const r of data.results ?? []) {
+        const runId = r.runId ?? r.run_id
+        if (r.configJson && typeof r.configJson === 'object') {
+          cfgMap.set(runId, r.configJson as Record<string, string | number>)
+        }
+      }
+      setConfigMap(cfgMap)
+
+      // Infer swept params: params whose values vary across configs
+      const SWEEP_CANDIDATES = [
+        'price_entry', 'price_scale', 'amount_scale', 'number_of_orders',
+        'amount_per_trade', 'multiplier', 'take_profit_distance_percent', 'monthly_addition',
+      ]
+      const allConfigs = Array.from(cfgMap.values())
+      const inferred = allConfigs.length >= 2
+        ? SWEEP_CANDIDATES.filter(p => {
+            const vals = new Set(allConfigs.map(c => String(c[p] ?? '')))
+            return vals.size > 1
+          })
+        : []
+      setInferredSweptParams(inferred)
+
       const loadedSession: OptimizerSession = {
         sessionId: id,
         results,
@@ -246,7 +295,7 @@ export function useOptimizer() {
       }
       setSession(loadedSession)
       setPhase('complete')
-    } catch { /* silently ignore */ }
+    } catch { setPhase('idle') }
   }, [fetchOptimizer])
 
   // ── Field update + debounced count ────────────────────────────────────────
@@ -306,6 +355,7 @@ export function useOptimizer() {
   const launch = useCallback(async () => {
     setPhase('validating')
     setError(null)
+    setInferredSweptParams([])
 
     try {
       const params = formState.parameters.map(p => ({
@@ -472,18 +522,134 @@ export function useOptimizer() {
     setSweepSummary(null)
     setConfigMap(new Map())
     setError(null)
+    setInferredSweptParams([])
   }, [])
 
   // ── Derived values ────────────────────────────────────────────────────────
 
-  const enrichedResults: EnrichedResult[] = (session?.results ?? []).map(r => ({
-    ...r,
-    config: configMap.get(r.run_id) ?? {},
-  }))
+  const enrichedResults: EnrichedResult[] = useMemo(
+    () => (session?.results ?? []).map(r => ({
+      ...r,
+      config: configMap.get(r.run_id) ?? {},
+    })),
+    // session.results is a new array ref on every flush, configMap only changes at sweep start/history load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [session?.results, configMap],
+  )
 
-  const sweptParams = formState.parameters
-    .filter(p => p.mode === 'sweep')
-    .map(p => p.name)
+  const sweptParams = inferredSweptParams.length > 0
+    ? inferredSweptParams
+    : formState.parameters
+        .filter(p => p.mode === 'sweep')
+        .map(p => p.name)
+
+  // 018: Selection helpers
+  const toggleRunSelection = useCallback((runId: string) => {
+    setSelectedRunIds(prev => {
+      const next = new Set(prev)
+      if (next.has(runId)) next.delete(runId)
+      else next.add(runId)
+      return next
+    })
+  }, [])
+
+  const selectAllRuns = useCallback((runIds: string[]) => {
+    setSelectedRunIds(new Set(runIds))
+  }, [])
+
+  const clearSelection = useCallback(() => {
+    setSelectedRunIds(new Set())
+  }, [])
+
+  // 018: Promotion
+  const promotionEventSourceRef = useRef<EventSource | null>(null)
+
+  const startPromotion = useCallback(async (sessionId: string, runIds: string[]) => {
+    clearSelection()
+    setPromotionStatus({
+      session_id: sessionId,
+      total: runIds.length,
+      completed: 0,
+      failed: 0,
+      status: 'running',
+      errors: [],
+    })
+
+    try {
+      const resp = await fetchOptimizer(`/optimizer/session/${sessionId}/promote`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ run_ids: runIds }),
+      })
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }))
+        setPromotionStatus(prev => prev ? { ...prev, status: 'failed', errors: [{ run_id: '', error: err.error || resp.statusText }] } : null)
+        return
+      }
+
+      const reader = resp.body?.getReader()
+      if (!reader) return
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const event = JSON.parse(line.slice(6))
+            if (event.type === 'promotion_progress') {
+              setPromotionStatus(prev => prev ? { ...prev, completed: event.completed, total: event.total } : null)
+            } else if (event.type === 'promotion_error') {
+              setPromotionStatus(prev => prev ? { ...prev, failed: prev.failed + 1, errors: [...prev.errors, { run_id: event.run_id, error: event.error }] } : null)
+            } else if (event.type === 'promotion_complete') {
+              setPromotionStatus(prev => prev ? { ...prev, status: 'completed', completed: event.completed, failed: event.failed } : null)
+            } else if (event.type === 'promotion_cancelled') {
+              setPromotionStatus(prev => prev ? { ...prev, status: 'cancelled' } : null)
+            }
+          } catch { /* skip malformed lines */ }
+        }
+      }
+    } catch (err) {
+      setPromotionStatus(prev => prev ? { ...prev, status: 'failed', errors: [{ run_id: '', error: String(err) }] } : null)
+    }
+
+    // Re-fetch summaries to update promoted_at badges
+    if (session?.sessionId) {
+      try {
+        const resp = await fetchOptimizer(`/optimizer/sessions/${session.sessionId}/results`)
+        if (resp.ok) {
+          const data = await resp.json()
+          const results: BatchRunResult[] = (data.results ?? []).map((r: any) => ({
+            run_id: r.runId ?? r.run_id,
+            type: 'result' as const,
+            pnlSummary: r.roi != null ? {
+              roi: Number(r.roi),
+              maxDrawdown: Number(r.maxDrawdown),
+              totalFees: Number(r.totalFees),
+            } : undefined,
+            executionTimeMs: r.executionTimeMs,
+            longest_trade_duration_ms: r.longestTradeDurationMs ?? 0,
+            max_safety_orders_used: r.maxSafetyOrdersUsed ?? 0,
+            promoted_at: r.promotedAt ?? null,
+          }))
+          setSession(prev => prev ? { ...prev, results } : null)
+        }
+      } catch { /* best effort */ }
+    }
+  }, [fetchOptimizer, session?.sessionId, clearSelection])
+
+  const cancelPromotion = useCallback(async (sessionId: string) => {
+    try {
+      await fetchOptimizer(`/optimizer/session/${sessionId}/promote`, { method: 'DELETE' })
+    } catch { /* best effort */ }
+  }, [fetchOptimizer])
 
   return {
     formState,
@@ -508,5 +674,13 @@ export function useOptimizer() {
     selectHistorySweep,
     // T057: Independent progress counter ref
     completedCountRef,
+    // 018: Selection & promotion
+    selectedRunIds,
+    toggleRunSelection,
+    selectAllRuns,
+    clearSelection,
+    promotionStatus,
+    startPromotion,
+    cancelPromotion,
   }
 }

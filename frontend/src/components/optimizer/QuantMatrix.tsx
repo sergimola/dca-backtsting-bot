@@ -5,7 +5,8 @@
 import React from 'react'
 import { HeatmapGrid } from './HeatmapGrid'
 import { LeaderboardGrid } from './LeaderboardGrid'
-import type { EnrichedResult, BatchRunResult, SweepPhase } from '../../hooks/useOptimizer'
+import { BatchPromotionPanel } from './BatchPromotionPanel'
+import type { EnrichedResult, BatchRunResult, SweepPhase, BatchPromotionStatus } from '../../hooks/useOptimizer'
 
 interface Props {
   results: EnrichedResult[]
@@ -14,11 +15,29 @@ interface Props {
   totalRuns?: number
   onNewSweep: () => void
   onOpenInSingleRun?: (result: BatchRunResult) => void
+  // 018: Selection & promotion
+  selectedRunIds?: Set<string>
+  onToggleRunSelection?: (runId: string) => void
+  onSelectAll?: (runIds: string[]) => void
+  onClearSelection?: () => void
+  onBatchPromote?: () => void
+  promotionStatus?: BatchPromotionStatus | null
+  onCancelPromotion?: (sessionId: string) => void
+  onDismissPromotion?: () => void
 }
 
-export function QuantMatrix({ results, sweptParams, phase, totalRuns, onNewSweep, onOpenInSingleRun }: Props) {
+export function QuantMatrix({ results, sweptParams, phase, totalRuns, onNewSweep, onOpenInSingleRun, selectedRunIds, onToggleRunSelection, onSelectAll, onClearSelection, onBatchPromote, promotionStatus, onCancelPromotion, onDismissPromotion }: Props) {
   return (
     <div className="flex flex-col h-full">
+      {/* Promotion panel */}
+      {promotionStatus && onCancelPromotion && onDismissPromotion && (
+        <BatchPromotionPanel
+          status={promotionStatus}
+          onCancel={onCancelPromotion}
+          onDismiss={onDismissPromotion}
+        />
+      )}
+
       {/* Banner */}
       {phase === 'cancelled' && (
         <div role="status" className="mx-4 mt-3 px-3 py-2 bg-amber-500/10 border border-amber-500/30 rounded text-xs text-amber-400">
@@ -54,6 +73,11 @@ export function QuantMatrix({ results, sweptParams, phase, totalRuns, onNewSweep
           <LeaderboardGrid
             results={results}
             onOpenInSingleRun={onOpenInSingleRun}
+            selectedRunIds={selectedRunIds}
+            onToggleRunSelection={onToggleRunSelection}
+            onSelectAll={onSelectAll}
+            onClearSelection={onClearSelection}
+            onBatchPromote={onBatchPromote}
           />
         </div>
       </div>

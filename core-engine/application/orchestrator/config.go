@@ -41,4 +41,9 @@ type OrchestratorConfig struct {
 	// WideEventOutputDir is the directory where the enricher writes per-run .jsonl files.
 	// If empty, wide-event output is disabled and no enricher is created.
 	WideEventOutputDir string
+
+	// WideEventCallback is an optional hook called for each wide event.
+	// When set, wide events are passed to this callback instead of (or in addition to) the file enricher.
+	// Used by batch promotion mode to stream wide events to stdout as NDJSON.
+	WideEventCallback func(we WideEvent)
 }

@@ -27,9 +27,11 @@ type GroupKey struct {
 
 // BatchJob represents a single backtest run within a batch.
 type BatchJob struct {
-	RunID  string
-	Config *config.Config
-	Key    GroupKey
+	RunID              string
+	Config             *config.Config
+	Key                GroupKey
+	WideEventsToStdout bool                               // Emit wide events as NDJSON to the shared writer
+	WideEventWriter    func(we WideEvent)                 // Mutex-protected writer for wide events (set by executor)
 }
 
 // BatchResult is the output of a single batch run.
@@ -256,6 +258,24 @@ func ExecuteBatchToWriter(jobs []BatchJob, loaderFunc CandleLoaderFunc, workerCo
 			defer wg.Done()
 			for idx := range jobCh {
 				job := jobs[idx]
+
+				// Set up wide event writer if stdout streaming is requested.
+				if job.WideEventsToStdout {
+					job.WideEventWriter = func(we WideEvent) {
+						// Wrap wide event with type discriminator for NDJSON parsing.
+						payload := struct {
+							Type string `json:"type"`
+							WideEvent
+						}{
+							Type:      "wide_event",
+							WideEvent: we,
+						}
+						mu.Lock()
+						_ = enc.Encode(payload)
+						mu.Unlock()
+					}
+				}
+
 				candles := groups[job.Key]
 				var result batchJobResult
 				if candles == nil {
@@ -313,6 +333,9 @@ func runSingleBatchJob(job BatchJob, candles []Candle) batchJobResult {
 		BacktestID:           job.RunID,
 		DomainConfig:         cfg,
 	}
+	if job.WideEventsToStdout && job.WideEventWriter != nil {
+		orchCfg.WideEventCallback = job.WideEventWriter
+	}
 	orch, err := NewOrchestrator(psm, orchCfg)
 	if err != nil {
 		return makeErrorResult(job.RunID, fmt.Sprintf("orchestrator init: %v", err))
@@ -358,18 +381,38 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 		totalCloses    int
 	)
 
+	// KPI tracking: per-trade state for duration and safety order depth.
+	type tradeState struct {
+		openMs   int64
+		maxSO    int
+	}
+	openTrades := make(map[string]*tradeState)
+	var kpi position.KpiTracker
+	var lastEventTs time.Time
+
 	startBalance := cfg.AccountBalance()
 
 	for _, ev := range events {
+		if ev.Timestamp.After(lastEventTs) {
+			lastEventTs = ev.Timestamp
+		}
 		switch ev.Type {
 		case EventTypePositionOpened:
 			if toe, ok := ev.Data.(*position.TradeOpenedEvent); ok {
 				entryFees = entryFees.Add(decStr(toe.EntryFee))
+				openTrades[toe.TradeID] = &tradeState{
+					openMs: toe.Timestamp.UnixMilli(),
+				}
 			}
 
 		case EventTypeBuyOrderExecuted:
 			if boe, ok := ev.Data.(*position.BuyOrderExecutedEvent); ok {
 				tradingFees = tradingFees.Add(decStr(boe.Fee))
+				if ts, ok := openTrades[boe.TradeID]; ok {
+					if boe.OrderNumber > ts.maxSO {
+						ts.maxSO = boe.OrderNumber
+					}
+				}
 			}
 
 		case EventType("SellOrderExecuted"):
@@ -395,6 +438,17 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 						maxDrawdown = drawdown
 					}
 				}
+
+				// KPI: record position close metrics.
+				soFilled := 0
+				if ts, ok := openTrades[tce.TradeID]; ok {
+					soFilled = ts.maxSO
+					kpi.OnPositionClose(ts.openMs, tce.Timestamp.UnixMilli(), soFilled)
+					delete(openTrades, tce.TradeID)
+				} else {
+					// Fallback: use TradeClosedEvent's own timestamps.
+					kpi.OnPositionClose(tce.OpenTimestamp.UnixMilli(), tce.Timestamp.UnixMilli(), 0)
+				}
 			}
 
 		case EventType("monthly.addition"):
@@ -402,6 +456,12 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 				totalAdditions = totalAdditions.Add(decStr(mae.AdditionAmount))
 			}
 		}
+	}
+
+	// KPI: account for any positions still open at backtest end.
+	lastCandleMs := lastEventTs.UnixMilli()
+	for _, ts := range openTrades {
+		kpi.OnBacktestEnd(ts.openMs, lastCandleMs, ts.maxSO)
 	}
 
 	totalFees := entryFees.Add(tradingFees)
@@ -427,11 +487,13 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 			MaxDrawdown float64 `json:"maxDrawdown"`
 			TotalFees   float64 `json:"totalFees"`
 		} `json:"pnlSummary"`
-		ExecMs               int64    `json:"executionTimeMs"`
-		CandleCount          int      `json:"candleCount"`
-		EventCount           int      `json:"eventCount"`
-		WinRate              *float64 `json:"winRate,omitempty"`
-		TotalPositionsClosed int      `json:"totalPositionsClosed,omitempty"`
+		ExecMs                 int64    `json:"executionTimeMs"`
+		CandleCount            int      `json:"candleCount"`
+		EventCount             int      `json:"eventCount"`
+		WinRate                *float64 `json:"winRate,omitempty"`
+		TotalPositionsClosed   int      `json:"totalPositionsClosed,omitempty"`
+		LongestTradeDurationMs int64    `json:"longest_trade_duration_ms"`
+		MaxSafetyOrdersUsed    int      `json:"max_safety_orders_used"`
 	}{
 		RunID: runID,
 		Type:  "result",
@@ -444,11 +506,13 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 			MaxDrawdown: maxDrawdown.InexactFloat64(),
 			TotalFees:   totalFees.InexactFloat64(),
 		},
-		ExecMs:               execMs,
-		CandleCount:          candleCount,
-		EventCount:           eventCount,
-		WinRate:              winRatePtr,
-		TotalPositionsClosed: totalCloses,
+		ExecMs:                 execMs,
+		CandleCount:            candleCount,
+		EventCount:             eventCount,
+		WinRate:                winRatePtr,
+		TotalPositionsClosed:   totalCloses,
+		LongestTradeDurationMs: kpi.LongestTradeDurationMs,
+		MaxSafetyOrdersUsed:    kpi.MaxSafetyOrdersUsed,
 	}
 }
 

@@ -30,6 +30,14 @@ export function OptimizerPage() {
     resetPhase,
     selectHistorySweep,
     persistenceError,
+    // 018: Selection & promotion
+    selectedRunIds,
+    toggleRunSelection,
+    selectAllRuns,
+    clearSelection,
+    promotionStatus,
+    startPromotion,
+    cancelPromotion,
   } = useOptimizer()
 
   // T045: Load history session when ?session=<id> query param is present.
@@ -47,6 +55,14 @@ export function OptimizerPage() {
 
   const renderRightPanel = () => {
     switch (phase) {
+      case 'loading':
+        return (
+          <div className="flex flex-col h-full items-center justify-center gap-3 text-slate-400">
+            <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+            <span className="text-xs">Loading session…</span>
+          </div>
+        )
+
       case 'running':
         return session ? (
           <ExecutionDashboard session={session} onCancel={cancel} />
@@ -62,6 +78,14 @@ export function OptimizerPage() {
             totalRuns={session?.totalRuns}
             onNewSweep={resetPhase}
             onOpenInSingleRun={handleOpenInSingleRun}
+            selectedRunIds={selectedRunIds}
+            onToggleRunSelection={toggleRunSelection}
+            onSelectAll={selectAllRuns}
+            onClearSelection={clearSelection}
+            onBatchPromote={session ? () => startPromotion(session.sessionId, [...selectedRunIds]) : undefined}
+            promotionStatus={promotionStatus}
+            onCancelPromotion={cancelPromotion}
+            onDismissPromotion={() => {}}
           />
         )
 

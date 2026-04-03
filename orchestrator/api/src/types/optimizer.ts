@@ -196,6 +196,8 @@ export interface BatchRunResult {
   executionTimeMs?: number;
   candleCount?: number;
   eventCount?: number;
+  longest_trade_duration_ms?: number;
+  max_safety_orders_used?: number;
 }
 
 /** Full response from POST /optimizer/sweep. */
