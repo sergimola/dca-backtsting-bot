@@ -1,0 +1,209 @@
+{
+  "annotations": { "list": [] },
+  "description": "Compare promoted sweep runs side-by-side via ClickHouse wide event data. Select session and run configs to visualise equity curves, drawdowns, event distributions and safety order depth.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 2,
+  "id": null,
+  "links": [],
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Equity Curve",
+      "description": "Running account balance over time for selected runs",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 5,
+            "spanNulls": true,
+            "axisCenteredZero": false,
+            "showPoints": "never"
+          },
+          "unit": "currencyUSD",
+          "decimals": 2
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "desc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["min", "max", "last"] }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "queryType": "sql",
+          "rawSql": "SELECT\n  toDateTime(timestamp) AS time,\n  run_id,\n  running_account_balance\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\nORDER BY time ASC",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "Drawdown Timeline",
+      "description": "Current drawdown percentage over time for selected runs",
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 10 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "spanNulls": true,
+            "axisCenteredZero": false,
+            "showPoints": "never",
+            "gradientMode": "opacity"
+          },
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": -10 },
+              { "color": "red", "value": -25 }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "tooltip": { "mode": "multi", "sort": "asc" },
+        "legend": { "displayMode": "table", "placement": "right", "calcs": ["min", "last"] }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "queryType": "sql",
+          "rawSql": "SELECT\n  toDateTime(timestamp) AS time,\n  run_id,\n  current_drawdown_pct\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\nORDER BY time ASC",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "barchart",
+      "title": "Event Distribution",
+      "description": "Count of events grouped by event type and run",
+      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 10 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "fillOpacity": 80,
+            "gradientMode": "none",
+            "axisCenteredZero": false
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0,
+        "showValue": "auto",
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "stacking": "normal",
+        "legend": { "displayMode": "list", "placement": "right" },
+        "tooltip": { "mode": "multi" }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "queryType": "sql",
+          "rawSql": "SELECT\n  event_type,\n  run_id,\n  count(*) AS event_count\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\nGROUP BY event_type, run_id\nORDER BY event_count DESC",
+          "refId": "A",
+          "format": 2
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "heatmap",
+      "title": "Safety Order Depth Heatmap",
+      "description": "Distribution of filled safety orders count per run over time",
+      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 10 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "fieldConfig": {
+        "defaults": {}
+      },
+      "options": {
+        "calculate": true,
+        "calculation": { "xBuckets": { "mode": "size" }, "yBuckets": { "mode": "size", "value": "1" } },
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "fill": "dark-side",
+          "exponent": 0.5
+        },
+        "cellGap": 1,
+        "yAxis": { "axisLabel": "Filled Orders", "decimals": 0 },
+        "tooltip": { "show": true }
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "queryType": "sql",
+          "rawSql": "SELECT\n  toDateTime(timestamp) AS time,\n  filled_orders_count\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\n  AND filled_orders_count > 0\nORDER BY time ASC",
+          "refId": "A",
+          "format": 1
+        }
+      ]
+    }
+  ],
+  "schemaVersion": 39,
+  "tags": ["dca", "sweep", "promoted"],
+  "templating": {
+    "list": [
+      {
+        "current": {},
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+        "definition": "SELECT DISTINCT session_id FROM data.sweep_wide_events ORDER BY session_id",
+        "hide": 0,
+        "includeAll": false,
+        "label": "Session",
+        "multi": false,
+        "name": "session",
+        "options": [],
+        "query": "SELECT DISTINCT session_id FROM data.sweep_wide_events ORDER BY session_id",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      },
+      {
+        "current": {},
+        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+        "definition": "SELECT DISTINCT run_id FROM data.sweep_wide_events WHERE session_id = '${session}' ORDER BY run_id",
+        "hide": 0,
+        "includeAll": true,
+        "label": "Run Config",
+        "multi": true,
+        "name": "run_config",
+        "options": [],
+        "query": "SELECT DISTINCT run_id FROM data.sweep_wide_events WHERE session_id = '${session}' ORDER BY run_id",
+        "refresh": 2,
+        "regex": "",
+        "skipUrlSync": false,
+        "sort": 0,
+        "type": "query"
+      }
+    ]
+  },
+  "time": { "from": "now-30d", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "04 - Sweep Promoted Comparison",
+  "uid": "04-sweep-promoted-comparison",
+  "version": 1
+}

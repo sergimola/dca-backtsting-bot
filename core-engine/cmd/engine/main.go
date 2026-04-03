@@ -42,6 +42,7 @@ type EngineRequest struct {
 	ClickhousePassword            string `json:"clickhouse_password"`             // ClickHouse password
 	IdempotencyKey                string `json:"idempotency_key"`                 // Optional UUID
 	EnableWideEvents              *bool  `json:"enable_wide_events,omitempty"`    // Optional: override env-var OR logic
+	WideEventsToStdout            *bool  `json:"wide_events_to_stdout,omitempty"` // Emit wide events as NDJSON to stdout (batch promotion mode)
 }
 
 // ProgressPayload is emitted to stdout every --progress-interval-ms milliseconds.
@@ -511,8 +512,10 @@ func runSinglePreflight() {
 }
 
 // runBatchPreflight reads a JSON array of EngineRequest objects from a file,
-// computes the DCA Pre-Flight ladder for each, and emits a JSON array of
-// results to stdout.  No ClickHouse connection is opened.
+// computes the DCA Pre-Flight ladder for each, and emits one JSON object per
+// line (NDJSON) to stdout.  No ClickHouse connection is opened.
+// Streaming NDJSON means the caller never has to buffer the full output in
+// memory — it can parse results line-by-line as they arrive.
 func runBatchPreflight(filePath string) {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
@@ -526,7 +529,7 @@ func runBatchPreflight(filePath string) {
 		os.Exit(1)
 	}
 
-	results := make([]*config.PreFlightResult, 0, len(requests))
+	enc := json.NewEncoder(os.Stdout)
 	for i, req := range requests {
 		cfg, err := buildConfigFromRequest(&req)
 		if err != nil {
@@ -543,12 +546,11 @@ func runBatchPreflight(filePath string) {
 		if req.IdempotencyKey != "" {
 			result.RunID = req.IdempotencyKey
 		}
-		results = append(results, result)
-	}
 
-	if err := json.NewEncoder(os.Stdout).Encode(results); err != nil {
-		fmt.Fprintf(os.Stderr, "Failed to write batch Pre-Flight results: %v\n", err)
-		os.Exit(1)
+		if err := enc.Encode(result); err != nil {
+			fmt.Fprintf(os.Stderr, "Failed to write Pre-Flight result[%d]: %v\n", i, err)
+			os.Exit(1)
+		}
 	}
 }
 
@@ -579,14 +581,16 @@ func runBatchBacktest(filePath, logLevel, wideEventDir string) {
 			os.Exit(1)
 		}
 		symbol := strings.ReplaceAll(bc.TradingPair, "/", "")
+		wideToStdout := bc.WideEventsToStdout != nil && *bc.WideEventsToStdout
 		jobs = append(jobs, orchestrator.BatchJob{
-			RunID:  bc.RunID,
-			Config: cfg,
+			RunID:              bc.RunID,
+			Config:             cfg,
 			Key: orchestrator.GroupKey{
 				Symbol:    symbol,
 				StartDate: bc.StartDate,
 				EndDate:   bc.EndDate,
 			},
+			WideEventsToStdout: wideToStdout,
 		})
 	}
 

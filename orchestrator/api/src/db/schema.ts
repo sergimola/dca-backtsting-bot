@@ -84,9 +84,13 @@ export const sweepRunSummaries = pgTable('sweep_run_summaries', {
   winRate:         numeric('win_rate', { precision: 6, scale: 4 }),
   capitalEfficiency: numeric('capital_efficiency', { precision: 10, scale: 4 }),
   executionTimeMs: bigint('execution_time_ms', { mode: 'number' }),
+  longestTradeDurationMs: bigint('longest_trade_duration_ms', { mode: 'number' }).notNull().default(0),
+  maxSafetyOrdersUsed:    integer('max_safety_orders_used').notNull().default(0),
+  promotedAt:             timestamp('promoted_at', { withTimezone: true }),
   createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [
   index('sweep_run_summaries_session_id_idx').on(t.sessionId),
+  index('idx_sweep_run_summaries_session_promoted').on(t.sessionId, t.promotedAt),
 ]);
 
 export type SweepRunSummaryRow = typeof sweepRunSummaries.$inferSelect;

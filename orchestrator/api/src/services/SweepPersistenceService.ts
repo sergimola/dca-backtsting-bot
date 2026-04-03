@@ -35,6 +35,9 @@ export interface RunSummaryRow {
   winRate: string | null;
   capitalEfficiency: string | null;
   executionTimeMs: number | null;
+  longestTradeDurationMs: number | null;
+  maxSafetyOrdersUsed: number | null;
+  promotedAt: Date | null;
   createdAt: Date;
 }
 
@@ -118,6 +121,9 @@ export class SweepPersistenceService {
         winRate: winRate != null ? String(new Decimal(winRate).toDecimalPlaces(4)) : null,
         capitalEfficiency: capitalEfficiency != null ? String(capitalEfficiency) : null,
         executionTimeMs: runResult.executionTimeMs ?? null,
+        longestTradeDurationMs: runResult.longest_trade_duration_ms ?? 0,
+        maxSafetyOrdersUsed: runResult.max_safety_orders_used ?? 0,
+        promotedAt: null,
       });
       span.setStatus({ code: SpanStatusCode.OK });
     } catch (err) {
@@ -209,6 +215,9 @@ export class SweepPersistenceService {
       winRate: r.winRate,
       capitalEfficiency: r.capitalEfficiency,
       executionTimeMs: r.executionTimeMs,
+      longestTradeDurationMs: r.longestTradeDurationMs,
+      maxSafetyOrdersUsed: r.maxSafetyOrdersUsed,
+      promotedAt: r.promotedAt,
       createdAt: r.createdAt,
     }));
   }
@@ -216,5 +225,12 @@ export class SweepPersistenceService {
   // T026: Delete session (cascades to sweep_run_summaries via FK ON DELETE CASCADE).
   async deleteSession(sessionId: string): Promise<void> {
     await db.delete(sweepSessions).where(eq(sweepSessions.id, sessionId));
+  }
+
+  // 018: Mark a run as promoted (set promoted_at to now).
+  async setPromotedAt(runId: string): Promise<void> {
+    await db.update(sweepRunSummaries)
+      .set({ promotedAt: new Date() })
+      .where(eq(sweepRunSummaries.runId, runId));
   }
 }

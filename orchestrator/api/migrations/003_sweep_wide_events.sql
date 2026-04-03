@@ -1,0 +1,32 @@
+CREATE TABLE IF NOT EXISTS data.sweep_wide_events (
+    session_id              UUID,
+    run_id                  UUID,
+    schema_version          UInt8,
+    trade_id                String,
+    timestamp               DateTime64(3, 'UTC'),
+    event_type              LowCardinality(String),
+    symbol                  LowCardinality(String),
+    candle_open             Decimal64(8),
+    candle_high             Decimal64(8),
+    candle_low              Decimal64(8),
+    candle_close            Decimal64(8),
+    candle_volume           Decimal64(8),
+    running_account_balance Decimal64(8),
+    global_candle_count     UInt64,
+    position_state          LowCardinality(String),
+    average_entry_price     Decimal64(8),
+    position_quantity       Decimal64(8),
+    total_capital_deployed  Decimal64(8),
+    fees_accumulated        Decimal64(8),
+    take_profit_price       Decimal64(8),
+    liquidation_price       Decimal64(8),
+    filled_orders_count     UInt32,
+    unrealized_pnl          Decimal64(8),
+    current_drawdown_pct    Decimal64(8),
+    action_price            Decimal64(8),
+    action_quantity         Decimal64(8),
+    action_fee              Decimal64(8),
+    order_number            UInt32
+) ENGINE = MergeTree()
+PARTITION BY session_id
+ORDER BY (session_id, run_id, timestamp);

@@ -63,3 +63,16 @@ export function getEventPillClass(eventType: string): string {
     default:             return 'text-slate-400 bg-slate-800/40'
   }
 }
+
+/**
+ * Format milliseconds as a human-readable duration string.
+ * @param ms - Duration in milliseconds
+ * @returns Formatted string like "2d 2h 0m", "1h 0m", "0m"
+ */
+export function msDuration(ms: number): string {
+  const days  = Math.floor(ms / 86_400_000)
+  const hours = Math.floor((ms % 86_400_000) / 3_600_000)
+  const mins  = Math.floor((ms % 3_600_000) / 60_000)
+  const parts = [days && `${days}d`, hours && `${hours}h`, `${mins}m`].filter(Boolean)
+  return parts.join(' ') || '0m'
+}

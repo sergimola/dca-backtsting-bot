@@ -306,7 +306,7 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 					}
 
 					// T025: Emit fill wide events for actionable PSM events
-					if orch.enricher != nil {
+					if orch.enricher != nil || orch.config.WideEventCallback != nil {
 						orch.emitFillWideEvent(candle, backtest, psmEvent)
 					}
 				}
@@ -345,7 +345,7 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 		}
 
 		// T020: Emit price_changed wide event once per candle (after PSM processing)
-		if orch.enricher != nil {
+		if orch.enricher != nil || orch.config.WideEventCallback != nil {
 			orch.emitCandleWideEvent(candle, backtest)
 		}
 
@@ -500,7 +500,7 @@ func (orch *Orchestrator) emitFillWideEvent(candle *Candle, backtest *BacktestRu
 		we.CloseReason = e.Reason
 	}
 
-	orch.enricher.Emit(we)
+	orch.dispatchWideEvent(we)
 }
 
 // emitCandleWideEvent emits a "price_changed" WideEvent for the current candle.
@@ -552,7 +552,18 @@ func (orch *Orchestrator) emitCandleWideEvent(candle *Candle, backtest *Backtest
 		}
 	}
 
-	orch.enricher.Emit(we)
+	orch.dispatchWideEvent(we)
+}
+
+// dispatchWideEvent sends a wide event to both the file enricher (if configured)
+// and the callback (if set). Used for batch promotion stdout streaming mode.
+func (orch *Orchestrator) dispatchWideEvent(we WideEvent) {
+	if orch.enricher != nil {
+		orch.enricher.Emit(we)
+	}
+	if orch.config.WideEventCallback != nil {
+		orch.config.WideEventCallback(we)
+	}
 }
 
 // positionStateString maps the PSM PositionState enum to the wide event string representation.
