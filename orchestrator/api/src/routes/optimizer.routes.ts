@@ -377,13 +377,41 @@ export function createOptimizerRouter(
               const cfg = runConfigMap.get(event.run_id);
               if (cfg) {
                 const roi = event.pnlSummary.roi ?? 0;
-                const totalDeposits = (event.tradeEvents ?? [])
+
+                // Batch (sweep) mode: Go engine omits tradeEvents for bandwidth.
+                // Synthesize monthly DEPOSIT events from config so the IRR solver
+                // has a proper cash-flow timeline instead of an empty array.
+                let tradeEventsForIrr: any[] = event.tradeEvents ?? [];
+                if (tradeEventsForIrr.length === 0) {
+                  const startMs  = Date.parse(cfg.start_date);
+                  const endMs    = cfg.end_date ? Date.parse(cfg.end_date) : Date.now();
+                  const durYears = (endMs - startMs) / (365.25 * 24 * 3600 * 1000);
+                  const numDeps  = Math.floor(durYears * 12);
+                  const monthly  = parseFloat(String(cfg.monthly_addition ?? 0));
+                  const MS_PER_YEAR = 365.25 * 24 * 3600 * 1000;
+
+                  for (let k = 1; k <= numDeps; k++) {
+                    tradeEventsForIrr.push({
+                      eventType:    'DEPOSIT',
+                      balance:      monthly,
+                      rawTimestamp: new Date(startMs + k / 12 * MS_PER_YEAR).toISOString(),
+                    });
+                  }
+                  // Synthetic terminal event using end_date as timestamp
+                  tradeEventsForIrr.push({
+                    eventType:    'EXIT',
+                    balance:      0, // overridden by finalEquity below
+                    rawTimestamp: cfg.end_date ?? new Date(endMs).toISOString(),
+                  });
+                }
+
+                const totalDeposits = tradeEventsForIrr
                   .filter((e: any) => e.eventType === 'DEPOSIT')
                   .reduce((sum: number, e: any) => sum + e.balance, 0);
                 const totalCapital = parseFloat(String(cfg.account_balance)) + totalDeposits;
                 const finalEquity = totalCapital * (1 + roi / 100);
                 event.pnlSummary.annualizedReturn = computeAnnualizedReturn(
-                  event.tradeEvents ?? [],
+                  tradeEventsForIrr,
                   cfg.start_date,
                   String(cfg.account_balance),
                   finalEquity,
