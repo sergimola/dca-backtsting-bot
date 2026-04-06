@@ -184,6 +184,7 @@ export interface BatchRunResult {
     roi: number;
     maxDrawdown: number;
     totalFees: number;
+    annualizedReturn?: number | null;
   };
   tradeEvents?: Array<{
     timestamp: string;

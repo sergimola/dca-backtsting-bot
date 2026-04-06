@@ -1,6 +1,6 @@
 import React from 'react'
 import {
-  Wallet, TrendingUp, Percent, BarChart2, Receipt, PieChart, TrendingDown, Target
+  Wallet, TrendingUp, Percent, BarChart2, Receipt, PieChart, TrendingDown, Target, Activity
 } from 'lucide-react'
 import type { DashboardMetrics } from '../services/types'
 import { formatCurrency, formatPercentage } from '../services/formatters'
@@ -79,6 +79,14 @@ export function KpiGrid({ metrics }: KpiGridProps) {
         Icon={Target}
         value={formatPercentage(metrics.winRate)}
         valueClass={metrics.winRate >= 50 ? 'text-emerald-400' : 'text-slate-100'}
+      />
+      <KpiCard
+        label="Annualized Return (IRR)"
+        Icon={Activity}
+        value={metrics.annualizedReturn != null ? formatPercentage(metrics.annualizedReturn) : 'N/A'}
+        valueClass={metrics.annualizedReturn != null
+          ? (metrics.annualizedReturn >= 0 ? 'text-emerald-400' : 'text-rose-400')
+          : 'text-slate-500'}
       />
     </div>
   )

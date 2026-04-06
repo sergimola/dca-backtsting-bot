@@ -17,7 +17,7 @@ interface Props {
   onBatchPromote?: () => void
 }
 
-type SortKey = 'run_id' | 'roi' | 'maxDrawdown' | 'totalFees' | 'executionTimeMs' | 'longestTrade' | 'maxSOs' | 'stops' | 'winRate'
+type SortKey = 'run_id' | 'roi' | 'maxDrawdown' | 'totalFees' | 'executionTimeMs' | 'longestTrade' | 'maxSOs' | 'stops' | 'winRate' | 'annualizedReturn'
 type SortDir = 'asc' | 'desc'
 
 const PAGE_SIZE = 200
@@ -60,6 +60,8 @@ export function LeaderboardGrid({
           av = a.total_stops_triggered ?? 0; bv = b.total_stops_triggered ?? 0; break
         case 'winRate':
           av = a.pnlSummary?.winRate ?? 0; bv = b.pnlSummary?.winRate ?? 0; break
+        case 'annualizedReturn':
+          av = a.pnlSummary?.annualizedReturn ?? 0; bv = b.pnlSummary?.annualizedReturn ?? 0; break
         default:
           return a.run_id.localeCompare(b.run_id) * (sortDir === 'asc' ? 1 : -1)
       }
@@ -83,7 +85,7 @@ export function LeaderboardGrid({
   }
 
   const exportCSV = () => {
-    const headers = ['run_id', 'type', 'roi', 'maxDrawdown', 'totalFees', 'executionTimeMs', 'candleCount', 'stops', 'winRate']
+    const headers = ['run_id', 'type', 'roi', 'maxDrawdown', 'totalFees', 'executionTimeMs', 'candleCount', 'stops', 'winRate', 'annualizedReturn']
     const rows = results.map(r => [
       r.run_id,
       r.type,
@@ -94,6 +96,7 @@ export function LeaderboardGrid({
       r.candleCount ?? '',
       r.total_stops_triggered ?? 0,
       r.pnlSummary?.winRate != null ? (r.pnlSummary.winRate * 100).toFixed(2) : '',
+      r.pnlSummary?.annualizedReturn != null ? r.pnlSummary.annualizedReturn.toFixed(4) : '',
     ])
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -198,6 +201,9 @@ export function LeaderboardGrid({
               <th className="px-3 py-2 text-right cursor-pointer" onClick={() => toggleSort('winRate')}>
                 Win Rate{sortIcon('winRate')}
               </th>
+              <th className="px-3 py-2 text-right cursor-pointer" onClick={() => toggleSort('annualizedReturn')}>
+                Ann. Return %{sortIcon('annualizedReturn')}
+              </th>
               <th className="px-3 py-2 text-center">Status</th>
               <th className="px-3 py-2 text-center">Actions</th>
             </tr>
@@ -255,6 +261,13 @@ export function LeaderboardGrid({
                   {r.pnlSummary?.winRate != null
                     ? `${(r.pnlSummary.winRate * 100).toFixed(1)}%`
                     : '-'}
+                </td>
+                <td className="px-3 py-2 text-right">
+                  {r.pnlSummary?.annualizedReturn != null
+                    ? <span className={r.pnlSummary.annualizedReturn >= 0 ? 'text-emerald-400' : 'text-red-400'}>
+                        {r.pnlSummary.annualizedReturn.toFixed(4)}%
+                      </span>
+                    : <span className="text-slate-500">N/A</span>}
                 </td>
                 <td className="px-3 py-2 text-center">
                   {r.promoted_at ? (

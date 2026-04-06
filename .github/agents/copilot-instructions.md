@@ -38,6 +38,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - PostgreSQL (sweep summaries, config metadata) + ClickHouse (wide event time-series) (018-clickhouse-batch-promotion)
 - Go 1.22 (core engine), TypeScript 5.x (API + frontend), React 18 (frontend) + `shopspring/decimal` (Go fixed-point), Drizzle ORM (Postgres), React/Tailwind (frontend) (019-engine-stop-loss)
 - PostgreSQL (sweep summaries, migrations), ClickHouse (wide events, market data) (019-engine-stop-loss)
+- TypeScript 5.1.3 / Node.js v24.11.0 (orchestrator layer); React 18 (frontend) + Decimal.js ^10.4.3 (fixed-point math), Drizzle ORM ^0.45.1 (schema + migrations), Express ^5.2.1 (API routes), pg ^8.20.0 (PostgreSQL client), @opentelemetry/api ^1.9.1 (tracing, non-blocking batched) (020-annualized-return)
+- PostgreSQL — `sweep_run_summaries` table; `annualized_return numeric(10,4)` column added via hand-written Drizzle migration (020-annualized-return)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -57,9 +59,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 020-annualized-return: Added TypeScript 5.1.3 / Node.js v24.11.0 (orchestrator layer); React 18 (frontend) + Decimal.js ^10.4.3 (fixed-point math), Drizzle ORM ^0.45.1 (schema + migrations), Express ^5.2.1 (API routes), pg ^8.20.0 (PostgreSQL client), @opentelemetry/api ^1.9.1 (tracing, non-blocking batched)
 - 019-engine-stop-loss: Added Go 1.22 (core engine), TypeScript 5.x (API + frontend), React 18 (frontend) + `shopspring/decimal` (Go fixed-point), Drizzle ORM (Postgres), React/Tailwind (frontend)
 - 019-engine-stop-loss: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
-- 018-clickhouse-batch-promotion: Added Go 1.22 (core-engine) · TypeScript 5 / Node.js 20 (orchestrator/api) · React 18 / TypeScript (frontend) + `@clickhouse/client` (ClickHouse HTTP singleton, existing), `drizzle-orm` + `pg` (Postgres ORM, existing), Express 5 (API, existing), React 18 + TanStack Table (Leaderboard, existing)
 
 
 <!-- MANUAL ADDITIONS START -->

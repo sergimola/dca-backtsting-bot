@@ -87,6 +87,7 @@ export const sweepRunSummaries = pgTable('sweep_run_summaries', {
   longestTradeDurationMs: bigint('longest_trade_duration_ms', { mode: 'number' }).notNull().default(0),
   maxSafetyOrdersUsed:    integer('max_safety_orders_used').notNull().default(0),
   totalStopsTriggered:    integer('total_stops_triggered').notNull().default(0),
+  annualizedReturn:       numeric('annualized_return', { precision: 10, scale: 4 }),
   promotedAt:             timestamp('promoted_at', { withTimezone: true }),
   createdAt:       timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 }, (t) => [

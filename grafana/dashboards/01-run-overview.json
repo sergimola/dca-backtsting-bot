@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "description": "Overview of all completed DCA backtest runs. Filter by trading pair to compare ROI, drawdown and fees across runs.",
   "editable": true,
   "fiscalYearStartMonth": 0,
@@ -11,7 +13,9 @@
       "icon": "external link",
       "includeVars": false,
       "keepTime": false,
-      "tags": ["dca"],
+      "tags": [
+        "dca"
+      ],
       "targetBlank": true,
       "title": "Wide Events Deep Dive",
       "tooltip": "Drill into tick-level wide event traces for a specific run",
@@ -24,10 +28,24 @@
       "id": 1,
       "type": "stat",
       "title": "Completed Runs",
-      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
@@ -36,14 +54,28 @@
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "fixedColor": "blue", "mode": "fixed" },
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT COUNT(*) AS \"Completed Runs\" FROM backtests WHERE status = 'completed'",
@@ -55,10 +87,24 @@
       "id": 2,
       "type": "stat",
       "title": "Avg ROI",
-      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
@@ -72,17 +118,28 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 0 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
             ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG((summary->>'roi')::numeric), 2) AS \"Avg ROI\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
@@ -94,10 +151,24 @@
       "id": 3,
       "type": "stat",
       "title": "Best ROI",
-      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
@@ -111,17 +182,28 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 0 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
             ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(MAX((summary->>'roi')::numeric), 2) AS \"Best ROI\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
@@ -133,10 +215,24 @@
       "id": 4,
       "type": "stat",
       "title": "Avg Max Drawdown",
-      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
@@ -150,18 +246,32 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": 10 },
-              { "color": "red", "value": 25 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
             ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG((summary->>'maxDrawdown')::numeric), 2) AS \"Avg Max Drawdown\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
@@ -173,10 +283,24 @@
       "id": 12,
       "type": "stat",
       "title": "Avg Win Rate",
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
@@ -190,18 +314,32 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "yellow", "value": 50 },
-              { "color": "green", "value": 70 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 70
+              }
             ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG((summary->>'winRate')::numeric) * 100, 2) AS \"Avg Win Rate\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND summary->>'winRate' IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
@@ -213,10 +351,24 @@
       "id": 13,
       "type": "stat",
       "title": "Avg Total Fees",
-      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
         "orientation": "auto",
         "textMode": "auto",
         "colorMode": "background",
@@ -227,14 +379,28 @@
         "defaults": {
           "unit": "currencyUSD",
           "decimals": 4,
-          "color": { "fixedColor": "orange", "mode": "fixed" },
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+          "color": {
+            "fixedColor": "orange",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "orange",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG((summary->>'totalFees')::numeric), 4) AS \"Avg Total Fees\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
@@ -247,81 +413,169 @@
       "type": "table",
       "title": "All Completed Runs",
       "description": "Full list of completed backtest runs. Click the arrow on a Run ID cell to open the Narrow Events Timeline for that run.",
-      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 14 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 14
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "cellHeight": "sm",
         "footer": {
           "show": true,
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "enablePagination": false,
           "countRows": false,
-          "fields": ["ROI %", "Max Drawdown %", "Total Fees"]
+          "fields": [
+            "ROI %",
+            "Max Drawdown %",
+            "Total Fees"
+          ]
         },
         "showHeader": true,
-        "sortBy": [{ "displayName": "Created", "desc": true }]
+        "sortBy": [
+          {
+            "displayName": "Created",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {
-          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "ROI %" },
+            "matcher": {
+              "id": "byName",
+              "options": "ROI %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 2 },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
               {
                 "id": "custom.cellOptions",
-                "value": { "type": "color-background", "applyToRow": false }
+                "value": {
+                  "type": "color-background",
+                  "applyToRow": false
+                }
               },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "rgba(245,54,54,0.7)", "value": null },
-                    { "color": "rgba(50,172,45,0.7)", "value": 0 }
+                    {
+                      "color": "rgba(245,54,54,0.7)",
+                      "value": null
+                    },
+                    {
+                      "color": "rgba(50,172,45,0.7)",
+                      "value": 0
+                    }
                   ]
                 }
               },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Max Drawdown %" },
+            "matcher": {
+              "id": "byName",
+              "options": "Max Drawdown %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 2 },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "green", "value": null },
-                    { "color": "yellow", "value": 10 },
-                    { "color": "red", "value": 25 }
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
                   ]
                 }
               },
               {
                 "id": "custom.cellOptions",
-                "value": { "type": "color-text" }
+                "value": {
+                  "type": "color-text"
+                }
               },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Exec Time (ms)" },
+            "matcher": {
+              "id": "byName",
+              "options": "Exec Time (ms)"
+            },
             "properties": [
-              { "id": "unit", "value": "ms" },
-              { "id": "custom.width", "value": 120 }
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 120
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Run ID" },
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
             "properties": [
-              { "id": "custom.width", "value": 300 },
+              {
+                "id": "custom.width",
+                "value": 300
+              },
               {
                 "id": "links",
                 "value": [
@@ -340,34 +594,73 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Orders" },
-            "properties": [{ "id": "custom.width", "value": 70 }]
+            "matcher": {
+              "id": "byName",
+              "options": "Orders"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 70
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "Win Rate %" },
+            "matcher": {
+              "id": "byName",
+              "options": "Win Rate %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 2 },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "red", "value": null },
-                    { "color": "yellow", "value": 50 },
-                    { "color": "green", "value": 70 }
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "green",
+                      "value": 70
+                    }
                   ]
                 }
               },
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           }
         ]
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT id::text AS \"Run ID\", created_at AS \"Created\", config->>'trading_pair' AS \"Pair\", config->>'start_date' AS \"Backtest Start\", config->>'end_date' AS \"Backtest End\", (config->>'account_balance')::numeric AS \"Account Balance\", (config->>'number_of_orders')::int AS \"Orders\", (config->>'take_profit_distance_percent')::numeric AS \"TP %\", config->>'stop_loss_enabled' AS \"SL Enabled\", config->>'stop_loss_percent' AS \"SL %\", ROUND((summary->>'roi')::numeric, 2) AS \"ROI %\", ROUND((summary->>'maxDrawdown')::numeric, 2) AS \"Max Drawdown %\", ROUND(NULLIF((summary->>'winRate'), '')::numeric * 100, 2) AS \"Win Rate %\", ROUND((summary->>'totalFees')::numeric, 2) AS \"Total Fees\", execution_time_ms AS \"Exec Time (ms)\" FROM backtests WHERE status = 'completed' AND config->>'trading_pair' IN (${trading_pair:singlequote}) ORDER BY created_at DESC",
@@ -379,28 +672,51 @@
       "id": 6,
       "type": "barchart",
       "title": "Avg ROI by Trading Pair",
-      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": -30,
         "groupWidth": 0.7,
         "barWidth": 0.9,
         "barRadius": 0.1,
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
         "xField": "Pair"
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "decimals": 2,
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "red", "value": null },
-              { "color": "green", "value": 0 }
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
             ]
           }
         },
@@ -408,7 +724,10 @@
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT config->>'trading_pair' AS \"Pair\", ROUND(AVG((summary->>'roi')::numeric), 2) AS \"Avg ROI\", ROUND(MAX((summary->>'roi')::numeric), 2) AS \"Best ROI\", ROUND(MIN((summary->>'roi')::numeric), 2) AS \"Worst ROI\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote}) GROUP BY config->>'trading_pair' ORDER BY 2 DESC",
@@ -420,15 +739,32 @@
       "id": 7,
       "type": "timeseries",
       "title": "Runs Completed Over Time",
-      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 2,
             "fillOpacity": 15,
@@ -441,7 +777,10 @@
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT $__timeGroupAlias(created_at,'1d') AS time, COUNT(*) AS \"Runs\" FROM backtests WHERE status = 'completed' AND $__timeFilter(created_at) AND config->>'trading_pair' IN (${trading_pair:singlequote}) GROUP BY time ORDER BY time",
@@ -454,27 +793,47 @@
       "type": "histogram",
       "title": "ROI Distribution",
       "description": "Distribution of ROI across all completed runs for selected trading pairs.",
-      "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "bucketSize": "auto",
         "bucketOffset": 0,
         "combine": false,
         "fillOpacity": 80,
         "gradientMode": "none",
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "color": { "mode": "palette-classic" }
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND((summary->>'roi')::numeric, 2) AS \"ROI\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote}) ORDER BY 1",
@@ -487,29 +846,49 @@
       "type": "barchart",
       "title": "Avg Max Drawdown by Trading Pair",
       "description": "Higher drawdown = more capital at risk during the run.",
-      "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": -30,
         "groupWidth": 0.7,
         "barWidth": 0.9,
         "barRadius": 0.1,
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
         "xField": "Pair"
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "decimals": 2,
-          "color": { "mode": "palette-classic" }
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT config->>'trading_pair' AS \"Pair\", ROUND(AVG((summary->>'maxDrawdown')::numeric), 2) AS \"Avg Drawdown\", ROUND(MAX((summary->>'maxDrawdown')::numeric), 2) AS \"Worst Drawdown\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote}) GROUP BY config->>'trading_pair' ORDER BY 2 DESC",
@@ -522,21 +901,45 @@
       "type": "table",
       "title": "Safety Order Usage by Run",
       "description": "How deep a run went into safety orders. Click the arrow on a Run ID to drill into the timeline.",
-      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 10 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "cellHeight": "sm",
-        "footer": { "show": false },
+        "footer": {
+          "show": false
+        },
         "showHeader": true,
-        "sortBy": [{ "displayName": "Created", "desc": true }]
+        "sortBy": [
+          {
+            "displayName": "Created",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {
-          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Run ID" },
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
             "properties": [
               {
                 "id": "links",
@@ -559,7 +962,10 @@
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT b.id::text AS \"Run ID\", b.created_at AS \"Created\", b.config->>'trading_pair' AS \"Pair\", ROUND((b.summary->>'roi')::numeric, 2) AS \"ROI %\", jsonb_array_length(b.safety_orders) AS \"SO Depths Used\", (SELECT MAX((so->>'count')::int) FROM jsonb_array_elements(b.safety_orders) AS so) AS \"Max SO Hits\", (SELECT SUM((so->>'count')::int) FROM jsonb_array_elements(b.safety_orders) AS so) AS \"Total SO Fills\" FROM backtests b WHERE status = 'completed' AND safety_orders IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote}) ORDER BY b.created_at DESC",
@@ -572,17 +978,34 @@
       "type": "timeseries",
       "title": "ROI Over Time (per run)",
       "description": "Each point is the final ROI of a completed run, plotted by its creation time.",
-      "gridPos": { "x": 0, "y": 44, "w": 24, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 48,
+        "w": 24,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": true }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
           "decimals": 2,
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 0,
             "fillOpacity": 0,
@@ -595,10 +1018,76 @@
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
           "format": "time_series",
           "rawQuery": true,
           "rawSql": "SELECT created_at AS time, ROUND((summary->>'roi')::numeric, 2) AS \"ROI\", config->>'trading_pair' AS metric FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND $__timeFilter(created_at) AND config->>'trading_pair' IN (${trading_pair:singlequote}) ORDER BY created_at",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Avg Annualized Return (IRR)",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(AVG((summary->>'annualizedReturn')::numeric), 4) AS \"Avg Annualized Return %\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND summary->>'annualizedReturn' IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
           "refId": "A"
         }
       ]
@@ -606,11 +1095,18 @@
   ],
   "refresh": "1m",
   "schemaVersion": 39,
-  "tags": ["dca", "backtest", "overview"],
+  "tags": [
+    "dca",
+    "backtest",
+    "overview"
+  ],
   "templating": {
     "list": [
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT DISTINCT config->>'trading_pair' AS trading_pair FROM backtests WHERE status = 'completed' AND config IS NOT NULL ORDER BY 1",
         "includeAll": true,
         "multi": true,
@@ -625,7 +1121,10 @@
       }
     ]
   },
-  "time": { "from": "now-1y", "to": "now" },
+  "time": {
+    "from": "now-1y",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "Backtest Run Overview",

@@ -34,6 +34,7 @@ export interface RunSummaryRow {
   totalFees: string | null;
   winRate: string | null;
   capitalEfficiency: string | null;
+  annualizedReturn: string | null;
   executionTimeMs: number | null;
   longestTradeDurationMs: number | null;
   maxSafetyOrdersUsed: number | null;
@@ -124,6 +125,9 @@ export class SweepPersistenceService {
         longestTradeDurationMs: runResult.longest_trade_duration_ms ?? 0,
         maxSafetyOrdersUsed: runResult.max_safety_orders_used ?? 0,
         totalStopsTriggered: runResult.total_stops_triggered ?? 0,
+        annualizedReturn: runResult.pnlSummary?.annualizedReturn != null
+          ? new Decimal(runResult.pnlSummary.annualizedReturn).toDecimalPlaces(4).toString()
+          : null,
         promotedAt: null,
       });
       span.setStatus({ code: SpanStatusCode.OK });
@@ -215,6 +219,7 @@ export class SweepPersistenceService {
       totalFees: r.totalFees,
       winRate: r.winRate,
       capitalEfficiency: r.capitalEfficiency,
+      annualizedReturn: r.annualizedReturn,
       executionTimeMs: r.executionTimeMs,
       longestTradeDurationMs: r.longestTradeDurationMs,
       maxSafetyOrdersUsed: r.maxSafetyOrdersUsed,

@@ -58,6 +58,7 @@ export interface PnlSummary {
   roi: number
   maxDrawdown: number
   totalFees: number
+  annualizedReturn?: number | null
 }
 
 /**
@@ -139,6 +140,7 @@ export interface DashboardMetrics {
   capitalUtilized: number
   maxDrawdown: number          // pass-through from pnlSummary
   accountEquity: number        // accountBalance + netProfit
+  annualizedReturn: number | null // IRR annualized — null when not computable
   tradeGroups: TradeGroupMetrics[]
   safetyOrderUsage: SafetyOrderUsage[]
 }
