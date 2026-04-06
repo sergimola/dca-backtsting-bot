@@ -653,6 +653,8 @@ export function useOptimizer() {
               roi: Number(r.roi),
               maxDrawdown: Number(r.maxDrawdown),
               totalFees: Number(r.totalFees),
+              annualizedReturn: r.annualizedReturn != null ? parseFloat(r.annualizedReturn)
+                : (r.annualized_return != null ? parseFloat(r.annualized_return) : null),
             } : undefined,
             executionTimeMs: r.executionTimeMs,
             longest_trade_duration_ms: r.longestTradeDurationMs ?? 0,

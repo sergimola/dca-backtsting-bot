@@ -364,7 +364,6 @@ export function createOptimizerRouter(
         if (!line.trim()) continue;
         try {
           const event = JSON.parse(line);
-          sessionStore.addResult(sessionId, event);
 
           if (event?.type === 'result' && typeof event?.run_id === 'string') {
             procEntry.completedCount++;
@@ -373,6 +372,7 @@ export function createOptimizerRouter(
               procEntry.maxRoi = roi;
             }
             // T016: Inject annualizedReturn into pnlSummary using config from runConfigMap.
+            // Must happen BEFORE sessionStore.addResult and SSE write so both see the enriched event.
             if (event.pnlSummary) {
               const cfg = runConfigMap.get(event.run_id);
               if (cfg) {
@@ -402,7 +402,9 @@ export function createOptimizerRouter(
             }
           }
 
-          res.write(`data: ${line}\n\n`);
+          // Store and stream the enriched event (not the original raw line)
+          sessionStore.addResult(sessionId, event);
+          res.write(`data: ${JSON.stringify(event)}\n\n`);
         } catch { /* skip malformed lines */ }
       }
     });
