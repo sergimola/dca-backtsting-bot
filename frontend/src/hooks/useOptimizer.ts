@@ -63,7 +63,7 @@ export interface BatchRunResult {
   run_id: string
   type: 'result' | 'error'
   error?: string
-  pnlSummary?: { roi: number; maxDrawdown: number; totalFees: number; winRate?: number }
+  pnlSummary?: { roi: number; maxDrawdown: number; totalFees: number; winRate?: number; annualizedReturn?: number | null }
   executionTimeMs?: number
   candleCount?: number
   eventCount?: number
@@ -265,6 +265,8 @@ export function useOptimizer() {
           roi: parseFloat(r.roi ?? '0'),
           maxDrawdown: parseFloat(r.maxDrawdown ?? r.max_drawdown ?? '0'),
           totalFees: parseFloat(r.totalFees ?? r.total_fees ?? '0'),
+          annualizedReturn: r.annualizedReturn != null ? parseFloat(r.annualizedReturn)
+            : (r.annualized_return != null ? parseFloat(r.annualized_return) : null),
         },
         winRate: r.winRate ?? r.win_rate,
         totalPositionsClosed: r.totalPositionsClosed ?? 0,

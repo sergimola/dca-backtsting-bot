@@ -97,6 +97,10 @@ export function RunCard({ run, isSelected, isExpanded, onSelect, onViewDashboard
           <div>Trades: {metrics.closedTradesCount}</div>
           <div>Price scale: {run.config.priceScale}</div>
           <div>Max Drawdown: {formatPercentage(completedResults.pnlSummary.maxDrawdown)}</div>
+          <div>Annualized Return: {completedResults.pnlSummary.annualizedReturn != null
+            ? `${completedResults.pnlSummary.annualizedReturn.toFixed(4)}%`
+            : 'N/A'}
+          </div>
 
           {unusedSafetyOrders > 0 && (
             <div className="flex items-center gap-1 text-amber-400">

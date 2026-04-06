@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "description": "Compare promoted sweep runs side-by-side via ClickHouse wide event data. Select session and run configs to visualise equity curves, drawdowns, event distributions and safety order depth.",
   "editable": true,
   "fiscalYearStartMonth": 0,
@@ -12,11 +14,21 @@
       "type": "timeseries",
       "title": "Equity Curve",
       "description": "Running account balance over time for selected runs",
-      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "dca_clickhouse"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 1,
             "fillOpacity": 5,
@@ -30,12 +42,26 @@
         "overrides": []
       },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "desc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["min", "max", "last"] }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "min",
+            "max",
+            "last"
+          ]
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "dca_clickhouse"
+          },
           "queryType": "sql",
           "rawSql": "SELECT\n  toDateTime(timestamp) AS time,\n  run_id,\n  running_account_balance\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\nORDER BY time ASC",
           "refId": "A",
@@ -48,11 +74,21 @@
       "type": "timeseries",
       "title": "Drawdown Timeline",
       "description": "Current drawdown percentage over time for selected runs",
-      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 10 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "gridPos": {
+        "x": 0,
+        "y": 15,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "dca_clickhouse"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "lineWidth": 1,
             "fillOpacity": 10,
@@ -66,21 +102,43 @@
           "thresholds": {
             "mode": "absolute",
             "steps": [
-              { "color": "green", "value": null },
-              { "color": "yellow", "value": -10 },
-              { "color": "red", "value": -25 }
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": -10
+              },
+              {
+                "color": "red",
+                "value": -25
+              }
             ]
           }
         },
         "overrides": []
       },
       "options": {
-        "tooltip": { "mode": "multi", "sort": "asc" },
-        "legend": { "displayMode": "table", "placement": "right", "calcs": ["min", "last"] }
+        "tooltip": {
+          "mode": "multi",
+          "sort": "asc"
+        },
+        "legend": {
+          "displayMode": "table",
+          "placement": "right",
+          "calcs": [
+            "min",
+            "last"
+          ]
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "dca_clickhouse"
+          },
           "queryType": "sql",
           "rawSql": "SELECT\n  toDateTime(timestamp) AS time,\n  run_id,\n  current_drawdown_pct\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\nORDER BY time ASC",
           "refId": "A",
@@ -93,11 +151,21 @@
       "type": "barchart",
       "title": "Event Distribution",
       "description": "Count of events grouped by event type and run",
-      "gridPos": { "x": 0, "y": 20, "w": 12, "h": 10 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "gridPos": {
+        "x": 0,
+        "y": 25,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "dca_clickhouse"
+      },
       "fieldConfig": {
         "defaults": {
-          "color": { "mode": "palette-classic" },
+          "color": {
+            "mode": "palette-classic"
+          },
           "custom": {
             "fillOpacity": 80,
             "gradientMode": "none",
@@ -113,12 +181,20 @@
         "groupWidth": 0.7,
         "barWidth": 0.9,
         "stacking": "normal",
-        "legend": { "displayMode": "list", "placement": "right" },
-        "tooltip": { "mode": "multi" }
+        "legend": {
+          "displayMode": "list",
+          "placement": "right"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "dca_clickhouse"
+          },
           "queryType": "sql",
           "rawSql": "SELECT\n  event_type,\n  run_id,\n  count(*) AS event_count\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\nGROUP BY event_type, run_id\nORDER BY event_count DESC",
           "refId": "A",
@@ -131,14 +207,30 @@
       "type": "heatmap",
       "title": "Safety Order Depth Heatmap",
       "description": "Distribution of filled safety orders count per run over time",
-      "gridPos": { "x": 12, "y": 20, "w": 12, "h": 10 },
-      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "gridPos": {
+        "x": 12,
+        "y": 25,
+        "w": 12,
+        "h": 10
+      },
+      "datasource": {
+        "type": "grafana-clickhouse-datasource",
+        "uid": "dca_clickhouse"
+      },
       "fieldConfig": {
         "defaults": {}
       },
       "options": {
         "calculate": true,
-        "calculation": { "xBuckets": { "mode": "size" }, "yBuckets": { "mode": "size", "value": "1" } },
+        "calculation": {
+          "xBuckets": {
+            "mode": "size"
+          },
+          "yBuckets": {
+            "mode": "size",
+            "value": "1"
+          }
+        },
         "color": {
           "mode": "scheme",
           "scheme": "Oranges",
@@ -146,27 +238,186 @@
           "exponent": 0.5
         },
         "cellGap": 1,
-        "yAxis": { "axisLabel": "Filled Orders", "decimals": 0 },
-        "tooltip": { "show": true }
+        "yAxis": {
+          "axisLabel": "Filled Orders",
+          "decimals": 0
+        },
+        "tooltip": {
+          "show": true
+        }
       },
       "targets": [
         {
-          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "datasource": {
+            "type": "grafana-clickhouse-datasource",
+            "uid": "dca_clickhouse"
+          },
           "queryType": "sql",
           "rawSql": "SELECT\n  toDateTime(timestamp) AS time,\n  filled_orders_count\nFROM data.sweep_wide_events\nWHERE session_id = '${session}'\n  AND run_id IN (${run_config:sqlstring})\n  AND filled_orders_count > 0\nORDER BY time ASC",
           "refId": "A",
           "format": 1
         }
       ]
+    },
+    {
+      "id": 5,
+      "type": "table",
+      "title": "Run KPIs (ROI vs Annualized Return)",
+      "description": "ROI and annualized return (IRR) for selected promoted runs from sweep_run_summaries.",
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 24,
+        "h": 5
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
+      "options": {
+        "cellHeight": "sm",
+        "showHeader": true,
+        "footer": {
+          "show": false,
+          "reducer": [
+            "sum"
+          ],
+          "enablePagination": false,
+          "countRows": false,
+          "fields": []
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "ROI %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "applyToRow": false
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "rgba(245,54,54,0.7)",
+                      "value": null
+                    },
+                    {
+                      "color": "rgba(50,172,45,0.7)",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Annualized Return %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "applyToRow": false
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "rgba(245,54,54,0.7)",
+                      "value": null
+                    },
+                    {
+                      "color": "rgba(50,172,45,0.7)",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT run_id AS \"Run ID\", ROUND(roi::numeric, 4) AS \"ROI %\", ROUND(annualized_return::numeric, 4) AS \"Annualized Return %\" FROM sweep_run_summaries WHERE session_id::text = '${session}' AND run_id IN (${run_config:singlequote}) ORDER BY roi DESC",
+          "refId": "A"
+        }
+      ]
     }
   ],
   "schemaVersion": 39,
-  "tags": ["dca", "sweep", "promoted"],
+  "tags": [
+    "dca",
+    "sweep",
+    "promoted"
+  ],
   "templating": {
     "list": [
       {
         "current": {},
-        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "dca_clickhouse"
+        },
         "definition": "SELECT DISTINCT session_id FROM data.sweep_wide_events ORDER BY session_id",
         "hide": 0,
         "includeAll": false,
@@ -183,7 +434,10 @@
       },
       {
         "current": {},
-        "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+        "datasource": {
+          "type": "grafana-clickhouse-datasource",
+          "uid": "dca_clickhouse"
+        },
         "definition": "SELECT DISTINCT run_id FROM data.sweep_wide_events WHERE session_id = '${session}' ORDER BY run_id",
         "hide": 0,
         "includeAll": true,
@@ -200,7 +454,10 @@
       }
     ]
   },
-  "time": { "from": "now-30d", "to": "now" },
+  "time": {
+    "from": "now-30d",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "04 - Sweep Promoted Comparison",

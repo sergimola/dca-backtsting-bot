@@ -18,6 +18,7 @@ import { OptimizerSessionStore } from '../services/OptimizerSessionStore.js';
 import { SweepPersistenceService } from '../services/SweepPersistenceService.js';
 import { ClickHouseWideEventWriter, WideEventRow } from '../services/ClickHouseWideEventWriter.js';
 import { chClient, database } from '../services/ClickHouseClient.js';
+import { computeAnnualizedReturn } from '../services/IrrCalculator.js';
 import { randomUUID } from 'crypto';
 import type { SweepDefinition, OptimizerSession, GeneratedConfig } from '../types/optimizer.js';
 
@@ -370,6 +371,24 @@ export function createOptimizerRouter(
             const roi = event?.pnlSummary?.roi;
             if (roi != null && (procEntry.maxRoi === null || roi > procEntry.maxRoi)) {
               procEntry.maxRoi = roi;
+            }
+            // T016: Inject annualizedReturn into pnlSummary using config from runConfigMap.
+            if (event.pnlSummary) {
+              const cfg = runConfigMap.get(event.run_id);
+              if (cfg) {
+                const roi = event.pnlSummary.roi ?? 0;
+                const totalDeposits = (event.tradeEvents ?? [])
+                  .filter((e: any) => e.eventType === 'DEPOSIT')
+                  .reduce((sum: number, e: any) => sum + e.balance, 0);
+                const totalCapital = parseFloat(String(cfg.account_balance)) + totalDeposits;
+                const finalEquity = totalCapital * (1 + roi / 100);
+                event.pnlSummary.annualizedReturn = computeAnnualizedReturn(
+                  event.tradeEvents ?? [],
+                  cfg.start_date,
+                  String(cfg.account_balance),
+                  finalEquity,
+                );
+              }
             }
             if (sweepPersistence) {
               const cfg = runConfigMap.get(event.run_id);

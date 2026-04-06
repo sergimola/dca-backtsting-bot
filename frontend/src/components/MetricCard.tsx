@@ -2,10 +2,12 @@ import React from 'react'
 
 interface MetricCardProps {
   label: string
-  value: number
+  value: number | null
   unit: string
   color?: 'success' | 'danger' | 'neutral'
   tooltip?: string
+  /** Text to display when value is null (e.g. "N/A") */
+  nullText?: string
 }
 
 export function MetricCard({
@@ -13,7 +15,8 @@ export function MetricCard({
   value,
   unit,
   color = 'neutral',
-  tooltip
+  tooltip,
+  nullText = 'N/A',
 }: MetricCardProps) {
   const getColorClass = () => {
     switch (color) {
@@ -38,7 +41,7 @@ export function MetricCard({
         )}
       </div>
       <div className={`text-xl font-bold ${getColorClass()}`} title={tooltip}>
-        {value.toFixed(2)}{unit}
+        {value != null ? `${value.toFixed(2)}${unit}` : nullText}
       </div>
     </div>
   )

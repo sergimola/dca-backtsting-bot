@@ -120,6 +120,7 @@ export function useResultsMetrics(
       capitalUtilized,
       maxDrawdown: pnlSummary.maxDrawdown,
       accountEquity: trueCapitalAvailable + netProfit,
+      annualizedReturn: pnlSummary.annualizedReturn ?? null,
       tradeGroups,
       safetyOrderUsage,
     }

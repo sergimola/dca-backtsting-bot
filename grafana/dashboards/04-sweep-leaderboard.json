@@ -1,5 +1,7 @@
 {
-  "annotations": { "list": [] },
+  "annotations": {
+    "list": []
+  },
   "description": "Parameter sweep leaderboard. Select a session, then use the dropdowns to filter runs by config_json parameters. All KPI panels and the leaderboard table update live as you change filters.",
   "editable": true,
   "fiscalYearStartMonth": 0,
@@ -9,7 +11,9 @@
     {
       "asDropdown": false,
       "icon": "external link",
-      "tags": ["dca"],
+      "tags": [
+        "dca"
+      ],
       "targetBlank": true,
       "title": "Run Overview",
       "type": "dashboards",
@@ -18,7 +22,9 @@
     {
       "asDropdown": false,
       "icon": "external link",
-      "tags": ["dca"],
+      "tags": [
+        "dca"
+      ],
       "targetBlank": true,
       "title": "Narrow Events Timeline",
       "type": "dashboards",
@@ -31,23 +37,55 @@
       "type": "stat",
       "title": "Total Runs in Session",
       "description": "Unfiltered total stored in sweep_sessions.total_runs.",
-      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "fixedColor": "blue", "mode": "fixed" },
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "blue", "value": null }] }
+          "color": {
+            "fixedColor": "blue",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT total_runs AS \"Total Runs\" FROM sweep_sessions WHERE id::text = '${session_id}'",
           "refId": "A"
         }
@@ -58,23 +96,55 @@
       "type": "stat",
       "title": "Filtered Runs",
       "description": "Runs matching all active dropdown filters.",
-      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 4,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "color": { "fixedColor": "text", "mode": "fixed" },
-          "thresholds": { "mode": "absolute", "steps": [{ "color": "text", "value": null }] }
+          "color": {
+            "fixedColor": "text",
+            "mode": "fixed"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "text",
+                "value": null
+              }
+            ]
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT COUNT(*) AS \"Filtered Runs\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
@@ -84,27 +154,60 @@
       "id": 3,
       "type": "stat",
       "title": "Best ROI",
-      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 8,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 4,
+          "unit": "percent",
+          "decimals": 4,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT ROUND(MAX(roi)::numeric, 4) AS \"Best ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
@@ -114,27 +217,60 @@
       "id": 4,
       "type": "stat",
       "title": "Avg ROI",
-      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 4,
+          "unit": "percent",
+          "decimals": 4,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
@@ -144,27 +280,64 @@
       "id": 5,
       "type": "stat",
       "title": "Avg Max Drawdown",
-      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 16,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 4,
+          "unit": "percent",
+          "decimals": 4,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 25 }]
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 10
+              },
+              {
+                "color": "red",
+                "value": 25
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG(max_drawdown)::numeric, 4) AS \"Avg Drawdown\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
@@ -174,27 +347,64 @@
       "id": 6,
       "type": "stat",
       "title": "Avg Win Rate",
-      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 20,
+        "y": 0,
+        "w": 4,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
-        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
-        "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 2,
+          "unit": "percent",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 70 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 50
+              },
+              {
+                "color": "green",
+                "value": 70
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG(win_rate)::numeric * 100, 2) AS \"Avg Win Rate\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
@@ -205,29 +415,59 @@
       "type": "table",
       "title": "Run Leaderboard",
       "description": "All matching runs sorted by ROI descending. Config parameters are extracted from config_json as individual columns. Capped at 2000 rows — add more filters to narrow down. Click a Run ID to open its Narrow Events Timeline.",
-      "gridPos": { "x": 0, "y": 4, "w": 24, "h": 14 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 24,
+        "h": 14
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "cellHeight": "sm",
         "footer": {
           "show": true,
-          "reducer": ["sum"],
+          "reducer": [
+            "sum"
+          ],
           "enablePagination": false,
           "countRows": false,
-          "fields": ["ROI %", "Total Fees"]
+          "fields": [
+            "ROI %",
+            "Total Fees"
+          ]
         },
         "showHeader": true,
-        "sortBy": [{ "displayName": "ROI %", "desc": true }]
+        "sortBy": [
+          {
+            "displayName": "ROI %",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {
-          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Run ID" },
+            "matcher": {
+              "id": "byName",
+              "options": "Run ID"
+            },
             "properties": [
-              { "id": "custom.width", "value": 300 },
+              {
+                "id": "custom.width",
+                "value": 300
+              },
               {
                 "id": "links",
                 "value": [
@@ -246,90 +486,290 @@
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "ROI %" },
+            "matcher": {
+              "id": "byName",
+              "options": "ROI %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 4 },
-              { "id": "custom.cellOptions", "value": { "type": "color-background", "applyToRow": false } },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "applyToRow": false
+                }
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "rgba(245,54,54,0.7)", "value": null },
-                    { "color": "rgba(50,172,45,0.7)", "value": 0 }
+                    {
+                      "color": "rgba(245,54,54,0.7)",
+                      "value": null
+                    },
+                    {
+                      "color": "rgba(50,172,45,0.7)",
+                      "value": 0
+                    }
                   ]
                 }
               },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Max Drawdown %" },
+            "matcher": {
+              "id": "byName",
+              "options": "Max Drawdown %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 4 },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
-                  "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 25 }]
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
                 }
               },
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Win Rate %" },
+            "matcher": {
+              "id": "byName",
+              "options": "Win Rate %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 2 },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
-                  "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 70 }]
+                  "steps": [
+                    {
+                      "color": "red",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 50
+                    },
+                    {
+                      "color": "green",
+                      "value": 70
+                    }
+                  ]
                 }
               },
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Total Fees" },
-            "properties": [{ "id": "unit", "value": "currencyUSD" }, { "id": "decimals", "value": 6 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Cap. Efficiency" },
-            "properties": [{ "id": "decimals", "value": 4 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Exec (ms)" },
-            "properties": [{ "id": "unit", "value": "ms" }, { "id": "custom.width", "value": 90 }]
-          },
-          {
-            "matcher": { "id": "byName", "options": "Stops" },
+            "matcher": {
+              "id": "byName",
+              "options": "Total Fees"
+            },
             "properties": [
-              { "id": "custom.width", "value": 60 },
+              {
+                "id": "unit",
+                "value": "currencyUSD"
+              },
+              {
+                "id": "decimals",
+                "value": 6
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Cap. Efficiency"
+            },
+            "properties": [
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Exec (ms)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "ms"
+              },
+              {
+                "id": "custom.width",
+                "value": 90
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Stops"
+            },
+            "properties": [
+              {
+                "id": "custom.width",
+                "value": 60
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
-                  "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }]
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 5
+                    }
+                  ]
                 }
               },
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Annualized Return %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "applyToRow": false
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "rgba(245,54,54,0.7)",
+                      "value": null
+                    },
+                    {
+                      "color": "rgba(50,172,45,0.7)",
+                      "value": 0
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           }
         ]
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
-          "rawSql": "SELECT run_id::text AS \"Run ID\", ROUND(roi::numeric, 4) AS \"ROI %\", ROUND(max_drawdown::numeric, 4) AS \"Max Drawdown %\", ROUND(total_fees::numeric, 6) AS \"Total Fees\", ROUND(win_rate::numeric * 100, 2) AS \"Win Rate %\", ROUND(capital_efficiency::numeric, 4) AS \"Cap. Efficiency\", COALESCE(total_stops_triggered, 0) AS \"Stops\", execution_time_ms AS \"Exec (ms)\", config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\", config_json->>'stop_loss_enabled' AS \"SL Enabled\", config_json->>'stop_loss_percent' AS \"SL %\", config_json->>'stop_loss_baseline' AS \"SL Baseline\", config_json->>'stop_loss_timeout_minutes' AS \"SL Timeout\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) ORDER BY roi DESC LIMIT 2000",
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT run_id::text AS \"Run ID\", ROUND(roi::numeric, 4) AS \"ROI %\", ROUND(max_drawdown::numeric, 4) AS \"Max Drawdown %\", ROUND(total_fees::numeric, 6) AS \"Total Fees\", ROUND(win_rate::numeric * 100, 2) AS \"Win Rate %\", ROUND(capital_efficiency::numeric, 4) AS \"Cap. Efficiency\", ROUND(annualized_return::numeric, 4) AS \"Annualized Return %\", COALESCE(total_stops_triggered, 0) AS \"Stops\", execution_time_ms AS \"Exec (ms)\", config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\", config_json->>'stop_loss_enabled' AS \"SL Enabled\", config_json->>'stop_loss_percent' AS \"SL %\", config_json->>'stop_loss_baseline' AS \"SL Baseline\", config_json->>'stop_loss_timeout_minutes' AS \"SL Timeout\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) ORDER BY roi DESC LIMIT 2000",
           "refId": "A"
         }
       ]
@@ -339,28 +779,49 @@
       "type": "histogram",
       "title": "ROI Distribution",
       "description": "Distribution of ROI % across all filtered runs. Reveals whether the solution space skews positive or has a long tail.",
-      "gridPos": { "x": 0, "y": 18, "w": 12, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "bucketSize": "auto",
         "bucketOffset": 0,
         "combine": false,
         "fillOpacity": 80,
         "gradientMode": "none",
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false }
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        }
       },
       "fieldConfig": {
         "defaults": {
           "unit": "percent",
-          "color": { "mode": "palette-classic" }
+          "color": {
+            "mode": "palette-classic"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT ROUND(roi::numeric, 2) AS \"ROI %\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) ORDER BY 1",
           "refId": "A"
         }
@@ -371,31 +832,64 @@
       "type": "barchart",
       "title": "Avg ROI by Take Profit %",
       "description": "Average ROI for each take_profit_distance_percent value. Shows which TP level captures the most profit on average.",
-      "gridPos": { "x": 12, "y": 18, "w": 12, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 12,
+        "y": 22,
+        "w": 12,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": -30,
-        "groupWidth": 0.7, "barWidth": 0.9, "barRadius": 0.1,
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
         "xField": "TP %"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 2,
+          "unit": "percent",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT config_json->>'take_profit_distance_percent' AS \"TP %\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1 ORDER BY (config_json->>'take_profit_distance_percent')::float",
           "refId": "A"
         }
@@ -406,31 +900,64 @@
       "type": "barchart",
       "title": "Avg ROI by # Orders",
       "description": "Shows whether more safety orders improve or hurt average ROI.",
-      "gridPos": { "x": 0, "y": 26, "w": 6, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": 0,
-        "groupWidth": 0.7, "barWidth": 0.9, "barRadius": 0.1,
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
         "xField": "# Orders"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 2,
+          "unit": "percent",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT (config_json->>'number_of_orders')::int AS \"# Orders\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1 ORDER BY 1",
           "refId": "A"
         }
@@ -441,31 +968,64 @@
       "type": "barchart",
       "title": "Avg ROI by Price Entry",
       "description": "Average ROI by price_entry (deviation % from market when opening a position).",
-      "gridPos": { "x": 6, "y": 26, "w": 6, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 6,
+        "y": 30,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": -30,
-        "groupWidth": 0.7, "barWidth": 0.9, "barRadius": 0.1,
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
         "xField": "Price Entry"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 2,
+          "unit": "percent",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT config_json->>'price_entry' AS \"Price Entry\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1 ORDER BY (config_json->>'price_entry')::float",
           "refId": "A"
         }
@@ -476,31 +1036,64 @@
       "type": "barchart",
       "title": "Avg ROI by Price Scale",
       "description": "Average ROI by price_scale (geometric multiplier between safety order price steps).",
-      "gridPos": { "x": 12, "y": 26, "w": 6, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 12,
+        "y": 30,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": -30,
-        "groupWidth": 0.7, "barWidth": 0.9, "barRadius": 0.1,
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
         "xField": "Price Scale"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 2,
+          "unit": "percent",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT config_json->>'price_scale' AS \"Price Scale\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1 ORDER BY (config_json->>'price_scale')::float",
           "refId": "A"
         }
@@ -511,31 +1104,64 @@
       "type": "barchart",
       "title": "Avg ROI by Amount Scale",
       "description": "Average ROI by amount_scale (geometric multiplier between safety order sizes). Higher = more capital at each level.",
-      "gridPos": { "x": 18, "y": 26, "w": 6, "h": 8 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 18,
+        "y": 30,
+        "w": 6,
+        "h": 8
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "orientation": "vertical",
         "xTickLabelRotation": -30,
-        "groupWidth": 0.7, "barWidth": 0.9, "barRadius": 0.1,
-        "tooltip": { "mode": "single", "sort": "none" },
-        "legend": { "displayMode": "list", "placement": "bottom", "showLegend": false },
+        "groupWidth": 0.7,
+        "barWidth": 0.9,
+        "barRadius": 0.1,
+        "tooltip": {
+          "mode": "single",
+          "sort": "none"
+        },
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": false
+        },
         "xField": "Amount Scale"
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "percent", "decimals": 2,
+          "unit": "percent",
+          "decimals": 2,
           "thresholds": {
             "mode": "absolute",
-            "steps": [{ "color": "red", "value": null }, { "color": "green", "value": 0 }]
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
           },
-          "color": { "mode": "thresholds" }
+          "color": {
+            "mode": "thresholds"
+          }
         },
         "overrides": []
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT config_json->>'amount_scale' AS \"Amount Scale\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1 ORDER BY (config_json->>'amount_scale')::float",
           "refId": "A"
         }
@@ -546,68 +1172,302 @@
       "type": "table",
       "title": "Top Parameter Combinations",
       "description": "Runs aggregated by their full parameter combination. Use this to identify which specific config tuple produces the highest average ROI across multiple runs. Sorted by avg ROI descending.",
-      "gridPos": { "x": 0, "y": 34, "w": 24, "h": 10 },
-      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 24,
+        "h": 10
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
       "options": {
         "cellHeight": "sm",
-        "footer": { "show": false },
+        "footer": {
+          "show": false
+        },
         "showHeader": true,
-        "sortBy": [{ "displayName": "Avg ROI %", "desc": true }]
+        "sortBy": [
+          {
+            "displayName": "Avg ROI %",
+            "desc": true
+          }
+        ]
       },
       "fieldConfig": {
         "defaults": {
-          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "filterable": true }
+          "custom": {
+            "align": "auto",
+            "cellOptions": {
+              "type": "auto"
+            },
+            "filterable": true
+          }
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Avg ROI %" },
+            "matcher": {
+              "id": "byName",
+              "options": "Avg ROI %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" },
-              { "id": "decimals", "value": 4 },
-              { "id": "custom.cellOptions", "value": { "type": "color-background", "applyToRow": false } },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background",
+                  "applyToRow": false
+                }
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
                   "steps": [
-                    { "color": "rgba(245,54,54,0.7)", "value": null },
-                    { "color": "rgba(50,172,45,0.7)", "value": 0 }
+                    {
+                      "color": "rgba(245,54,54,0.7)",
+                      "value": null
+                    },
+                    {
+                      "color": "rgba(50,172,45,0.7)",
+                      "value": 0
+                    }
                   ]
                 }
               },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Best ROI %" },
-            "properties": [{ "id": "unit", "value": "percent" }, { "id": "decimals", "value": 4 }]
+            "matcher": {
+              "id": "byName",
+              "options": "Best ROI %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              }
+            ]
           },
           {
-            "matcher": { "id": "byName", "options": "Avg Drawdown %" },
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Drawdown %"
+            },
             "properties": [
-              { "id": "unit", "value": "percent" }, { "id": "decimals", "value": 4 },
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 4
+              },
               {
                 "id": "thresholds",
                 "value": {
                   "mode": "absolute",
-                  "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 10 }, { "color": "red", "value": 25 }]
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "yellow",
+                      "value": 10
+                    },
+                    {
+                      "color": "red",
+                      "value": 25
+                    }
+                  ]
                 }
               },
-              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
-              { "id": "color", "value": { "mode": "thresholds" } }
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              },
+              {
+                "id": "color",
+                "value": {
+                  "mode": "thresholds"
+                }
+              }
             ]
           },
           {
-            "matcher": { "id": "byName", "options": "Avg Win Rate %" },
-            "properties": [{ "id": "unit", "value": "percent" }, { "id": "decimals", "value": 2 }]
+            "matcher": {
+              "id": "byName",
+              "options": "Avg Win Rate %"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percent"
+              },
+              {
+                "id": "decimals",
+                "value": 2
+              }
+            ]
           }
         ]
       },
       "targets": [
         {
-          "datasource": { "type": "postgres", "uid": "dca_postgres" },
-          "format": "table", "rawQuery": true,
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
           "rawSql": "SELECT config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\", config_json->>'stop_loss_enabled' AS \"SL Enabled\", config_json->>'stop_loss_percent' AS \"SL %\", COUNT(*) AS \"Runs\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI %\", ROUND(MAX(roi)::numeric, 4) AS \"Best ROI %\", ROUND(AVG(max_drawdown)::numeric, 4) AS \"Avg Drawdown %\", ROUND(AVG(win_rate)::numeric * 100, 2) AS \"Avg Win Rate %\", ROUND(AVG(COALESCE(total_stops_triggered, 0))::numeric, 1) AS \"Avg Stops\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1,2,3,4,5,6,7 ORDER BY AVG(roi) DESC LIMIT 200",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Best Annualized Return",
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(MAX(annualized_return)::numeric, 4) AS \"Best Annualized Return %\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Avg Annualized Return",
+      "gridPos": {
+        "x": 12,
+        "y": 4,
+        "w": 12,
+        "h": 4
+      },
+      "datasource": {
+        "type": "postgres",
+        "uid": "dca_postgres"
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 4,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "green",
+                "value": 0
+              }
+            ]
+          },
+          "color": {
+            "mode": "thresholds"
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "postgres",
+            "uid": "dca_postgres"
+          },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(AVG(annualized_return)::numeric, 4) AS \"Avg Annualized Return %\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
       ]
@@ -615,11 +1475,18 @@
   ],
   "refresh": "5m",
   "schemaVersion": 39,
-  "tags": ["dca", "sweep", "optimizer"],
+  "tags": [
+    "dca",
+    "sweep",
+    "optimizer"
+  ],
   "templating": {
     "list": [
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT trading_pair || ' | ' || LEFT(start_date::text, 10) || ' → ' || LEFT(end_date::text, 10) || '  (' || total_runs || ' runs)' AS __text, id::text AS __value FROM sweep_sessions ORDER BY start_date DESC",
         "includeAll": false,
         "multi": false,
@@ -633,7 +1500,10 @@
         "type": "query"
       },
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT val FROM (SELECT DISTINCT config_json->>'price_entry' AS val FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IS NOT NULL) t ORDER BY val::float",
         "includeAll": true,
         "multi": true,
@@ -647,7 +1517,10 @@
         "type": "query"
       },
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT val FROM (SELECT DISTINCT config_json->>'price_scale' AS val FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_scale' IS NOT NULL) t ORDER BY val::float",
         "includeAll": true,
         "multi": true,
@@ -661,7 +1534,10 @@
         "type": "query"
       },
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT val FROM (SELECT DISTINCT config_json->>'amount_scale' AS val FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'amount_scale' IS NOT NULL) t ORDER BY val::float",
         "includeAll": true,
         "multi": true,
@@ -675,7 +1551,10 @@
         "type": "query"
       },
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT val FROM (SELECT DISTINCT config_json->>'number_of_orders' AS val FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'number_of_orders' IS NOT NULL) t ORDER BY val::int",
         "includeAll": true,
         "multi": true,
@@ -689,7 +1568,10 @@
         "type": "query"
       },
       {
-        "datasource": { "type": "postgres", "uid": "dca_postgres" },
+        "datasource": {
+          "type": "postgres",
+          "uid": "dca_postgres"
+        },
         "definition": "SELECT val FROM (SELECT DISTINCT config_json->>'take_profit_distance_percent' AS val FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'take_profit_distance_percent' IS NOT NULL) t ORDER BY val::float",
         "includeAll": true,
         "multi": true,
@@ -704,7 +1586,10 @@
       }
     ]
   },
-  "time": { "from": "now-2y", "to": "now" },
+  "time": {
+    "from": "now-2y",
+    "to": "now"
+  },
   "timepicker": {},
   "timezone": "browser",
   "title": "Sweep Leaderboard",

@@ -12,6 +12,7 @@ export function PnlSummary({ pnlData }: PnlSummaryProps) {
   const roiColor = pnlData.roi >= 0 ? 'success' : 'danger'
   const maxDrawdownColor = 'danger' // Always red for drawdown
   const feesColor = 'neutral' // Gray for fees
+  const irrColor = (pnlData.annualizedReturn ?? 0) >= 0 ? 'success' : 'danger'
 
   return (
     <div className="w-full">
@@ -45,6 +46,16 @@ export function PnlSummary({ pnlData }: PnlSummaryProps) {
           unit="$"
           color={feesColor}
           tooltip="Total trading fees paid during backtest"
+        />
+
+        {/* Annualized Return (IRR) Metric Card */}
+        <MetricCard
+          label="Annualized Return (IRR)"
+          value={pnlData.annualizedReturn ?? null}
+          unit="%"
+          color={pnlData.annualizedReturn != null ? irrColor : 'neutral'}
+          tooltip="Internal Rate of Return annualized to % per year, accounting for deposit timing"
+          nullText="N/A"
         />
       </div>
     </div>

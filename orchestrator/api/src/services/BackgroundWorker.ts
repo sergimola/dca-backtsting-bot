@@ -25,6 +25,7 @@ import { BacktestService } from './BacktestService.js';
 import { GapResolver } from './GapResolver.js';
 import { BinanceDownloader } from './BinanceDownloader.js';
 import { WideEventIngester } from './WideEventIngester.js';
+import { computeAnnualizedReturn } from './IrrCalculator.js';
 import type { ProgressLine, SafetyOrderUsageEntry } from '../types/index.js';
 import * as path from 'path';
 
@@ -147,6 +148,24 @@ export class BackgroundWorker {
 
       // T032: Use engine result directly — no aggregation pass needed (done in Go)
       const safetyOrders: SafetyOrderUsageEntry[] = execResult.safetyOrderUsage;
+
+      // 020: Compute annualized return (IRR) and attach to pnlSummary before persistence
+      if (execResult.pnlSummary) {
+        // Derive final account equity: Go engine roi = netProfit / (accountBalance + totalAdditions) * 100
+        // totalAdditions = sum of DEPOSIT event balances; final equity = (accountBalance + totalAdditions) * (1 + roi/100)
+        const roi = execResult.pnlSummary.roi;
+        const totalDeposits = (execResult.tradeEvents ?? [])
+          .filter(e => e.eventType === 'DEPOSIT')
+          .reduce((sum, e) => sum + e.balance, 0);
+        const totalCapital = parseFloat(String(config.account_balance)) + totalDeposits;
+        const finalEquity = totalCapital * (1 + roi / 100);
+        execResult.pnlSummary.annualizedReturn = computeAnnualizedReturn(
+          execResult.tradeEvents ?? [],
+          config.start_date,
+          String(config.account_balance),
+          finalEquity,
+        );
+      }
 
       // T031: Ingest wide event file into ClickHouse if the engine produced one
       if (this.ingester && execResult.wideEventFile) {

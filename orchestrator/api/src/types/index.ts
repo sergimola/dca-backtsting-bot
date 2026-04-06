@@ -105,6 +105,7 @@ export interface StoredPnlSummary {
   maxDrawdown: number;
   totalFees: number;
   winRate?: number;
+  annualizedReturn?: number | null;
 }
 
 export interface StoredTradeEvent {
