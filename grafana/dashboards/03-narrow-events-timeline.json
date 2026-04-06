@@ -30,7 +30,7 @@
       "id": 1,
       "type": "stat",
       "title": "Total Trade Events",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -60,7 +60,7 @@
       "id": 2,
       "type": "stat",
       "title": "Completed Trades (Exits)",
-      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -90,7 +90,7 @@
       "id": 3,
       "type": "stat",
       "title": "Safety Order Fills",
-      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -121,7 +121,7 @@
       "type": "stat",
       "title": "Net Realized PnL",
       "description": "Sum of profit from all EXIT events in this run.",
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -151,6 +151,74 @@
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(SUM(CASE WHEN t->>'eventType' = 'EXIT' THEN (t->>'balance')::numeric ELSE 0 END), 4) AS \"Net PnL\" FROM backtests b, jsonb_array_elements(b.trades) AS t WHERE b.id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Win Rate",
+      "description": "Percentage of exits that were profitable (from summary).",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 70 }]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(COALESCE(NULLIF((summary->>'winRate'), '')::numeric * 100, 100.0), 2) AS \"Win Rate\" FROM backtests WHERE id::text = '${run_id}'",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "type": "stat",
+      "title": "Total Fees",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(COALESCE(NULLIF((summary->>'totalFees'), '')::numeric, 0), 4) AS \"Total Fees\" FROM backtests WHERE id::text = '${run_id}'",
           "refId": "A"
         }
       ]
@@ -204,7 +272,7 @@
           "datasource": { "type": "postgres", "uid": "dca_postgres" },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT config->>'trading_pair' AS \"Pair\", LEFT(config->>'start_date',10) AS \"Start\", LEFT(config->>'end_date',10) AS \"End\", config->>'account_balance' AS \"Account Balance\", config->>'number_of_orders' AS \"Orders\", config->>'price_entry' AS \"Entry Price\", config->>'take_profit_distance_percent' AS \"TP %\", config->>'price_scale' AS \"Price Scale\", config->>'amount_scale' AS \"Amount Scale\", config->>'multiplier' AS \"Leverage\", ROUND((summary->>'roi')::numeric, 2) AS \"Final ROI %\", ROUND((summary->>'maxDrawdown')::numeric, 2) AS \"Max Drawdown %\" FROM backtests WHERE id::text = '${run_id}'",
+          "rawSql": "SELECT config->>'trading_pair' AS \"Pair\", LEFT(config->>'start_date',10) AS \"Start\", LEFT(config->>'end_date',10) AS \"End\", config->>'account_balance' AS \"Account Balance\", config->>'number_of_orders' AS \"Orders\", config->>'price_entry' AS \"Entry Price\", config->>'take_profit_distance_percent' AS \"TP %\", config->>'price_scale' AS \"Price Scale\", config->>'amount_scale' AS \"Amount Scale\", config->>'multiplier' AS \"Leverage\", COALESCE(config->>'stop_loss_enabled', 'false') AS \"SL Enabled\", config->>'stop_loss_percent' AS \"SL %\", config->>'stop_loss_baseline' AS \"SL Baseline\", config->>'stop_loss_timeout_minutes' AS \"SL Timeout (min)\", ROUND((summary->>'roi')::numeric, 2) AS \"Final ROI %\", ROUND((summary->>'maxDrawdown')::numeric, 2) AS \"Max Drawdown %\" FROM backtests WHERE id::text = '${run_id}'",
           "refId": "A"
         }
       ]

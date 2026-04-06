@@ -36,10 +36,11 @@ const results: BacktestResults = {
 }
 
 describe('useResultsMetrics', () => {
-  it('computes netProfit as sum of EXIT balance values minus fees', () => {
+  it('computes netProfit as sum of EXIT balance values (fees already embedded by engine)', () => {
     const { result } = renderHook(() => useResultsMetrics(results, config))
-    // EXIT balances: 25 + (-10) = 15. Fees: 4 * 0.5 = 2. Net = 15 - 2 = 13
-    expect(result.current.netProfit).toBeCloseTo(13, 1)
+    // EXIT balances: 25 + (-10) = 15. Engine already deducts all fees from EXIT.balance.
+    // Do NOT subtract fees again — that would double-count them.
+    expect(result.current.netProfit).toBeCloseTo(15, 1)
   })
 
   it('computes totalFees as sum of all event fees', () => {
@@ -73,7 +74,7 @@ describe('useResultsMetrics', () => {
 
   it('computes accountEquity as accountBalance + netProfit', () => {
     const { result } = renderHook(() => useResultsMetrics(results, config))
-    expect(result.current.accountEquity).toBeCloseTo(1013, 1)
+    expect(result.current.accountEquity).toBeCloseTo(1015, 1)
   })
 
   it('computes per-trade MAE (negative excursion relative to entry price)', () => {

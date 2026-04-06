@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"math"
 	"testing"
 	"time"
@@ -75,6 +76,21 @@ func almostEqual(a, b, tolerance float64) bool {
 	return math.Abs(a-b) <= tolerance
 }
 
+func makeClosedEventWithReason(tradeID, closingPrice, size, profit, reason string) orchestrator.Event {
+	return orchestrator.Event{
+		Timestamp: testTS,
+		Type:      orchestrator.EventTypePositionClosed,
+		Data: &position.TradeClosedEvent{
+			TradeID:      tradeID,
+			Timestamp:    testTS,
+			ClosingPrice: closingPrice,
+			Size:         size,
+			Profit:       profit,
+			Reason:       reason,
+		},
+	}
+}
+
 func makeMonthlyAdditionEvent(amount string) orchestrator.Event {
 	return orchestrator.Event{
 		Timestamp: testTS,
@@ -95,7 +111,7 @@ func TestAggregateBacktestEvents_RoiCalc(t *testing.T) {
 		makeClosedEvent("t1", "51000", "0.01", "100"),
 	}
 	balance := decimal.NewFromInt(1000)
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	want := 10.0 // (100/1000)*100
 	if !almostEqual(result.PnlSummary.Roi, want, 0.0001) {
@@ -113,7 +129,7 @@ func TestAggregateBacktestEvents_MaxDrawdown(t *testing.T) {
 		makeClosedEvent("t3", "50500", "0.01", "50"),
 	}
 	balance := decimal.NewFromInt(1000)
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	wantMaxDD := 100.0 / 1200.0 * 100.0 // ≈ 8.3333%
 	if !almostEqual(result.PnlSummary.MaxDrawdown, wantMaxDD, 0.001) {
@@ -128,7 +144,7 @@ func TestAggregateBacktestEvents_TotalFees(t *testing.T) {
 		makeSellEvent("t1", "0.30"),
 	}
 	balance := decimal.NewFromInt(1000)
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	wantFees := 2.05
 	if !almostEqual(result.PnlSummary.TotalFees, wantFees, 0.0001) {
@@ -143,7 +159,7 @@ func TestAggregateBacktestEvents_SafetyOrderCounts(t *testing.T) {
 		makeBuyEvent("t1", "47000", "0.03", "0.1", 3), // soIndex=2
 	}
 	balance := decimal.NewFromInt(1000)
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	if result.SafetyOrderCounts[1] != 2 {
 		t.Errorf("soIndex 1 count = %d; want 2", result.SafetyOrderCounts[1])
@@ -161,7 +177,7 @@ func TestAggregateBacktestEvents_ZeroBalanceNoRoiPanic(t *testing.T) {
 		makeClosedEvent("t1", "51000", "0.01", "100"),
 	}
 	balance := decimal.Zero
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 	// With zero account balance, ROI must be 0 (not a divide-by-zero panic)
 	if result.PnlSummary.Roi != 0 {
 		t.Errorf("ROI with zero balance = %.6f; want 0", result.PnlSummary.Roi)
@@ -340,7 +356,7 @@ func TestAggregateBacktestEvents_MonthlyAddition(t *testing.T) {
 		makeClosedEvent("t1", "51000", "0.01", "250"),
 	}
 	balance := decimal.NewFromInt(1000)
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	// ROI = 250 / (1000 + 1500) × 100 = 10.00
 	if !almostEqual(result.PnlSummary.Roi, 10.0, 0.0001) {
@@ -355,7 +371,7 @@ func TestAggregateBacktestEvents_NoAdditionsRoiUnchanged(t *testing.T) {
 		makeClosedEvent("t1", "51000", "0.01", "100"),
 	}
 	balance := decimal.NewFromInt(1000)
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	if !almostEqual(result.PnlSummary.Roi, 10.0, 0.0001) {
 		t.Errorf("ROI = %.6f; want 10.0000 (no additions, denominator unchanged)", result.PnlSummary.Roi)
@@ -370,7 +386,7 @@ func TestAggregateBacktestEvents_ZeroBalancePlusAdditions(t *testing.T) {
 		makeClosedEvent("t1", "51000", "0.01", "100"),
 	}
 	balance := decimal.Zero
-	result := aggregateBacktestEvents(events, balance)
+	result := aggregateBacktestEvents(events, balance, nil, decimal.Zero)
 
 	// ROI = 100 / 1000 × 100 = 10.00
 	if !almostEqual(result.PnlSummary.Roi, 10.0, 0.0001) {
@@ -426,5 +442,70 @@ func TestBuildTradeEvents_MonthlyAdditionEmitsDeposit(t *testing.T) {
 	}
 	if result[4].EventType != "EXIT" {
 		t.Errorf("result[4].EventType = %q; want EXIT", result[4].EventType)
+	}
+}
+
+// ---------------------------------------------------------------------------
+// 019-engine-stop-loss: Win Rate aggregation tests (T023)
+// ---------------------------------------------------------------------------
+
+func TestAggregateWinRate_10TPs_3SLs(t *testing.T) {
+	events := make([]orchestrator.Event, 0, 13)
+	for i := 0; i < 10; i++ {
+		events = append(events, makeClosedEventWithReason(
+			fmt.Sprintf("tp-%d", i), "51000", "0.01", "50", "take_profit"))
+	}
+	for i := 0; i < 3; i++ {
+		events = append(events, makeClosedEventWithReason(
+			fmt.Sprintf("sl-%d", i), "49000", "0.01", "-30", "stop_loss"))
+	}
+	result := aggregateBacktestEvents(events, decimal.NewFromInt(10000), nil, decimal.Zero)
+
+	// winRate = 10 / (10+3) ≈ 0.76923077
+	wantWinRate := 10.0 / 13.0
+	if !almostEqual(result.PnlSummary.WinRate, wantWinRate, 0.0001) {
+		t.Errorf("WinRate = %.8f; want ≈ %.8f", result.PnlSummary.WinRate, wantWinRate)
+	}
+	if result.StopLossCount != 3 {
+		t.Errorf("StopLossCount = %d; want 3", result.StopLossCount)
+	}
+	if result.TakeProfitCount != 10 {
+		t.Errorf("TakeProfitCount = %d; want 10", result.TakeProfitCount)
+	}
+}
+
+func TestAggregateWinRate_5TPs_0SLs(t *testing.T) {
+	events := make([]orchestrator.Event, 0, 5)
+	for i := 0; i < 5; i++ {
+		events = append(events, makeClosedEventWithReason(
+			fmt.Sprintf("tp-%d", i), "51000", "0.01", "50", "take_profit"))
+	}
+	result := aggregateBacktestEvents(events, decimal.NewFromInt(10000), nil, decimal.Zero)
+
+	// winRate = 5/5 = 1.0
+	if !almostEqual(result.PnlSummary.WinRate, 1.0, 0.0001) {
+		t.Errorf("WinRate = %.8f; want 1.0", result.PnlSummary.WinRate)
+	}
+	if result.StopLossCount != 0 {
+		t.Errorf("StopLossCount = %d; want 0", result.StopLossCount)
+	}
+	if result.TakeProfitCount != 5 {
+		t.Errorf("TakeProfitCount = %d; want 5", result.TakeProfitCount)
+	}
+}
+
+func TestAggregateWinRate_0TPs_0SLs_NoDiv0(t *testing.T) {
+	// No closed events at all — should be winRate=0, not panic
+	events := []orchestrator.Event{}
+	result := aggregateBacktestEvents(events, decimal.NewFromInt(10000), nil, decimal.Zero)
+
+	if result.PnlSummary.WinRate != 0 {
+		t.Errorf("WinRate = %.8f; want 0.0 (no division by zero)", result.PnlSummary.WinRate)
+	}
+	if result.StopLossCount != 0 {
+		t.Errorf("StopLossCount = %d; want 0", result.StopLossCount)
+	}
+	if result.TakeProfitCount != 0 {
+		t.Errorf("TakeProfitCount = %d; want 0", result.TakeProfitCount)
 	}
 }

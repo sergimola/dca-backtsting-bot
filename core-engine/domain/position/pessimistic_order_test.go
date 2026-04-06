@@ -159,8 +159,8 @@ func TestPessimisticOrder_T052_LiquidationBeforeTakeProfit(t *testing.T) {
 
 	// Setup with multiple orders filled
 	pos.State = StateSafetyOrderWait
-	pos.NextOrderIndex = 2
-	pos.HasMoreOrders = true
+	pos.NextOrderIndex = 3 // all 3 configured orders already filled — prevents SO refill on this candle
+	pos.HasMoreOrders = false
 	pos.OpenPrice = mustDecimal("100.00")
 	pos.Orders = []OrderFill{
 		{OrderIndex: 0, OrderNumber: 1, OrderType: OrderTypeMarket, ExecutedPrice: mustDecimal("100.00"), ExecutedQuantity: mustDecimal("1.0"), QuoteAmount: mustDecimal("100.00"), Timestamp: openTime, Fee: mustDecimal("0.075")},
@@ -230,7 +230,7 @@ func TestPessimisticOrder_T053_LiquidationIgnoresTakeProfit(t *testing.T) {
 		{OrderIndex: 1, OrderNumber: 2, OrderType: OrderTypeLimit, ExecutedPrice: mustDecimal("98.00"), ExecutedQuantity: mustDecimal("1.0"), QuoteAmount: mustDecimal("98.00"), Timestamp: time.Date(2024, 1, 1, 0, 1, 0, 0, time.UTC), Fee: mustDecimal("0.0735")},
 	}
 	pos.FeesAccumulated = mustDecimal("0.1485")
-	pos.NextOrderIndex = 2
+	pos.NextOrderIndex = 3 // all 3 configured orders already filled — prevents SO refill on this candle
 
 	// Candle where high=100 (way above P_tp) but low=89 (below P_liq=90)
 	candle := &Candle{

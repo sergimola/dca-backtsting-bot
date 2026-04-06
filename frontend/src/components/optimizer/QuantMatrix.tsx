@@ -6,7 +6,7 @@ import React from 'react'
 import { HeatmapGrid } from './HeatmapGrid'
 import { LeaderboardGrid } from './LeaderboardGrid'
 import { BatchPromotionPanel } from './BatchPromotionPanel'
-import type { EnrichedResult, BatchRunResult, SweepPhase, BatchPromotionStatus } from '../../hooks/useOptimizer'
+import type { EnrichedResult, SweepPhase, BatchPromotionStatus } from '../../hooks/useOptimizer'
 
 interface Props {
   results: EnrichedResult[]
@@ -14,7 +14,7 @@ interface Props {
   phase: SweepPhase
   totalRuns?: number
   onNewSweep: () => void
-  onOpenInSingleRun?: (result: BatchRunResult) => void
+  onOpenInSingleRun?: (result: EnrichedResult) => void
   // 018: Selection & promotion
   selectedRunIds?: Set<string>
   onToggleRunSelection?: (runId: string) => void

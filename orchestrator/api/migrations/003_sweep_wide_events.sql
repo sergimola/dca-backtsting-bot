@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS data.sweep_wide_events (
     action_price            Decimal64(8),
     action_quantity         Decimal64(8),
     action_fee              Decimal64(8),
-    order_number            UInt32
+    order_number            UInt32,
+    realized_pnl            Decimal64(8),
+    close_reason            LowCardinality(String)
 ) ENGINE = MergeTree()
 PARTITION BY session_id
 ORDER BY (session_id, run_id, timestamp);

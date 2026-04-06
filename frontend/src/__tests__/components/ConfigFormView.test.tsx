@@ -50,10 +50,10 @@ describe('ConfigFormView', () => {
     expect(screen.getAllByRole('switch').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('startDate and endDate inputs have type datetime-local', () => {
+  it('startDate and endDate inputs are text inputs with ISO placeholder', () => {
     render(<ConfigFormView onSubmit={noop} isSubmitting={false} error={null} />)
-    expect(screen.getByLabelText(/start date/i)).toHaveAttribute('type', 'datetime-local')
-    expect(screen.getByLabelText(/end date/i)).toHaveAttribute('type', 'datetime-local')
+    expect(screen.getByLabelText(/start date/i)).toHaveAttribute('type', 'text')
+    expect(screen.getByLabelText(/end date/i)).toHaveAttribute('type', 'text')
   })
 
   it('priceScale wrapper contains a % suffix element', () => {

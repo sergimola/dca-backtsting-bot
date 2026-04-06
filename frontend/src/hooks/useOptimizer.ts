@@ -26,6 +26,9 @@ export interface OptimizerFormState {
   endDate: string
   accountBalance: string
   parameters: ParameterField[]
+  stop_loss_enabled: boolean
+  stop_loss_baseline: 'first_entry' | 'average_entries'
+  marginType: 'cross' | 'isolated'
 }
 
 export interface PruneBreakdown {
@@ -60,12 +63,14 @@ export interface BatchRunResult {
   run_id: string
   type: 'result' | 'error'
   error?: string
-  pnlSummary?: { roi: number; maxDrawdown: number; totalFees: number }
+  pnlSummary?: { roi: number; maxDrawdown: number; totalFees: number; winRate?: number }
   executionTimeMs?: number
   candleCount?: number
   eventCount?: number
   longest_trade_duration_ms?: number
   max_safety_orders_used?: number
+  total_stops_triggered?: number
+  total_take_profits?: number
   promoted_at?: string | null
 }
 
@@ -111,6 +116,8 @@ const DEFAULT_PARAMS: ParameterField[] = [
   { name: 'number_of_orders', label: 'Number of Orders', mode: 'fixed', fixedValue: '10', listInput: '', range: { start: '', end: '', step: '' } },
   { name: 'take_profit_distance_percent', label: 'Take Profit (%)', mode: 'fixed', fixedValue: '0.5', listInput: '', range: { start: '', end: '', step: '' } },
   { name: 'multiplier', label: 'Multiplier', mode: 'fixed', fixedValue: '1', listInput: '', range: { start: '', end: '', step: '' } },
+  { name: 'stop_loss_percent', label: 'Stop Loss (%)', mode: 'fixed', fixedValue: '5', listInput: '', range: { start: '', end: '', step: '' } },
+  { name: 'stop_loss_timeout_minutes', label: 'SL Timeout (min)', mode: 'fixed', fixedValue: '0', listInput: '', range: { start: '', end: '', step: '' } },
 ]
 
 // ── Hook ─────────────────────────────────────────────────────────────────────
@@ -124,6 +131,9 @@ export function useOptimizer() {
     endDate: '2025-01-31T00:00:00Z',
     accountBalance: '10000',
     parameters: DEFAULT_PARAMS,
+    stop_loss_enabled: false,
+    stop_loss_baseline: 'average_entries',
+    marginType: 'isolated',
   })
 
   const [phase, setPhase] = useState<SweepPhase>('idle')
@@ -309,7 +319,7 @@ export function useOptimizer() {
     }))
   }, [])
 
-  const updateFormField = useCallback((field: string, value: string) => {
+  const updateFormField = useCallback((field: string, value: string | boolean) => {
     setFormState(prev => ({ ...prev, [field]: value }))
   }, [])
 
@@ -318,7 +328,10 @@ export function useOptimizer() {
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(async () => {
       try {
-        const params = formState.parameters.map(p => ({
+        const slNames = ['stop_loss_percent', 'stop_loss_timeout_minutes']
+        const params = formState.parameters
+          .filter(p => formState.stop_loss_enabled || !slNames.includes(p.name))
+          .map(p => ({
           name: p.name,
           mode: p.mode,
           fixedValue: p.fixedValue,
@@ -358,7 +371,10 @@ export function useOptimizer() {
     setInferredSweptParams([])
 
     try {
-      const params = formState.parameters.map(p => ({
+      const slParamNames = ['stop_loss_percent', 'stop_loss_timeout_minutes']
+      const params = formState.parameters
+        .filter(p => formState.stop_loss_enabled || !slParamNames.includes(p.name))
+        .map(p => ({
         name: p.name,
         mode: p.mode,
         fixedValue: p.fixedValue,
@@ -378,8 +394,10 @@ export function useOptimizer() {
           trading_pair: formState.symbol,
           start_date: formState.startDate,
           end_date: formState.endDate,
-          margin_type: 'cross',
+          margin_type: formState.marginType,
           exit_on_last_order: false,
+          stop_loss_enabled: formState.stop_loss_enabled,
+          stop_loss_baseline: formState.stop_loss_baseline,
           // Server-side .env is the source of truth for infrastructure credentials.
           clickhouse_addr: '',
           clickhouse_db: '',

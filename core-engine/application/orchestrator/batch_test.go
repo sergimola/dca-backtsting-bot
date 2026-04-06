@@ -373,14 +373,14 @@ func TestBatchToWriter_StreamsBeforeSummary(t *testing.T) {
 // ─── Test: T020 — Win rate tracking ──────────────────────────────────────────
 
 func TestBatch_WinRate_ThreeTPOneLiquidation(t *testing.T) {
-	// Verify win rate = 0.75 for 3 TP closes + 1 liquidation
-	// This test uses buildBatchResultPayload directly via a synthetic event set.
+	// FR-014: winRate = TPs / (TPs + SLs). Liquidation is excluded from denominator.
+	// 3 TPs + 1 SL → winRate = 0.75
 	cfg := minimalConfig(t)
 	events := []Event{
 		makeClosedEvent("take_profit"),
 		makeClosedEvent("take_profit"),
 		makeClosedEvent("take_profit"),
-		makeClosedEvent("liquidation"),
+		makeClosedEvent("stop_loss"),
 	}
 	result := buildBatchResultPayload("wr-test", events, cfg, 10, 5, 4)
 	data, _ := json.Marshal(result)
@@ -454,6 +454,80 @@ func makeClosedEvent(reason string) Event {
 			Profit: "0",
 			Reason: reason,
 		},
+	}
+}
+
+func makeClosedEventWithProfit(reason, profit string) Event {
+	return Event{
+		Type: EventTypePositionClosed,
+		Data: &position.TradeClosedEvent{
+			Profit: profit,
+			Reason: reason,
+		},
+	}
+}
+
+// ─── Test: T_ROI — Stop-loss P&L must reduce ROI ─────────────────────────────
+
+func TestBatch_ROI_StopLossReducesROI(t *testing.T) {
+	// 1 TP (+10) + 1 SL (-5) on $10000 start balance → ROI = 5/10000*100 = 0.05%
+	cfg := minimalConfig(t)
+	events := []Event{
+		makeClosedEventWithProfit("take_profit", "10"),
+		makeClosedEventWithProfit("stop_loss", "-5"),
+	}
+	result := buildBatchResultPayload("roi-sl-test", events, cfg, 10, 5, 2)
+	data, _ := json.Marshal(result)
+
+	var probe struct {
+		PnlSummary struct {
+			ROI         float64 `json:"roi"`
+			MaxDrawdown float64 `json:"maxDrawdown"`
+		} `json:"pnlSummary"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	// With SL loss counted: realizedPnl = 10 - 5 = 5; ROI = 5/10000*100 = 0.05
+	// If bug (SL excluded): realizedPnl = 10; ROI = 10/10000*100 = 0.10
+	const wantROI = 0.05
+	const eps = 0.001
+	got := probe.PnlSummary.ROI
+	if got < wantROI-eps || got > wantROI+eps {
+		t.Errorf("ROI = %v, want %v — stop-loss P&L not counted in realizedPnl", got, wantROI)
+	}
+	// MaxDrawdown must be > 0 because equity dips after the SL loss
+	if probe.PnlSummary.MaxDrawdown <= 0 {
+		t.Errorf("MaxDrawdown = %v, want > 0 — SL loss should cause a drawdown from the TP peak", probe.PnlSummary.MaxDrawdown)
+	}
+}
+
+func TestBatch_ROI_OnlyStopLosses_NegativeROI(t *testing.T) {
+	// 3 SLs of -$100 each on $10000 start balance → ROI = -300/10000*100 = -3%
+	cfg := minimalConfig(t)
+	events := []Event{
+		makeClosedEventWithProfit("stop_loss", "-100"),
+		makeClosedEventWithProfit("stop_loss", "-100"),
+		makeClosedEventWithProfit("stop_loss", "-100"),
+	}
+	result := buildBatchResultPayload("roi-sl-only-test", events, cfg, 10, 5, 3)
+	data, _ := json.Marshal(result)
+
+	var probe struct {
+		PnlSummary struct {
+			ROI float64 `json:"roi"`
+		} `json:"pnlSummary"`
+	}
+	if err := json.Unmarshal(data, &probe); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+
+	const wantROI = -3.0
+	const eps = 0.001
+	got := probe.PnlSummary.ROI
+	if got < wantROI-eps || got > wantROI+eps {
+		t.Errorf("ROI = %v, want %v — stop-loss-only P&L should give negative ROI", got, wantROI)
 	}
 }
 

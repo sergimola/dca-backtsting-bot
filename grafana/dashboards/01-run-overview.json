@@ -24,7 +24,7 @@
       "id": 1,
       "type": "stat",
       "title": "Completed Runs",
-      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 0, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -55,7 +55,7 @@
       "id": 2,
       "type": "stat",
       "title": "Avg ROI",
-      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 4, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -94,7 +94,7 @@
       "id": 3,
       "type": "stat",
       "title": "Best ROI",
-      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 8, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -133,7 +133,7 @@
       "id": 4,
       "type": "stat",
       "title": "Avg Max Drawdown",
-      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 4 },
+      "gridPos": { "x": 12, "y": 0, "w": 4, "h": 4 },
       "datasource": { "type": "postgres", "uid": "dca_postgres" },
       "options": {
         "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
@@ -165,6 +165,79 @@
           "format": "table",
           "rawQuery": true,
           "rawSql": "SELECT ROUND(AVG((summary->>'maxDrawdown')::numeric), 2) AS \"Avg Max Drawdown\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "stat",
+      "title": "Avg Win Rate",
+      "gridPos": { "x": 16, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "green", "value": 70 }
+            ]
+          },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(AVG((summary->>'winRate')::numeric) * 100, 2) AS \"Avg Win Rate\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND summary->>'winRate' IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "type": "stat",
+      "title": "Avg Total Fees",
+      "gridPos": { "x": 20, "y": 0, "w": 4, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto",
+        "textMode": "auto",
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4,
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ROUND(AVG((summary->>'totalFees')::numeric), 4) AS \"Avg Total Fees\" FROM backtests WHERE status = 'completed' AND summary IS NOT NULL AND config->>'trading_pair' IN (${trading_pair:singlequote})",
           "refId": "A"
         }
       ]
@@ -269,6 +342,26 @@
           {
             "matcher": { "id": "byName", "options": "Orders" },
             "properties": [{ "id": "custom.width", "value": 70 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Win Rate %" },
+            "properties": [
+              { "id": "unit", "value": "percent" },
+              { "id": "decimals", "value": 2 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    { "color": "red", "value": null },
+                    { "color": "yellow", "value": 50 },
+                    { "color": "green", "value": 70 }
+                  ]
+                }
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
           }
         ]
       },
@@ -277,7 +370,7 @@
           "datasource": { "type": "postgres", "uid": "dca_postgres" },
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT id::text AS \"Run ID\", created_at AS \"Created\", config->>'trading_pair' AS \"Pair\", config->>'start_date' AS \"Backtest Start\", config->>'end_date' AS \"Backtest End\", (config->>'account_balance')::numeric AS \"Account Balance\", (config->>'number_of_orders')::int AS \"Orders\", (config->>'take_profit_distance_percent')::numeric AS \"TP %\", ROUND((summary->>'roi')::numeric, 2) AS \"ROI %\", ROUND((summary->>'maxDrawdown')::numeric, 2) AS \"Max Drawdown %\", ROUND((summary->>'totalFees')::numeric, 2) AS \"Total Fees\", execution_time_ms AS \"Exec Time (ms)\" FROM backtests WHERE status = 'completed' AND config->>'trading_pair' IN (${trading_pair:singlequote}) ORDER BY created_at DESC",
+          "rawSql": "SELECT id::text AS \"Run ID\", created_at AS \"Created\", config->>'trading_pair' AS \"Pair\", config->>'start_date' AS \"Backtest Start\", config->>'end_date' AS \"Backtest End\", (config->>'account_balance')::numeric AS \"Account Balance\", (config->>'number_of_orders')::int AS \"Orders\", (config->>'take_profit_distance_percent')::numeric AS \"TP %\", config->>'stop_loss_enabled' AS \"SL Enabled\", config->>'stop_loss_percent' AS \"SL %\", ROUND((summary->>'roi')::numeric, 2) AS \"ROI %\", ROUND((summary->>'maxDrawdown')::numeric, 2) AS \"Max Drawdown %\", ROUND(NULLIF((summary->>'winRate'), '')::numeric * 100, 2) AS \"Win Rate %\", ROUND((summary->>'totalFees')::numeric, 2) AS \"Total Fees\", execution_time_ms AS \"Exec Time (ms)\" FROM backtests WHERE status = 'completed' AND config->>'trading_pair' IN (${trading_pair:singlequote}) ORDER BY created_at DESC",
           "refId": "A"
         }
       ]

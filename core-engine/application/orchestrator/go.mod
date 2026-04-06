@@ -5,13 +5,13 @@ go 1.26.1
 require (
 	dca-bot/core-engine/domain/config v0.0.0
 	dca-bot/core-engine/domain/position v0.0.0
+	github.com/ClickHouse/clickhouse-go/v2 v2.43.0
 	github.com/shopspring/decimal v1.4.0
 	github.com/stretchr/testify v1.11.1
 )
 
 require (
 	github.com/ClickHouse/ch-go v0.71.0 // indirect
-	github.com/ClickHouse/clickhouse-go/v2 v2.43.0 // indirect
 	github.com/andybalholm/brotli v1.2.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect

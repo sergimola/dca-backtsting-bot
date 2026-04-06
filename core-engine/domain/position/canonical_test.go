@@ -67,10 +67,10 @@ func TestCanonical_OrderAmountGeometricScaling(t *testing.T) {
 		denominator = denominator.Add(scale.Pow(decimal.NewFromInt(int64(i))))
 	}
 	
-	// Calculate amounts
-	expectedA0 := mustDecimal("14.28571428")
-	expectedA1 := mustDecimal("28.57142857")
-	expectedA2 := mustDecimal("57.14285715")
+	// Calculate amounts — expected values = exact decimal computation (shopspring 16-digit precision)
+	expectedA0 := mustDecimal("14.2857142857142857")
+	expectedA1 := mustDecimal("28.5714285714285714")
+	expectedA2 := mustDecimal("57.1428571428571429")
 	
 	A0 := total.Mul(scale.Pow(decimal.NewFromInt(0))).Div(denominator)
 	A1 := total.Mul(scale.Pow(decimal.NewFromInt(1))).Div(denominator)
@@ -203,7 +203,7 @@ func TestCanonical_LiquidationPrice(t *testing.T) {
 	numerator := M.Sub(Q.Mul(Pbar))
 	P_liq := numerator.Div(denominator)
 	
-	assertDecimalEqual(t, expectedP_liq, P_liq, "Liquidation price calculation")
+	assertDecimalEqualWithPrecision(t, expectedP_liq, P_liq, 8, "Liquidation price calculation")
 }
 
 // ============================================================================

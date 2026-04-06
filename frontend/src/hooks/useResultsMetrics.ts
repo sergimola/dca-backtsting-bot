@@ -36,7 +36,10 @@ export function useResultsMetrics(
 
       const grossProfit = exitEvents.reduce((s, e) => s.plus(e.balance), new Decimal(0))
       const fees = events.reduce((s, e) => s.plus(e.fee ?? 0), new Decimal(0))
-      const netProfit = grossProfit.minus(fees)
+      // EXIT balance already reflects net profit after all fees (entry+SO+exit fees are
+      // deducted by the engine via FeesAccumulated before CalculateProfit). Do NOT
+      // subtract fees again — that would double-count them.
+      const netProfit = grossProfit
 
       // Capital deployed: sum of buy-side balances
       const capital = entryEvents.reduce((s, e) => s.plus(Math.abs(e.balance)), new Decimal(0))
@@ -97,8 +100,8 @@ export function useResultsMetrics(
 
     const trueCapitalAvailable = accountBalance + totalAdditions;
 
-    // Use the corrected denominator for ROI and Capital Utilized
-    const roi = trueCapitalAvailable > 0 ? (netProfit / trueCapitalAvailable) * 100 : 0
+    // ROI is relative to initial account balance only (not including capital injections)
+    const roi = accountBalance > 0 ? (netProfit / accountBalance) * 100 : 0
     const profitFactor = grossLosses.gt(0) ? grossWins.div(grossLosses).toNumber() : Infinity
     const capitalUtilized = trueCapitalAvailable > 0
       ? totalCapitalD.div(trueCapitalAvailable).times(100).toNumber()

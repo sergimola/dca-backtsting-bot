@@ -25,6 +25,10 @@ const EMPTY_FORM: Record<string, string | boolean> = {
   monthlyAddition: '',
   exitOnLastOrder: false,
   enable_wide_events: false,
+  stopLossEnabled: false,
+  stopLossPercent: '',
+  stopLossBaseline: 'average_entries',
+  stopLossTimeoutMinutes: '',
 }
 
 function isNumericValid(val: string) {
@@ -32,18 +36,29 @@ function isNumericValid(val: string) {
   return !isNaN(n)
 }
 
-function toRfc3339(datetimeLocal: string): string {
-  // Convert datetime-local (YYYY-MM-DDTHH:MM) to RFC 3339 (YYYY-MM-DDTHH:MM:SSZ)
-  if (!datetimeLocal) return ''
-  // datetime-local format is: YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS
-  // We need to ensure it has :00 seconds and Z timezone
-  const parts = datetimeLocal.split('T')
-  if (parts.length !== 2) return datetimeLocal
-  const [date, time] = parts
-  const timeWithSeconds = time.includes(':') && time.split(':').length >= 2 
-    ? (time.split(':').length === 2 ? `${time}:00` : time)
-    : time
-  return `${date}T${timeWithSeconds}Z`
+function setIsoDate(preset: 'ytd' | '6m' | '30d'): { start: string; end: string } {
+  const now = new Date()
+  let start: Date
+  switch (preset) {
+    case 'ytd': start = new Date(now.getFullYear(), 0, 1); break
+    case '6m':  start = new Date(now); start.setMonth(start.getMonth() - 6); break
+    case '30d': start = new Date(now); start.setDate(start.getDate() - 30); break
+  }
+  return {
+    start: start.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+    end:   now.toISOString().replace(/\.\d{3}Z$/, 'Z'),
+  }
+}
+
+function generateYearButtons(): Array<{ label: string; start: string; end: string }> {
+  const currentYear = new Date().getFullYear()
+  const today = new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const buttons: Array<{ label: string; start: string; end: string }> = []
+  for (let y = currentYear - 5; y <= currentYear - 1; y++) {
+    buttons.push({ label: `Since ${y}`, start: `${y}-01-01T00:00:00Z`, end: today })
+    buttons.push({ label: `${y} Only`,  start: `${y}-01-01T00:00:00Z`, end: `${y}-12-31T23:59:59Z` })
+  }
+  return buttons
 }
 
 export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormViewProps) {
@@ -102,6 +117,10 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
         monthly_addition: 'monthlyAddition', monthlyAddition: 'monthlyAddition',
         exit_on_last_order: 'exitOnLastOrder', exitOnLastOrder: 'exitOnLastOrder',
         enable_wide_events: 'enable_wide_events',
+        stop_loss_enabled: 'stopLossEnabled', stopLossEnabled: 'stopLossEnabled',
+        stop_loss_percent: 'stopLossPercent', stopLossPercent: 'stopLossPercent',
+        stop_loss_baseline: 'stopLossBaseline', stopLossBaseline: 'stopLossBaseline',
+        stop_loss_timeout_minutes: 'stopLossTimeoutMinutes', stopLossTimeoutMinutes: 'stopLossTimeoutMinutes',
       }
       const updates: Record<string, string | boolean> = {}
       for (const [srcKey, formKey] of Object.entries(fieldMap)) {
@@ -109,7 +128,7 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
         let raw = data[srcKey]
         // Use first element for array values (sweep → single-run compatibility).
         if (Array.isArray(raw)) raw = raw[0]
-        if (formKey === 'exitOnLastOrder' || formKey === 'enable_wide_events') {
+        if (formKey === 'exitOnLastOrder' || formKey === 'enable_wide_events' || formKey === 'stopLossEnabled') {
           updates[formKey] = Boolean(raw)
         } else {
           updates[formKey] = String(raw)
@@ -137,8 +156,8 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
 
     const config: BacktestFormState = {
       tradingPair:               (form.tradingPair as string).trim(),
-      startDate:                 toRfc3339(form.startDate as string),
-      endDate:                   toRfc3339(form.endDate as string),
+      startDate:                 form.startDate as string,
+      endDate:                   form.endDate as string,
       priceEntry:                form.priceEntry as string,
       priceScale:                form.priceScale as string,
       amountScale:               form.amountScale as string,
@@ -151,6 +170,10 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
       monthlyAddition:           form.monthlyAddition as string,
       exitOnLastOrder:           form.exitOnLastOrder as boolean,
       enable_wide_events:        (form.enable_wide_events as boolean) || false,
+      stopLossEnabled:           (form.stopLossEnabled as boolean) || false,
+      stopLossPercent:           form.stopLossPercent as string,
+      stopLossBaseline:          (form.stopLossBaseline as string) as 'first_entry' | 'average_entries',
+      stopLossTimeoutMinutes:    form.stopLossTimeoutMinutes as string,
     }
     await onSubmit(config)
   }
@@ -234,33 +257,66 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
             </div>
 
             {/* Start date */}
-            <div lang="es-ES">
+            <div>
               <label htmlFor="startDate" className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
                 Start Date
               </label>
               <input
                 id="startDate"
                 aria-label="Start date"
-                type="datetime-local"
+                type="text"
                 className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                placeholder="YYYY-MM-DDTHH:MM:SSZ"
                 value={form.startDate as string}
                 onChange={e => setField('startDate', e.target.value)}
               />
             </div>
 
             {/* End date */}
-            <div lang="es-ES">
+            <div>
               <label htmlFor="endDate" className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
                 End Date
               </label>
               <input
                 id="endDate"
                 aria-label="End date"
-                type="datetime-local"
+                type="text"
                 className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                placeholder="YYYY-MM-DDTHH:MM:SSZ"
                 value={form.endDate as string}
                 onChange={e => setField('endDate', e.target.value)}
               />
+            </div>
+
+            {/* Quick date buttons */}
+            <div className="col-span-2 flex gap-1 flex-wrap">
+              {(['ytd', '6m', '30d'] as const).map(preset => (
+                <button
+                  key={preset}
+                  type="button"
+                  onClick={() => {
+                    const { start, end } = setIsoDate(preset)
+                    setField('startDate', start)
+                    setField('endDate', end)
+                  }}
+                  className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400"
+                >
+                  {preset === 'ytd' ? 'YTD' : preset === '6m' ? 'Last 6M' : 'Last 30D'}
+                </button>
+              ))}
+              {generateYearButtons().map(btn => (
+                <button
+                  key={btn.label}
+                  type="button"
+                  onClick={() => {
+                    setField('startDate', btn.start)
+                    setField('endDate', btn.end)
+                  }}
+                  className="text-[10px] px-2 py-0.5 bg-slate-700 hover:bg-slate-600 rounded text-slate-400 whitespace-nowrap"
+                >
+                  {btn.label}
+                </button>
+              ))}
             </div>
 
             {/* Entry price */}
@@ -492,6 +548,82 @@ export function ConfigFormView({ onSubmit, isSubmitting, error }: ConfigFormView
                 aria-hidden="true"
                 tabIndex={-1}
               />
+            </div>
+
+            {/* Stop-Loss section */}
+            <div className="col-span-2 border-t border-slate-800 pt-4">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs uppercase tracking-widest text-slate-400">Stop-Loss</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={form.stopLossEnabled as boolean}
+                  onClick={() => setField('stopLossEnabled', !(form.stopLossEnabled as boolean))}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                    form.stopLossEnabled ? 'bg-blue-500' : 'bg-slate-700'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                      form.stopLossEnabled ? 'translate-x-4' : 'translate-x-1'
+                    }`}
+                  />
+                </button>
+              </div>
+
+              {(form.stopLossEnabled as boolean) && (
+                <div className="grid grid-cols-2 gap-4 pl-2 border-l-2 border-blue-600/30">
+                  {/* Stop-loss % */}
+                  <div>
+                    <label htmlFor="stopLossPercent" className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+                      SL Trigger %
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="stopLossPercent"
+                        aria-label="Stop-loss percent"
+                        className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 pr-8 text-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                        placeholder="5.0"
+                        value={form.stopLossPercent as string}
+                        onChange={e => setField('stopLossPercent', e.target.value)}
+                      />
+                      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs">%</span>
+                    </div>
+                  </div>
+
+                  {/* Timeout */}
+                  <div>
+                    <label htmlFor="stopLossTimeoutMinutes" className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+                      Timeout (min)
+                    </label>
+                    <input
+                      id="stopLossTimeoutMinutes"
+                      aria-label="Stop-loss timeout minutes"
+                      className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                      placeholder="0"
+                      value={form.stopLossTimeoutMinutes as string}
+                      onChange={e => setField('stopLossTimeoutMinutes', e.target.value)}
+                    />
+                  </div>
+
+                  {/* Baseline */}
+                  <div className="col-span-2">
+                    <label htmlFor="stopLossBaseline" className="block text-xs uppercase tracking-widest text-slate-400 mb-1">
+                      Baseline
+                    </label>
+                    <select
+                      id="stopLossBaseline"
+                      aria-label="Stop-loss baseline"
+                      className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200 text-sm focus:border-blue-500 focus:outline-none"
+                      value={form.stopLossBaseline as string}
+                      onChange={e => setField('stopLossBaseline', e.target.value)}
+                    >
+                      <option value="average_entries">Average Entries</option>
+                      <option value="first_entry">First Entry</option>
+                    </select>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

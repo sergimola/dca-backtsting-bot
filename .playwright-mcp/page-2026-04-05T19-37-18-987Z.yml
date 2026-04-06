@@ -1,0 +1,91 @@
+- generic [ref=e4]:
+  - link "Skip to main content" [ref=e5] [cursor=pointer]:
+    - /url: "#pageContent"
+    - generic [ref=e6]: Skip to main content
+  - generic [ref=e7]:
+    - generic [ref=e8]:
+      - generic [ref=e9]:
+        - button "Close menu" [ref=e10] [cursor=pointer]:
+          - img "Grafana" [ref=e12]
+        - generic [ref=e13]: Grafana
+      - button "Undock menu" [ref=e14] [cursor=pointer]
+    - navigation [ref=e16]:
+      - list "Navigation" [ref=e20]:
+        - listitem [ref=e21]:
+          - link "Home" [ref=e25] [cursor=pointer]:
+            - /url: /
+            - paragraph [ref=e29]: Home
+        - listitem [ref=e30]:
+          - generic [ref=e31]:
+            - link "Bookmarks" [ref=e34] [cursor=pointer]:
+              - /url: /bookmarks
+              - paragraph [ref=e38]: Bookmarks
+            - 'button "Expand section: Bookmarks" [ref=e40] [cursor=pointer]'
+        - listitem [ref=e42]:
+          - generic [ref=e43]:
+            - link "Starred" [ref=e46] [cursor=pointer]:
+              - /url: /dashboards?starred
+              - paragraph [ref=e50]: Starred
+            - 'button "Expand section: Starred" [ref=e52] [cursor=pointer]'
+        - listitem [ref=e54]:
+          - generic [ref=e55]:
+            - link "Dashboards" [ref=e58] [cursor=pointer]:
+              - /url: /dashboards
+              - paragraph [ref=e62]: Dashboards
+            - 'button "Expand section: Dashboards" [ref=e64] [cursor=pointer]'
+        - listitem [ref=e66]:
+          - link "Explore" [ref=e70] [cursor=pointer]:
+            - /url: /explore
+            - paragraph [ref=e74]: Explore
+        - listitem [ref=e75]:
+          - generic [ref=e76]:
+            - link "Drilldown" [ref=e79] [cursor=pointer]:
+              - /url: /drilldown
+              - paragraph [ref=e83]: Drilldown
+            - 'button "Expand section: Drilldown" [ref=e85] [cursor=pointer]'
+        - listitem [ref=e87]:
+          - generic [ref=e88]:
+            - link "Alerting" [ref=e91] [cursor=pointer]:
+              - /url: /alerting
+              - paragraph [ref=e95]: Alerting
+            - 'button "Expand section: Alerting" [ref=e97] [cursor=pointer]'
+        - listitem [ref=e99]:
+          - generic [ref=e100]:
+            - link "Connections" [ref=e103] [cursor=pointer]:
+              - /url: /connections
+              - paragraph [ref=e107]: Connections
+            - 'button "Collapse section: Connections" [ref=e109] [cursor=pointer]'
+          - list [ref=e111]:
+            - listitem [ref=e112]:
+              - link "Add new connection" [ref=e116] [cursor=pointer]:
+                - /url: /connections/add-new-connection
+                - paragraph [ref=e119]: Add new connection
+            - listitem [ref=e120]:
+              - link "Data sources" [ref=e124] [cursor=pointer]:
+                - /url: /connections/datasources
+                - paragraph [ref=e127]: Data sources
+        - listitem [ref=e128]:
+          - generic [ref=e129]:
+            - link "Administration" [ref=e132] [cursor=pointer]:
+              - /url: /admin
+              - paragraph [ref=e136]: Administration
+            - 'button "Expand section: Administration" [ref=e138] [cursor=pointer]'
+  - banner [ref=e140]:
+    - generic [ref=e141]:
+      - navigation "Breadcrumbs" [ref=e143]:
+        - list [ref=e144]:
+          - listitem [ref=e145]:
+            - link "Home" [ref=e146] [cursor=pointer]:
+              - /url: /
+          - listitem [ref=e149]:
+            - generic "Dashboards" [ref=e150]
+      - generic [ref=e151]:
+        - generic [ref=e153]:
+          - button "Search..." [ref=e156] [cursor=pointer]
+          - generic [ref=e158]: ctrl+k
+        - button "New" [ref=e159] [cursor=pointer]
+        - button "Help" [ref=e163] [cursor=pointer]
+        - button "Profile" [ref=e166] [cursor=pointer]:
+          - img "User avatar" [ref=e167]
+  - main [ref=e170]:
+    - generic [ref=e176]: Loading ...

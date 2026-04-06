@@ -3,6 +3,7 @@ package orchestrator
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2"
@@ -51,13 +52,18 @@ func NewClickHouseCandleLoader(
 		return nil, fmt.Errorf("invalid end_date %q: %w", endDate, err)
 	}
 
+	// Normalize address: replace "localhost" with "127.0.0.1" to avoid IPv6
+	// fallback delays on Windows (::1 TCP connect timeout can take minutes).
+	addr := strings.ReplaceAll(cfg.Addr, "localhost", "127.0.0.1")
+
 	conn, err := clickhouse.Open(&clickhouse.Options{
-		Addr: []string{cfg.Addr},
+		Addr: []string{addr},
 		Auth: clickhouse.Auth{
 			Database: cfg.Database,
 			Username: cfg.User,
 			Password: cfg.Password,
 		},
+		DialTimeout: 5 * time.Second,
 		// BlockBufferSize controls how many blocks are buffered client-side.
 		// 10 blocks ≈ low memory, good streaming throughput for 1-min candles.
 		BlockBufferSize: 10,

@@ -4,12 +4,12 @@
  * 018: Added checkbox selection, promoted badges, bulk action toolbar.
  */
 import React, { useState, useMemo, useEffect } from 'react'
-import type { BatchRunResult } from '../../hooks/useOptimizer'
+import type { BatchRunResult, EnrichedResult } from '../../hooks/useOptimizer'
 import { msDuration } from '../../services/formatters'
 
 interface Props {
-  results: BatchRunResult[]
-  onOpenInSingleRun?: (result: BatchRunResult) => void
+  results: EnrichedResult[]
+  onOpenInSingleRun?: (result: EnrichedResult) => void
   selectedRunIds?: Set<string>
   onToggleRunSelection?: (runId: string) => void
   onSelectAll?: (runIds: string[]) => void
@@ -17,7 +17,7 @@ interface Props {
   onBatchPromote?: () => void
 }
 
-type SortKey = 'run_id' | 'roi' | 'maxDrawdown' | 'totalFees' | 'executionTimeMs' | 'longestTrade' | 'maxSOs'
+type SortKey = 'run_id' | 'roi' | 'maxDrawdown' | 'totalFees' | 'executionTimeMs' | 'longestTrade' | 'maxSOs' | 'stops' | 'winRate'
 type SortDir = 'asc' | 'desc'
 
 const PAGE_SIZE = 200
@@ -34,6 +34,8 @@ export function LeaderboardGrid({
   const [sortKey, setSortKey] = useState<SortKey>('roi')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
   const [page, setPage] = useState(1)
+  const [copiedRunId, setCopiedRunId] = useState<string | null>(null)
+  const [expandedRunId, setExpandedRunId] = useState<string | null>(null)
 
   // Reset to page 1 whenever sort order changes
   useEffect(() => { setPage(1) }, [sortKey, sortDir])
@@ -54,6 +56,10 @@ export function LeaderboardGrid({
           av = a.longest_trade_duration_ms ?? 0; bv = b.longest_trade_duration_ms ?? 0; break
         case 'maxSOs':
           av = a.max_safety_orders_used ?? 0; bv = b.max_safety_orders_used ?? 0; break
+        case 'stops':
+          av = a.total_stops_triggered ?? 0; bv = b.total_stops_triggered ?? 0; break
+        case 'winRate':
+          av = a.pnlSummary?.winRate ?? 0; bv = b.pnlSummary?.winRate ?? 0; break
         default:
           return a.run_id.localeCompare(b.run_id) * (sortDir === 'asc' ? 1 : -1)
       }
@@ -77,7 +83,7 @@ export function LeaderboardGrid({
   }
 
   const exportCSV = () => {
-    const headers = ['run_id', 'type', 'roi', 'maxDrawdown', 'totalFees', 'executionTimeMs', 'candleCount']
+    const headers = ['run_id', 'type', 'roi', 'maxDrawdown', 'totalFees', 'executionTimeMs', 'candleCount', 'stops', 'winRate']
     const rows = results.map(r => [
       r.run_id,
       r.type,
@@ -86,6 +92,8 @@ export function LeaderboardGrid({
       r.pnlSummary?.totalFees ?? '',
       r.executionTimeMs ?? '',
       r.candleCount ?? '',
+      r.total_stops_triggered ?? 0,
+      r.pnlSummary?.winRate != null ? (r.pnlSummary.winRate * 100).toFixed(2) : '',
     ])
     const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
@@ -101,6 +109,13 @@ export function LeaderboardGrid({
     sortKey === key ? (sortDir === 'asc' ? ' ↑' : ' ↓') : ''
 
   const selectionCount = selectedRunIds?.size ?? 0
+  const copyConfig = (r: EnrichedResult) => {
+    const json = JSON.stringify({ ...r.config, enable_wide_events: true }, null, 2)
+    navigator.clipboard.writeText(json).catch(() => {})
+    setCopiedRunId(r.run_id)
+    setTimeout(() => setCopiedRunId(null), 2000)
+  }
+
   const allVisibleIds = sorted.filter(r => r.type !== 'error').map(r => r.run_id)
   const allSelected = allVisibleIds.length > 0 && allVisibleIds.every(id => selectedRunIds?.has(id))
 
@@ -177,14 +192,20 @@ export function LeaderboardGrid({
               <th className="px-3 py-2 text-right cursor-pointer" onClick={() => toggleSort('maxSOs')}>
                 Max SOs Used{sortIcon('maxSOs')}
               </th>
+              <th className="px-3 py-2 text-right cursor-pointer" onClick={() => toggleSort('stops')}>
+                Stops{sortIcon('stops')}
+              </th>
+              <th className="px-3 py-2 text-right cursor-pointer" onClick={() => toggleSort('winRate')}>
+                Win Rate{sortIcon('winRate')}
+              </th>
               <th className="px-3 py-2 text-center">Status</th>
               <th className="px-3 py-2 text-center">Actions</th>
             </tr>
           </thead>
           <tbody>
             {paginated.map(r => (
+              <React.Fragment key={r.run_id}>
               <tr
-                key={r.run_id}
                 className={`border-b border-slate-800 hover:bg-slate-800/50 ${
                   r.type === 'error' ? 'bg-red-900/20' : ''
                 } ${selectedRunIds?.has(r.run_id) ? 'bg-blue-900/20' : ''}`}
@@ -227,6 +248,14 @@ export function LeaderboardGrid({
                 <td className="px-3 py-2 text-right text-slate-400">
                   {r.max_safety_orders_used ?? 0}
                 </td>
+                <td className="px-3 py-2 text-right text-slate-400">
+                  {r.total_stops_triggered ?? 0}
+                </td>
+                <td className="px-3 py-2 text-right text-slate-400">
+                  {r.pnlSummary?.winRate != null
+                    ? `${(r.pnlSummary.winRate * 100).toFixed(1)}%`
+                    : '-'}
+                </td>
                 <td className="px-3 py-2 text-center">
                   {r.promoted_at ? (
                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-emerald-900/40 text-emerald-300">
@@ -235,16 +264,53 @@ export function LeaderboardGrid({
                   ) : null}
                 </td>
                 <td className="px-3 py-2 text-center">
-                  {r.type !== 'error' && onOpenInSingleRun && (
-                    <button
-                      onClick={() => onOpenInSingleRun(r)}
-                      className="text-xs text-blue-400 hover:text-blue-300 whitespace-nowrap"
-                    >
-                      Re-run with Details
-                    </button>
+                  {r.type !== 'error' && (
+                    <div className="flex items-center gap-1 justify-center">
+                      <button
+                        onClick={() => setExpandedRunId(prev => prev === r.run_id ? null : r.run_id)}
+                        className="text-xs text-slate-400 hover:text-slate-200 px-1.5 py-0.5 rounded border border-slate-700 hover:border-slate-500"
+                        title="Show full config"
+                      >
+                        {expandedRunId === r.run_id ? '▾' : '▸'} Config
+                      </button>
+                      {r.config && Object.keys(r.config).length > 0 && (
+                        <button
+                          onClick={() => copyConfig(r)}
+                          className="text-xs text-slate-400 hover:text-slate-200 px-1.5 py-0.5 rounded border border-slate-700 hover:border-slate-500"
+                          title="Copy config JSON for import"
+                        >
+                          {copiedRunId === r.run_id ? '✓ Copied' : '📋'}
+                        </button>
+                      )}
+                      {onOpenInSingleRun && (
+                        <button
+                          onClick={() => onOpenInSingleRun(r)}
+                          className="text-xs text-blue-400 hover:text-blue-300 whitespace-nowrap"
+                        >
+                          Re-run →
+                        </button>
+                      )}
+                    </div>
                   )}
                 </td>
               </tr>
+              {expandedRunId === r.run_id && r.config && (
+                <tr className="bg-slate-900/80">
+                  <td colSpan={99} className="px-4 py-3 border-b border-slate-700">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-x-6 gap-y-1 text-xs font-mono">
+                      {Object.entries(r.config)
+                        .filter(([k]) => k !== 'run_id')
+                        .map(([k, v]) => (
+                          <div key={k} className="flex gap-1.5 min-w-0">
+                            <span className="text-slate-500 shrink-0">{k.replace(/_/g, ' ')}:</span>
+                            <span className="text-slate-200 truncate">{String(v)}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </td>
+                </tr>
+              )}
+              </React.Fragment>
             ))}
           </tbody>
         </table>

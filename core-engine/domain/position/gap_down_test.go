@@ -125,10 +125,10 @@ func TestGapDown_T061_FillAtLimitNotMarketPrice(t *testing.T) {
 	// This order should STILL fill at 98, because the low is 95.0 (≤ 98)
 	candle := &Candle{
 		Timestamp: time.Date(2024, 1, 1, 0, 1, 0, 0, time.UTC),
-		Open:      mustDecimal("95.50"), // Gap down 1.0
-		High:      mustDecimal("95.70"),
-		Low:       mustDecimal("94.90"), // Low is below 98, so order fills
-		Close:     mustDecimal("95.60"),
+		Open:      mustDecimal("95.50"),  // Gap down
+		High:      mustDecimal("97.50"),
+		Low:       mustDecimal("96.50"),  // Below 98 (fills that order) but above 95.844 (only 1 fill)
+		Close:     mustDecimal("97.00"),
 		Volume:    mustDecimal("1000000"),
 	}
 

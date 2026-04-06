@@ -49,6 +49,11 @@ export async function submitBacktest(config: BacktestFormState): Promise<{ backt
       account_balance: config.accountBalance,
       monthly_addition: config.monthlyAddition && config.monthlyAddition.trim() !== '' ? config.monthlyAddition : '0',
       exit_on_last_order: config.exitOnLastOrder,
+      enable_wide_events: config.enable_wide_events ?? false,
+      stop_loss_enabled: config.stopLossEnabled ?? false,
+      stop_loss_percent: config.stopLossPercent || '0',
+      stop_loss_baseline: config.stopLossBaseline || 'average_entries',
+      stop_loss_timeout_minutes: config.stopLossTimeoutMinutes ? parseInt(config.stopLossTimeoutMinutes, 10) : 0,
     };
 
     console.log('Sending payload to API:', apiPayload);
@@ -150,6 +155,11 @@ function mapConfigToFormState(c: Record<string, any>): BacktestFormState {
     accountBalance:            c.account_balance            ?? '',
     monthlyAddition:           c.monthly_addition            ?? '',
     exitOnLastOrder:           c.exit_on_last_order         ?? false,
+    enable_wide_events:        c.enable_wide_events         ?? false,
+    stopLossEnabled:           c.stop_loss_enabled          ?? false,
+    stopLossPercent:           c.stop_loss_percent          ?? '',
+    stopLossBaseline:         (c.stop_loss_baseline as 'first_entry' | 'average_entries') ?? 'average_entries',
+    stopLossTimeoutMinutes:    String(c.stop_loss_timeout_minutes ?? ''),
   };
 }
 

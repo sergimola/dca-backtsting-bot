@@ -248,6 +248,22 @@ func (orch *Orchestrator) RunBacktest(loader CandleLoader) (*BacktestRun, error)
 					newPos.AccountBalance = orch.runningBalance
 					newPos.ExitOnLastOrder = orch.config.DomainConfig.ExitOnLastOrder()
 					newPos.Multiplier = orch.config.DomainConfig.Multiplier()
+
+					// 019-engine-stop-loss: copy SL config fields and compute initial trigger
+					newPos.StopLossEnabled = orch.config.DomainConfig.StopLossEnabled()
+					newPos.StopLossPercent = orch.config.DomainConfig.StopLossPercent()
+					newPos.StopLossBaseline = orch.config.DomainConfig.StopLossBaseline()
+					newPos.StopLossTimeoutMinutes = orch.config.DomainConfig.StopLossTimeoutMinutes()
+					if newPos.StopLossEnabled {
+						if newPos.StopLossBaseline == "first_entry" {
+							// first_entry: trigger is fixed from actual entry price (candle.Close with slippage)
+							one := decimal.NewFromInt(1)
+							hundred := decimal.NewFromInt(100)
+							pct := newPos.StopLossPercent
+							newPos.SlTriggerPrice = actualEntryPrice.Mul(one.Sub(pct.Div(hundred)))
+						}
+						// average_entries: trigger stays zero until first fill recalculates in minute_loop Step 3b
+					}
 				}
 				orch.position = newPos
 				lastPosition = orch.position
@@ -406,6 +422,8 @@ func (orch *Orchestrator) emitFillWideEvent(candle *Candle, backtest *BacktestRu
 		wideEventType = "order_filled"
 	case "trade.closed":
 		wideEventType = "position_closed"
+	case "stop_loss.executed":
+		wideEventType = "stop_loss_executed"
 	default:
 		return // skip non-actionable events (liquidation.price.updated, price.changed, etc.)
 	}
@@ -498,6 +516,20 @@ func (orch *Orchestrator) emitFillWideEvent(candle *Candle, backtest *BacktestRu
 			we.ActionPrice = NewWideDecimal(closingPrice)
 		}
 		we.CloseReason = e.Reason
+	case *position.StopLossExecutedEvent:
+		if execPrice, err := decimal.NewFromString(e.ExecutionPrice); err == nil {
+			we.ActionPrice = NewWideDecimal(execPrice)
+		}
+		if size, err := decimal.NewFromString(e.Size); err == nil {
+			we.ActionQuantity = NewWideDecimal(size)
+		}
+		if loss, err := decimal.NewFromString(e.RealizedLoss); err == nil {
+			we.RealizedPnl = NewWideDecimal(loss)
+		}
+		if fee, err := decimal.NewFromString(e.Fee); err == nil {
+			we.ActionFee = NewWideDecimal(fee)
+		}
+		we.CloseReason = "stop_loss"
 	}
 
 	orch.dispatchWideEvent(we)

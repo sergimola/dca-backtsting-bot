@@ -9,11 +9,17 @@ export const database = process.env.CLICKHOUSE_DATABASE ?? 'data';
 // Singleton ClickHouse HTTP client — shared across all services.
 // The @clickhouse/client connection is request-scoped (stateless HTTP), so a
 // single instance is safe under concurrent use.
+//
+// keep_alive.enabled = false: Node.js http.Agent with keepAlive:true hangs on
+// Windows + Docker Desktop (WSL2 backend) due to a TCP keep-alive probe issue.
+// Disabling keep-alive uses a fresh socket per request, which is slightly slower
+// but avoids indefinite connection hangs.
 export const chClient: ClickHouseClient = createClient({
   url: `http://${host}:${port}`,
   username,
   password,
   database,
+  keep_alive: { enabled: false },
   clickhouse_settings: {
     // Ensure we see deduplicated rows in gap-detection queries
     final: 1,
@@ -24,13 +30,31 @@ export const chClient: ClickHouseClient = createClient({
  * pingClickHouse runs a lightweight SELECT 1 against ClickHouse to verify
  * the connection is healthy. Called once at server startup.
  * Throws on connection failure so the process exits with a clear error.
+ *
+ * Retries up to 5 times with 2s delay to tolerate transient Docker/network
+ * hiccups during startup (e.g., ClickHouse HTTP server not yet ready).
  */
 export async function pingClickHouse(): Promise<void> {
-  const result = await chClient.query({
-    query: 'SELECT 1',
-    format: 'JSONEachRow',
-  });
-  await result.json(); // consume the response to confirm transport works
+  const MAX_RETRIES = 5;
+  const RETRY_DELAY_MS = 2_000;
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const result = await chClient.query({
+        query: 'SELECT 1',
+        format: 'JSONEachRow',
+      });
+      await result.json(); // consume the response to confirm transport works
+      return;
+    } catch (err: any) {
+      lastErr = err;
+      if (attempt < MAX_RETRIES) {
+        console.warn(`[clickhouse] Ping failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS}ms...`);
+        await new Promise(resolve => setTimeout(resolve, RETRY_DELAY_MS));
+      }
+    }
+  }
+  throw lastErr;
 }
 
 export async function initClickHouseSchema(): Promise<void> {
@@ -71,5 +95,13 @@ export async function initClickHouseSchema(): Promise<void> {
       PARTITION BY run_id
       ORDER BY (run_id, timestamp, event_type)
     `,
+  });
+  // Idempotent schema migration: add stop-loss columns to sweep_wide_events if missing.
+  // Uses IF NOT EXISTS so this is safe on both fresh installs and upgrades.
+  await chClient.command({
+    query: `ALTER TABLE ${database}.sweep_wide_events ADD COLUMN IF NOT EXISTS realized_pnl Decimal64(8) DEFAULT 0`,
+  });
+  await chClient.command({
+    query: `ALTER TABLE ${database}.sweep_wide_events ADD COLUMN IF NOT EXISTS close_reason LowCardinality(String) DEFAULT ''`,
   });
 }

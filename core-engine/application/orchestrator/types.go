@@ -29,6 +29,7 @@ const (
 	EventTypeLiquidation          EventType = "Liquidation"
 	EventTypePositionClosed       EventType = "PositionClosed"
 	EventTypeMarginWarning        EventType = "MarginWarning"
+	EventTypeStopLossExecuted     EventType = "stop_loss.executed"
 )
 
 // Event represents a single trading event captured from PSM execution.

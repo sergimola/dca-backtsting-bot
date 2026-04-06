@@ -30,6 +30,9 @@ const makeFormState = (overrides: Partial<OptimizerFormState> = {}): OptimizerFo
   endDate: '2025-01-31T00:00:00Z',
   accountBalance: '10000',
   parameters: DEFAULT_PARAMS,
+  stop_loss_enabled: false,
+  stop_loss_baseline: 'average_entries',
+  marginType: 'isolated',
   ...overrides,
 })
 

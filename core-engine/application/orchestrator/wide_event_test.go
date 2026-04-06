@@ -368,3 +368,55 @@ func BenchmarkWideEvent_AppendJSON(b *testing.B) {
 		buf = we.AppendJSON(buf[:0])
 	}
 }
+
+// T036 019-engine-stop-loss: WideEvent with stop_loss close_reason round-trips correctly
+func TestWideEvent_StopLossCloseReason(t *testing.T) {
+	we := WideEvent{
+		SchemaVersion:  1,
+		RunID:          "sl-run-1",
+		TradeID:        "sl-trade-1",
+		Timestamp:      time.Date(2025, 6, 15, 12, 30, 0, 0, time.UTC),
+		EventType:      "position_closed",
+		Symbol:         "BTCUSDC",
+		ActionPrice:    NewWideDecimal(decimal.NewFromInt(94500)),
+		ActionQuantity: NewWideDecimal(decimal.RequireFromString("0.01")),
+		ActionFee:      NewWideDecimal(decimal.RequireFromString("0.567")),
+		RealizedPnl:    NewWideDecimal(decimal.RequireFromString("-50.00")),
+		CloseReason:    "stop_loss",
+	}
+
+	// Round-trip: AppendJSON → json.Unmarshal
+	buf := we.AppendJSON(nil)
+	var m map[string]interface{}
+	require.NoError(t, json.Unmarshal(buf, &m))
+
+	assert.Equal(t, "stop_loss", m["close_reason"])
+	assert.Equal(t, "position_closed", m["event_type"])
+	assert.Equal(t, "sl-run-1", m["run_id"])
+	assert.Equal(t, "94500.00000000", m["action_price"])
+	assert.Equal(t, "-50.00000000", m["realized_pnl"])
+}
+
+// T036 019-engine-stop-loss: WideEvent with stop_loss_executed event type
+func TestWideEvent_StopLossExecutedEventType(t *testing.T) {
+	we := WideEvent{
+		SchemaVersion:  1,
+		RunID:          "sl-run-2",
+		TradeID:        "sl-trade-2",
+		Timestamp:      time.Date(2025, 6, 15, 12, 30, 0, 0, time.UTC),
+		EventType:      "stop_loss_executed",
+		Symbol:         "BTCUSDC",
+		ActionPrice:    NewWideDecimal(decimal.NewFromInt(94500)),
+		ActionQuantity: NewWideDecimal(decimal.RequireFromString("0.01")),
+		ActionFee:      NewWideDecimal(decimal.RequireFromString("0.567")),
+		RealizedPnl:    NewWideDecimal(decimal.RequireFromString("-50.00")),
+		CloseReason:    "stop_loss",
+	}
+
+	buf := we.AppendJSON(nil)
+	var m map[string]interface{}
+	require.NoError(t, json.Unmarshal(buf, &m))
+
+	assert.Equal(t, "stop_loss_executed", m["event_type"])
+	assert.Equal(t, "stop_loss", m["close_reason"])
+}

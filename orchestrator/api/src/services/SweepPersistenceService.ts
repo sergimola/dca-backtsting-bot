@@ -123,6 +123,7 @@ export class SweepPersistenceService {
         executionTimeMs: runResult.executionTimeMs ?? null,
         longestTradeDurationMs: runResult.longest_trade_duration_ms ?? 0,
         maxSafetyOrdersUsed: runResult.max_safety_orders_used ?? 0,
+        totalStopsTriggered: runResult.total_stops_triggered ?? 0,
         promotedAt: null,
       });
       span.setStatus({ code: SpanStatusCode.OK });
