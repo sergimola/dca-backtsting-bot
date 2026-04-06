@@ -20,6 +20,7 @@ import { BinanceDownloader } from './services/BinanceDownloader.js';
 import { ClickHouseWriter } from './services/ClickHouseWriter.js';
 import { chClient, database, pingClickHouse, initClickHouseSchema } from './services/ClickHouseClient.js';
 import { runMigrations } from './db/migrate.js';
+import { pool } from './db/client.js';
 import { BacktestJobRepository } from './services/BacktestJobRepository.js';
 import { SyncLedgerRepository } from './services/SyncLedgerRepository.js';
 import { BackgroundWorker } from './services/BackgroundWorker.js';
@@ -42,6 +43,37 @@ async function main(): Promise<void> {
     // 1. Run Drizzle migrations (creates tables if they don't exist)
     await runMigrations();
     console.log('[main] ✓ Postgres migrations complete');
+
+    // 1b. Pre-warm the connection pool so initial HTTP requests don't hit
+    //     cold-connection timeouts. pg.Pool only connects lazily; migration uses
+    //     its own pg.Client so the pool has zero live connections at this point.
+    //     Retry up to 5× with 1s delay (same logic as migrate.ts).
+    {
+      const MAX_POOL_RETRIES = 5;
+      const POOL_RETRY_DELAY_MS = 1_000;
+      let lastPoolErr: unknown;
+      for (let attempt = 1; attempt <= MAX_POOL_RETRIES; attempt++) {
+        let client;
+        try {
+          client = await pool.connect();
+          client.release();
+          console.log('[main] ✓ Connection pool pre-warmed');
+          break;
+        } catch (err: any) {
+          lastPoolErr = err;
+          if (client) (client as any).release(err);
+          const isTransient =
+            err?.code === 'ECONNRESET' || err?.code === 'ECONNREFUSED' ||
+            err?.cause?.code === 'ECONNRESET' || err?.cause?.code === 'ECONNREFUSED';
+          if (isTransient && attempt < MAX_POOL_RETRIES) {
+            console.warn(`[main] Pool warm-up failed (attempt ${attempt}/${MAX_POOL_RETRIES}), retrying in ${POOL_RETRY_DELAY_MS}ms...`);
+            await new Promise(resolve => setTimeout(resolve, POOL_RETRY_DELAY_MS));
+            continue;
+          }
+          throw lastPoolErr;
+        }
+      }
+    }
 
     // 2. Verify ClickHouse connectivity & Schema
     await pingClickHouse();
@@ -99,28 +131,35 @@ async function main(): Promise<void> {
       console.log(`[main] Received ${signal}, shutting down...`);
 
       worker.stop();
-      server.close(() => {
+      server.close(async () => {
         console.log('[main] HTTP server closed');
+        await pool.end().catch((err) => console.warn('[main] Pool end error:', err.message));
         process.exit(0);
       });
 
-      // Force exit after 30 seconds
-      setTimeout(() => process.exit(1), 30_000).unref();
+      // Force exit after 10 seconds
+      setTimeout(async () => {
+        await pool.end().catch(() => {});
+        process.exit(1);
+      }, 10_000).unref();
     };
 
     process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
     process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
 
-    process.on('uncaughtException',   (err) => { console.error('[main] Uncaught exception:', err);   process.exit(1); });
-    process.on('unhandledRejection', (reason) => { console.error('[main] Unhandled rejection:', reason); process.exit(1); });
+    process.on('uncaughtException',   async (err) => { console.error('[main] Uncaught exception:', err);   await pool.end().catch(() => {}); process.exit(1); });
+    process.on('unhandledRejection', async (reason) => { console.error('[main] Unhandled rejection:', reason); await pool.end().catch(() => {}); process.exit(1); });
   } catch (error: any) {
     console.error('[main] Fatal error during initialization:', error);
+    await pool.end().catch(() => {});
     process.exit(1);
   }
 }
 
 // Start server
-main().catch((error) => {
+main().catch(async (error) => {
   console.error('[main] Failed to start:', error);
+  const { pool: p } = await import('./db/client.js').catch(() => ({ pool: null }));
+  await p?.end().catch(() => {});
   process.exit(1);
 });

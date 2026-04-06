@@ -30,8 +30,10 @@ export function calculateNetMetrics(results: BacktestResults, config: BacktestFo
     const grossProfit = exitEvents.reduce((s, e) => s.plus(e.balance), new Decimal(0))
     // Total fees: sum of all fees in this trade
     const fees = events.reduce((s, e) => s.plus(e.fee ?? 0), new Decimal(0))
-    // Net profit: gross - fees
-    const netProfit = grossProfit.minus(fees)
+    // EXIT balance already reflects net profit after all fees (engine deducts
+    // entry+SO+exit fees via FeesAccumulated before CalculateProfit). Do NOT
+    // subtract fees again — that would double-count them.
+    const netProfit = grossProfit
     
     // Only include closed trades in net profit calculation
     if (exitEvents.length > 0) {

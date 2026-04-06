@@ -1,0 +1,27 @@
+[
+  {
+    "run_id": "test-sl-roi-check-001",
+    "end_date": "2026-04-03T16:01:13Z",
+    "multiplier": 1,
+    "start_date": "2025-12-31T23:00:00Z",
+    "margin_type": "cross",
+    "price_entry": "1",
+    "price_scale": "1",
+    "amount_scale": "1.25",
+    "trading_pair": "BTC/USDC",
+    "clickhouse_db": "data",
+    "account_balance": "1000",
+    "clickhouse_addr": "localhost:19000",
+    "clickhouse_user": "admin",
+    "amount_per_trade": "1",
+    "monthly_addition": "250",
+    "number_of_orders": 11,
+    "stop_loss_enabled": true,
+    "stop_loss_percent": "3",
+    "exit_on_last_order": false,
+    "stop_loss_baseline": "first_entry",
+    "clickhouse_password": "admin",
+    "stop_loss_timeout_minutes": 60,
+    "take_profit_distance_percent": "0.5"
+  }
+]

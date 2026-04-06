@@ -184,13 +184,15 @@ func TestCanonical_Scenario3_GapDownLiquidation(t *testing.T) {
 	}
 	_, _ = sm.ProcessCandle(pos, c1)
 
-	// Candle 2: Gap down to 90.00 (below liquidation price)
+	// Candle 2: Extreme gap-down (P_liq is recalculated after SO fills to ~49.32)
+	// SO at 98 fills first (Step 3a), then P_liq = AverageEntryPrice*0.5 ≈ 49.32
+	// Candle Low must be < 49.32 to trigger liquidation in Step 3c
 	c2 := &Candle{
 		Timestamp: startTime.Add(time.Minute),
 		Open:      mustDecimal("90.00"),
 		High:      mustDecimal("95.00"),
-		Low:       mustDecimal("85.00"),
-		Close:     mustDecimal("92.00"),
+		Low:       mustDecimal("40.00"),  // Below P_liq (~49.32) after SO fills
+		Close:     mustDecimal("42.00"),
 		Volume:    mustDecimal("1000000"),
 	}
 	events2, _ := sm.ProcessCandle(pos, c2)
@@ -199,8 +201,9 @@ func TestCanonical_Scenario3_GapDownLiquidation(t *testing.T) {
 		t.Errorf("S3: expected StateClosed on liquidation, got %v", pos.State)
 	}
 
-	// Verify loss equals -account_balance
-	expectedLoss := mustDecimal("1000.00").Neg()
+	// Verify loss equals -(sum of quoteAmounts for both filled orders: 10+20=30)
+	// CloseLiquidation = -calculateTotalCost(orders), not -accountBalance
+	expectedLoss := mustDecimal("30.00").Neg()
 	if !pos.Profit.Equal(expectedLoss) {
 		t.Errorf("S3: expected profit %v, got %v", expectedLoss, pos.Profit)
 	}

@@ -22,9 +22,10 @@ export function RunCard({ run, isSelected, isExpanded, onSelect, onViewDashboard
   // Calculate net metrics using shared utility
   const metrics = completedResults ? calculateNetMetrics(completedResults, run.config) : null
 
-  // Net profit and ROI: deduct fees from gross so sidebar matches the dashboard.
+  // Net profit and ROI: pnlSummary.roi is already net of all fees (engine deducts
+  // fees via FeesAccumulated before CalculateProfit). Do NOT subtract fees again.
   // When tradeEvents are present, use the event-derived metrics directly.
-  // When list-view returns tradeEvents:[] (select omission), estimate from pnlSummary.
+  // When list-view returns tradeEvents:[] (select omission), use pnlSummary directly.
   const { displayNetProfit, displayNetRoi } = (() => {
     if (!completedResults) return { displayNetProfit: 0, displayNetRoi: 0 };
     if (completedResults.tradeEvents.length > 0) {
@@ -32,10 +33,10 @@ export function RunCard({ run, isSelected, isExpanded, onSelect, onViewDashboard
       const balance = parseFloat(run.config.accountBalance) || 1;
       return { displayNetProfit: np, displayNetRoi: (np / balance) * 100 };
     }
+    // Fallback: pnlSummary.roi is already net — use it directly without fee deduction.
     const balance = parseFloat(run.config.accountBalance) || 1;
-    const grossProfit = (completedResults.pnlSummary.roi / 100) * balance;
-    const netProfit = grossProfit - completedResults.pnlSummary.totalFees;
-    const netRoi = (netProfit / balance) * 100;
+    const netProfit = (completedResults.pnlSummary.roi / 100) * balance;
+    const netRoi = completedResults.pnlSummary.roi;
     return { displayNetProfit: netProfit, displayNetRoi: netRoi };
   })();
   

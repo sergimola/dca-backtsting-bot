@@ -42,6 +42,7 @@ var (
 	DefaultTakeProfitDistancePercent = decimal.NewFromFloat(0.5)
 	DefaultAccountBalance            = decimal.NewFromFloat(1000)
 	DefaultMonthlyAddition           = decimal.NewFromFloat(0.0)
+	DefaultStopLossBaseline          = "average_entries"
 )
 
 // Config holds all DCA trading strategy parameters.
@@ -62,6 +63,10 @@ type Config struct {
 	accountBalance             decimal.Decimal
 	monthlyAddition            decimal.Decimal
 	exitOnLastOrder            bool
+	stopLossEnabled            bool
+	stopLossPercent            decimal.Decimal
+	stopLossBaseline           string
+	stopLossTimeoutMinutes     int
 }
 
 // Option is a functional option for constructing a Config.
@@ -85,6 +90,10 @@ func NewConfig(opts ...Option) (*Config, error) {
 		accountBalance:            DefaultAccountBalance,
 		monthlyAddition:           DefaultMonthlyAddition,
 		exitOnLastOrder:           DefaultExitOnLastOrder,
+		stopLossEnabled:           false,
+		stopLossPercent:           decimal.Zero,
+		stopLossBaseline:          DefaultStopLossBaseline,
+		stopLossTimeoutMinutes:    0,
 	}
 	for _, opt := range opts {
 		opt(c)
@@ -160,6 +169,19 @@ func (c *Config) Validate() error {
 	if c.monthlyAddition.LessThan(zero) {
 		return &ValidationError{Field: "monthly_addition", Value: c.monthlyAddition.String(), Message: "must be non-negative"}
 	}
+	// Stop-Loss validation (019-engine-stop-loss FR-020)
+	if c.stopLossEnabled {
+		hundred := decimal.NewFromInt(100)
+		if c.stopLossPercent.LessThanOrEqual(zero) || c.stopLossPercent.GreaterThan(hundred) {
+			return &ValidationError{Field: "stop_loss_percent", Value: c.stopLossPercent.String(), Message: "must be > 0 and <= 100 when stop-loss is enabled"}
+		}
+		if c.stopLossBaseline != "first_entry" && c.stopLossBaseline != "average_entries" {
+			return &ValidationError{Field: "stop_loss_baseline", Value: c.stopLossBaseline, Message: "must be 'first_entry' or 'average_entries'"}
+		}
+		if c.stopLossTimeoutMinutes < 0 {
+			return &ValidationError{Field: "stop_loss_timeout_minutes", Value: c.stopLossTimeoutMinutes, Message: "must be >= 0"}
+		}
+	}
 	return nil
 }
 
@@ -208,6 +230,18 @@ func (c *Config) MonthlyAddition() decimal.Decimal { return c.monthlyAddition }
 // ExitOnLastOrder returns whether the simulation stops when the last safety order fills. SDD §4.1
 func (c *Config) ExitOnLastOrder() bool { return c.exitOnLastOrder }
 
+// StopLossEnabled returns whether stop-loss evaluation is active. 019-engine-stop-loss FR-001.
+func (c *Config) StopLossEnabled() bool { return c.stopLossEnabled }
+
+// StopLossPercent returns the stop-loss trigger percentage. 019-engine-stop-loss FR-001.
+func (c *Config) StopLossPercent() decimal.Decimal { return c.stopLossPercent }
+
+// StopLossBaseline returns the stop-loss baseline mode: "first_entry" or "average_entries".
+func (c *Config) StopLossBaseline() string { return c.stopLossBaseline }
+
+// StopLossTimeoutMinutes returns the SL timeout in minutes. 0 = immediate execution.
+func (c *Config) StopLossTimeoutMinutes() int { return c.stopLossTimeoutMinutes }
+
 // ── Functional Options ────────────────────────────────────────────────────────
 
 func WithTradingPair(v string) Option                { return func(c *Config) { c.tradingPair = v } }
@@ -226,6 +260,10 @@ func WithTakeProfitDistancePercent(v decimal.Decimal) Option {
 func WithAccountBalance(v decimal.Decimal) Option  { return func(c *Config) { c.accountBalance = v } }
 func WithMonthlyAddition(v decimal.Decimal) Option { return func(c *Config) { c.monthlyAddition = v } }
 func WithExitOnLastOrder(v bool) Option            { return func(c *Config) { c.exitOnLastOrder = v } }
+func WithStopLossEnabled(v bool) Option             { return func(c *Config) { c.stopLossEnabled = v } }
+func WithStopLossPercent(v decimal.Decimal) Option   { return func(c *Config) { c.stopLossPercent = v } }
+func WithStopLossBaseline(v string) Option           { return func(c *Config) { c.stopLossBaseline = v } }
+func WithStopLossTimeoutMinutes(v int) Option        { return func(c *Config) { c.stopLossTimeoutMinutes = v } }
 
 // ── JSON Serialization ────────────────────────────────────────────────────────
 
@@ -246,6 +284,10 @@ type configJSON struct {
 	AccountBalance             decimal.Decimal `json:"account_balance"`
 	MonthlyAddition            decimal.Decimal `json:"monthly_addition"`
 	ExitOnLastOrder            bool            `json:"exit_on_last_order"`
+	StopLossEnabled            bool            `json:"stop_loss_enabled,omitempty"`
+	StopLossPercent            decimal.Decimal `json:"stop_loss_percent,omitempty"`
+	StopLossBaseline           string          `json:"stop_loss_baseline,omitempty"`
+	StopLossTimeoutMinutes     int             `json:"stop_loss_timeout_minutes,omitempty"`
 }
 
 // ToJSON serialises the Config to a JSON byte slice. All Decimal fields retain full
@@ -266,6 +308,10 @@ func (c *Config) ToJSON() ([]byte, error) {
 		AccountBalance:            c.accountBalance,
 		MonthlyAddition:           c.monthlyAddition,
 		ExitOnLastOrder:           c.exitOnLastOrder,
+		StopLossEnabled:           c.stopLossEnabled,
+		StopLossPercent:           c.stopLossPercent,
+		StopLossBaseline:          c.stopLossBaseline,
+		StopLossTimeoutMinutes:    c.stopLossTimeoutMinutes,
 	})
 }
 
@@ -290,6 +336,10 @@ func FromJSON(data []byte) (*Config, error) {
 		WithAccountBalance(j.AccountBalance),
 		WithMonthlyAddition(j.MonthlyAddition),
 		WithExitOnLastOrder(j.ExitOnLastOrder),
+		WithStopLossEnabled(j.StopLossEnabled),
+		WithStopLossPercent(j.StopLossPercent),
+		WithStopLossBaseline(j.StopLossBaseline),
+		WithStopLossTimeoutMinutes(j.StopLossTimeoutMinutes),
 	)
 }
 

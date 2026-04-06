@@ -142,8 +142,10 @@ export class BacktestService {
       ];
 
       // Pass --wide-event-dir if configured via environment (defaults to ./output/wide_events)
-      // Set WIDE_EVENTS_ENABLED=false to disable wide-event enrichment entirely (faster backtests)
-      const wideEventsEnabled = (process.env.WIDE_EVENTS_ENABLED ?? 'true').toLowerCase() !== 'false';
+      // Per-request enable_wide_events takes precedence; fall back to WIDE_EVENTS_ENABLED env var.
+      const wideEventsEnabled = typeof request.enable_wide_events === 'boolean'
+        ? request.enable_wide_events
+        : (process.env.WIDE_EVENTS_ENABLED ?? 'true').toLowerCase() !== 'false';
       if (wideEventsEnabled) {
         const wideEventDir = process.env.WIDE_EVENT_DIR || './output/wide_events';
         engineFlags.push(`--wide-event-dir=${wideEventDir}`);
@@ -282,6 +284,10 @@ export class BacktestService {
         clickhouse_db:                String(request.clickhouse_db),
         clickhouse_user:              String(request.clickhouse_user),
         clickhouse_password:          String(request.clickhouse_password),
+        stop_loss_enabled:            Boolean(request.stop_loss_enabled),
+        stop_loss_percent:            request.stop_loss_percent ? String(request.stop_loss_percent) : '0',
+        stop_loss_baseline:           request.stop_loss_baseline ? String(request.stop_loss_baseline) : 'average_entries',
+        stop_loss_timeout_minutes:    request.stop_loss_timeout_minutes ? Number(request.stop_loss_timeout_minutes) : 0,
       };
       if (request.idempotency_key) {
         enginePayload.idempotency_key = String(request.idempotency_key);

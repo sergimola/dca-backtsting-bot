@@ -378,6 +378,7 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 		peakEquity     decimal.Decimal
 		maxDrawdown    decimal.Decimal
 		tpCloses       int
+		slCloses       int
 		totalCloses    int
 	)
 
@@ -426,6 +427,9 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 				if tce.Reason == "take_profit" {
 					tpCloses++
 				}
+				if tce.Reason == "stop_loss" {
+					slCloses++
+				}
 				realizedPnl = realizedPnl.Add(decStr(tce.Profit))
 
 				runningEquity := startBalance.Add(realizedPnl)
@@ -465,17 +469,23 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 	}
 
 	totalFees := entryFees.Add(tradingFees)
-	roiDenominator := startBalance.Add(totalAdditions)
+	// ROI denominator = initial balance only (capital injections excluded)
+	roiDenominator := startBalance
 	roi := decimal.Zero
 	if roiDenominator.IsPositive() {
 		roi = realizedPnl.Div(roiDenominator).Mul(decimal.NewFromInt(100))
 	}
 
-	// Win rate: use shopspring/decimal for the division; FP only at serialisation boundary.
+	// Win rate: TPs / (TPs + SLs) — uses shopspring/decimal; FP only at serialisation boundary.
 	var winRatePtr *float64
-	if totalCloses > 0 {
-		wr := decimal.New(int64(tpCloses), 0).Div(decimal.New(int64(totalCloses), 0))
+	tpPlusSl := tpCloses + slCloses
+	if tpPlusSl > 0 {
+		wr := decimal.New(int64(tpCloses), 0).Div(decimal.New(int64(tpPlusSl), 0)).Round(8)
 		f := wr.InexactFloat64()
+		winRatePtr = &f
+	} else if totalCloses > 0 {
+		// Positions closed but none by TP or SL — win rate = 0
+		f := 0.0
 		winRatePtr = &f
 	}
 
@@ -494,6 +504,8 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 		TotalPositionsClosed   int      `json:"totalPositionsClosed,omitempty"`
 		LongestTradeDurationMs int64    `json:"longest_trade_duration_ms"`
 		MaxSafetyOrdersUsed    int      `json:"max_safety_orders_used"`
+		TotalStopsTriggered    int      `json:"total_stops_triggered"`
+		TotalTakeProfits       int      `json:"total_take_profits"`
 	}{
 		RunID: runID,
 		Type:  "result",
@@ -513,6 +525,8 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 		TotalPositionsClosed:   totalCloses,
 		LongestTradeDurationMs: kpi.LongestTradeDurationMs,
 		MaxSafetyOrdersUsed:    kpi.MaxSafetyOrdersUsed,
+		TotalStopsTriggered:    slCloses,
+		TotalTakeProfits:       tpCloses,
 	}
 }
 

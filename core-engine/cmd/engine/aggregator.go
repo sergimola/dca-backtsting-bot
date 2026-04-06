@@ -18,6 +18,8 @@ import (
 type aggregationResult struct {
 	PnlSummary        PnlSummaryOutput
 	SafetyOrderCounts map[int]int
+	StopLossCount     int
+	TakeProfitCount   int
 }
 
 // decStr parses a decimal string, returning decimal.Zero on any error.
@@ -41,9 +43,12 @@ func decStr(s string) decimal.Decimal {
 //   - safetyOrderCounts keyed by 0-based soIndex (orderNumber - 1)
 //
 // ROI denominator = accountBalance + totalAdditions (FR-020).
+// If finalPos is non-nil and still open, the unrealized P&L of the open
+// position is folded into the ROI numerator so that:
+//   ROI = (realizedPnl + unrealizedPnl) / totalInvested × 100
 // All arithmetic is performed with decimal.Decimal.
 // float64 conversion is done only when constructing PnlSummaryOutput fields.
-func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal.Decimal) aggregationResult {
+func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal.Decimal, finalPos *position.Position, lastClose decimal.Decimal) aggregationResult {
 	var (
 		entryFees      decimal.Decimal
 		tradingFees    decimal.Decimal
@@ -51,6 +56,8 @@ func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal
 		totalAdditions decimal.Decimal
 		peakEquity     decimal.Decimal
 		maxDrawdown    decimal.Decimal
+		stopLossCount  int
+		takeProfitCount int
 	)
 	safetyOrderCounts := make(map[int]int)
 
@@ -76,6 +83,14 @@ func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal
 		case orchestrator.EventTypePositionClosed:
 			if tce, ok := ev.Data.(*position.TradeClosedEvent); ok {
 				realizedPnl = realizedPnl.Add(decStr(tce.Profit))
+
+				// 019-engine-stop-loss: track close reasons for win rate
+				switch tce.Reason {
+				case "stop_loss":
+					stopLossCount++
+				case "take_profit":
+					takeProfitCount++
+				}
 
 				// Peak-equity drawdown tracking.
 				runningEquity := accountBalance.Add(realizedPnl)
@@ -105,11 +120,34 @@ func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal
 	}
 
 	totalFees := entryFees.Add(tradingFees)
-	// FR-020: ROI denominator widens by every capital injection received.
+
+	// Compute unrealized PnL from the final open position (if any).
+	// unrealizedPnl = positionQuantity × lastClose − totalDeployedCost − feesAccumulated
+	// This gives the mark-to-market value delta of the open position.
+	unrealizedPnl := decimal.Zero
+	if finalPos != nil && finalPos.State != position.StateClosed && finalPos.PositionQuantity.IsPositive() && lastClose.IsPositive() {
+		marketValue := finalPos.PositionQuantity.Mul(lastClose)
+		deployedCost := decimal.Zero
+		for _, o := range finalPos.Orders {
+			deployedCost = deployedCost.Add(o.QuoteAmount)
+		}
+		unrealizedPnl = marketValue.Sub(deployedCost).Sub(finalPos.FeesAccumulated)
+	}
+
+	// ROI = (realizedPnl + unrealizedPnl) / (accountBalance + totalAdditions) × 100 (FR-020)
 	roiDenominator := accountBalance.Add(totalAdditions)
 	roi := decimal.Zero
 	if roiDenominator.IsPositive() {
-		roi = realizedPnl.Div(roiDenominator).Mul(decimal.NewFromInt(100))
+		roi = realizedPnl.Add(unrealizedPnl).Div(roiDenominator).Mul(decimal.NewFromInt(100))
+	}
+
+	// 019-engine-stop-loss FR-014: Win Rate = TPs / (TPs + SLs), decimal-computed
+	winRate := decimal.Zero
+	totalClosedBySLOrTP := takeProfitCount + stopLossCount
+	if totalClosedBySLOrTP > 0 {
+		winRate = decimal.NewFromInt(int64(takeProfitCount)).
+			Div(decimal.NewFromInt(int64(totalClosedBySLOrTP))).
+			Round(8)
 	}
 
 	return aggregationResult{
@@ -117,8 +155,11 @@ func aggregateBacktestEvents(events []orchestrator.Event, accountBalance decimal
 			Roi:         roi.InexactFloat64(),
 			MaxDrawdown: maxDrawdown.InexactFloat64(),
 			TotalFees:   totalFees.InexactFloat64(),
+			WinRate:     winRate.InexactFloat64(),
 		},
 		SafetyOrderCounts: safetyOrderCounts,
+		StopLossCount:     stopLossCount,
+		TakeProfitCount:   takeProfitCount,
 	}
 }
 

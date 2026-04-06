@@ -192,10 +192,11 @@ export function createOptimizerRouter(
           prunedConfigs: pruningResult.prunedConfigs,
           pruneReasons: pruningResult.pruneReasons,
         },
-        // Only return the swept-param fields needed by the frontend heatmap.
-        // Never expose ClickHouse credentials or fixed infrastructure params.
-        validConfigs: pruningResult.validConfigs.map(({ run_id, price_entry, price_scale, amount_scale, number_of_orders, amount_per_trade, multiplier, take_profit_distance_percent, monthly_addition }) => ({
-          run_id, price_entry, price_scale, amount_scale, number_of_orders, amount_per_trade, multiplier, take_profit_distance_percent, monthly_addition,
+        // Return all non-credential config fields so the frontend can populate
+        // "Re-run with Details" and "Copy Config" features correctly.
+        // NOTE: clickhouse_addr, clickhouse_db, clickhouse_user, clickhouse_password are intentionally excluded.
+        validConfigs: pruningResult.validConfigs.map(({ run_id, trading_pair, start_date, end_date, price_entry, price_scale, amount_scale, number_of_orders, amount_per_trade, margin_type, multiplier, take_profit_distance_percent, account_balance, monthly_addition, exit_on_last_order, stop_loss_enabled, stop_loss_percent, stop_loss_baseline, stop_loss_timeout_minutes }) => ({
+          run_id, trading_pair, start_date, end_date, price_entry, price_scale, amount_scale, number_of_orders, amount_per_trade, margin_type, multiplier, take_profit_distance_percent, account_balance, monthly_addition, exit_on_last_order, stop_loss_enabled, stop_loss_percent, stop_loss_baseline, stop_loss_timeout_minutes,
         })),
         preFlightSummary: {
           minDrawdown,
@@ -318,6 +319,10 @@ export function createOptimizerRouter(
       monthly_addition: cfg.monthly_addition ?? '0',
       account_balance: cfg.account_balance,
       exit_on_last_order: cfg.exit_on_last_order,
+      stop_loss_enabled: cfg.stop_loss_enabled ?? false,
+      stop_loss_percent: cfg.stop_loss_percent ?? '0',
+      stop_loss_baseline: cfg.stop_loss_baseline ?? 'average_entries',
+      stop_loss_timeout_minutes: cfg.stop_loss_timeout_minutes ?? 0,
       clickhouse_addr: cfg.clickhouse_addr,
       clickhouse_db: cfg.clickhouse_db,
       clickhouse_user: cfg.clickhouse_user,
@@ -655,6 +660,8 @@ export function createOptimizerRouter(
               action_quantity: String(parsed.action_quantity ?? 0),
               action_fee: String(parsed.action_fee ?? 0),
               order_number: parsed.order_number ?? 0,
+              close_reason: parsed.close_reason ?? '',
+              realized_pnl: String(parsed.realized_pnl ?? 0),
             };
             writer.push(row);
           } else if (parsed.type === 'result') {

@@ -38,6 +38,14 @@ export interface BacktestFormState {
   exitOnLastOrder: boolean
   /** Emit wide events for this run (enables full trade-event capture) */
   enable_wide_events?: boolean
+  /** Enable stop-loss for this run */
+  stopLossEnabled?: boolean
+  /** Stop-loss trigger percentage (e.g. "5.0") */
+  stopLossPercent?: string
+  /** Price baseline used for stop-loss calculation */
+  stopLossBaseline?: 'first_entry' | 'average_entries'
+  /** Minutes to wait before triggering stop-loss (0 = immediate) */
+  stopLossTimeoutMinutes?: string
 }
 
 /** @deprecated Use BacktestFormState */

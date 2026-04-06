@@ -20,6 +20,11 @@ export interface ApiBacktestRequest {
   account_balance: string;
   monthly_addition?: string;
   exit_on_last_order: boolean;
+  enable_wide_events?: boolean;
+  stop_loss_enabled?: boolean;
+  stop_loss_percent?: string;
+  stop_loss_baseline?: string;
+  stop_loss_timeout_minutes?: number;
   idempotency_key?: string;
 }
 
@@ -99,6 +104,7 @@ export interface StoredPnlSummary {
   roi: number;
   maxDrawdown: number;
   totalFees: number;
+  winRate?: number;
 }
 
 export interface StoredTradeEvent {
@@ -144,6 +150,8 @@ export interface EngineResultLine {
   eventCount: number;
   wide_event_file?: string;
   wide_event_stall_duration_ms?: number;
+  total_stops_triggered?: number;
+  total_take_profits?: number;
 }
 
 // ============== BacktestService Contract ==============

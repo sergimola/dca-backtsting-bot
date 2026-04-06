@@ -62,6 +62,14 @@ type Position struct {
 	// Take-profit configuration (set from domain config; applies to all recalculations)
 	TakeProfitDistance decimal.Decimal // Percentage above average entry to set TP target (SDD § 2.4)
 
+	// Stop-loss configuration (019-engine-stop-loss)
+	StopLossEnabled        bool            // If true, evaluate SL trigger on every candle
+	StopLossPercent        decimal.Decimal // Percentage drop from baseline to trigger SL
+	StopLossBaseline       string          // "first_entry" or "average_entries"
+	StopLossTimeoutMinutes int             // 0 = immediate; >0 = breach must persist this many minutes
+	SlTriggerPrice         decimal.Decimal // Computed SL trigger price; zero means inactive
+	SlBreachTimestamp      time.Time       // Zero value = no active breach; check with .IsZero()
+
 	// Metadata
 	TradingPair    string          // e.g. "BTCUSDC" — propagated from OrchestratorConfig
 	OpenPrice      decimal.Decimal // Market buy execution price

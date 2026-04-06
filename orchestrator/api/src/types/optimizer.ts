@@ -41,6 +41,8 @@ export interface FixedParams {
   end_date: string;
   margin_type: 'cross' | 'isolated';
   exit_on_last_order: boolean;
+  stop_loss_enabled?: boolean;
+  stop_loss_baseline?: 'first_entry' | 'average_entries';
   clickhouse_addr: string;
   clickhouse_db: string;
   clickhouse_user: string;
@@ -66,6 +68,10 @@ export interface GeneratedConfig {
   account_balance: string;
   monthly_addition: string;
   exit_on_last_order: boolean;
+  stop_loss_enabled?: boolean;
+  stop_loss_percent?: string;
+  stop_loss_baseline?: string;
+  stop_loss_timeout_minutes?: number;
   clickhouse_addr: string;
   clickhouse_db: string;
   clickhouse_user: string;
@@ -198,6 +204,8 @@ export interface BatchRunResult {
   eventCount?: number;
   longest_trade_duration_ms?: number;
   max_safety_orders_used?: number;
+  total_stops_triggered?: number;
+  total_take_profits?: number;
 }
 
 /** Full response from POST /optimizer/sweep. */

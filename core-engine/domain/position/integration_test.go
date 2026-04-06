@@ -98,13 +98,13 @@ func TestIntegration_T108_60DayBacktestScenario(t *testing.T) {
 	}
 	_, _ = sm.ProcessCandle(p2, candle5)
 
-	// P2: Day 20 - liquidate at 96.00 (below liquidation price)
+	// P2: Day 20 - TP fires at ~100.17 (0.5% above AverageEntryPrice ~99.67)
 	candle6 := &Candle{
 		Timestamp: p2StartTime.AddDate(0, 0, 19),
-		Open:      mustDecimal("96.50"),
-		High:      mustDecimal("97.00"),
-		Low:       mustDecimal("95.00"),
-		Close:     mustDecimal("96.00"),
+		Open:      mustDecimal("99.00"),
+		High:      mustDecimal("100.50"), // Above TakeProfitTarget (~100.17) → TP fires
+		Low:       mustDecimal("98.50"),
+		Close:     mustDecimal("100.20"),
 		Volume:    mustDecimal("1000000"),
 	}
 	_, _ = sm.ProcessCandle(p2, candle6)
@@ -163,13 +163,15 @@ func TestIntegration_T110_GapDownWithLiquidation(t *testing.T) {
 	avgPrice := mustDecimal("10.00").Mul(mustDecimal("100.00")).Div(mustDecimal("10.00"))
 	t.Logf("Average entry price: %v", avgPrice)
 
-	// Candle 2: Gap down - opens at 94.00, low at 90.00 (hits ALL remaining orders and below P_liq)
+	// Candle 2: Extreme gap-down; ALL remaining orders fill (Steps 3a-3b), then
+	// P_liq is recalculated to AverageEntryPrice*0.5 ≈ 48.27.
+	// Low must be < 48.27 to trigger liquidation in Step 3c.
 	candle2 := &Candle{
 		Timestamp: startTime.Add(time.Minute),
-		Open:      mustDecimal("94.00"),    // Below 95 order
+		Open:      mustDecimal("94.00"),
 		High:      mustDecimal("94.00"),
-		Low:       mustDecimal("90.00"),    // Hits all orders + liquidation
-		Close:     mustDecimal("91.00"),
+		Low:       mustDecimal("40.00"),  // Hits all orders + below P_liq (~48.27)
+		Close:     mustDecimal("41.00"),
 		Volume:    mustDecimal("1000000"),
 	}
 	events2, err := sm.ProcessCandle(p, candle2)

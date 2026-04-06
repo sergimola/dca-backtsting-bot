@@ -33,6 +33,8 @@ export interface WideEventRow {
   action_quantity: string;
   action_fee: string;
   order_number: number;
+  close_reason: string;
+  realized_pnl: string;
 }
 
 /**

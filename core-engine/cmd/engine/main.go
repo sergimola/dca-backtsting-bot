@@ -43,6 +43,10 @@ type EngineRequest struct {
 	IdempotencyKey                string `json:"idempotency_key"`                 // Optional UUID
 	EnableWideEvents              *bool  `json:"enable_wide_events,omitempty"`    // Optional: override env-var OR logic
 	WideEventsToStdout            *bool  `json:"wide_events_to_stdout,omitempty"` // Emit wide events as NDJSON to stdout (batch promotion mode)
+	StopLossEnabled               bool   `json:"stop_loss_enabled,omitempty"`
+	StopLossPercent               string `json:"stop_loss_percent,omitempty"`
+	StopLossBaseline              string `json:"stop_loss_baseline,omitempty"`
+	StopLossTimeoutMinutes        int    `json:"stop_loss_timeout_minutes,omitempty"`
 }
 
 // ProgressPayload is emitted to stdout every --progress-interval-ms milliseconds.
@@ -64,6 +68,7 @@ type PnlSummaryOutput struct {
 	Roi         float64 `json:"roi"`         // (realizedPnl / accountBalance) * 100
 	MaxDrawdown float64 `json:"maxDrawdown"` // peak-to-trough equity drawdown as percent
 	TotalFees   float64 `json:"totalFees"`   // entryFees + tradingFees + sellFees
+	WinRate     float64 `json:"winRate"`     // TPs / (TPs + SLs); 0 if both zero
 }
 
 // TradeEventOutput is a single frontend-ready trade event.
@@ -99,6 +104,8 @@ type EngineResultPayload struct {
 	EventCount               int                     `json:"eventCount"`
 	WideEventFile            string                  `json:"wide_event_file,omitempty"`             // path to .jsonl; absent when enricher disabled
 	WideEventStallDurationMs int64                   `json:"wide_event_stall_duration_ms,omitempty"` // PSM stall ms; absent when 0
+	TotalStopsTriggered      int                     `json:"total_stops_triggered"`
+	TotalTakeProfits         int                     `json:"total_take_profits"`
 }
 
 // progressState holds the shared state between the hot loop and the progress ticker goroutine.
@@ -356,7 +363,9 @@ func main() {
 
 	// Aggregate results in-process (ports ResultAggregator.aggregateGoEvents + processGoEventsForFrontend).
 	allEvents := backtest.EventBus.GetAllEvents()
-	aggResult := aggregateBacktestEvents(allEvents, cfg.AccountBalance())
+	// Derive the last candle close from the progress state for mark-to-market valuation.
+	lastClose := decimal.NewFromFloat(math.Float64frombits(state.currentPriceBits.Load()))
+	aggResult := aggregateBacktestEvents(allEvents, cfg.AccountBalance(), backtest.FinalPosition, lastClose)
 	tradeEvents := buildTradeEvents(allEvents)
 	soUsage := buildSafetyOrderUsage(aggResult.SafetyOrderCounts)
 
@@ -373,6 +382,8 @@ func main() {
 		EventCount:               backtest.EventCount,
 		WideEventFile:            backtest.WideEventFilePath,
 		WideEventStallDurationMs: backtest.WideEventStallDuration.Milliseconds(),
+		TotalStopsTriggered:      aggResult.StopLossCount,
+		TotalTakeProfits:         aggResult.TakeProfitCount,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "Failed to write result: %v\n", err)
 		os.Exit(1)
@@ -453,6 +464,21 @@ func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
 		monthlyAddition = parsed
 	}
 
+	// Parse optional stop_loss_percent (decimal string; defaults to 0 when absent)
+	stopLossPercent := decimal.Zero
+	if req.StopLossPercent != "" {
+		parsed, parseErr := decimal.NewFromString(req.StopLossPercent)
+		if parseErr != nil {
+			return nil, fmt.Errorf("invalid stop_loss_percent: %w", parseErr)
+		}
+		stopLossPercent = parsed
+	}
+	// Default baseline to "average_entries" when SL is enabled and baseline is empty
+	stopLossBaseline := req.StopLossBaseline
+	if req.StopLossEnabled && stopLossBaseline == "" {
+		stopLossBaseline = config.DefaultStopLossBaseline
+	}
+
 	cfg, err := config.NewConfig(
 		config.WithTradingPair(req.TradingPair),
 		config.WithStartDate(req.StartDate),
@@ -468,6 +494,10 @@ func buildConfigFromRequest(req *EngineRequest) (*config.Config, error) {
 		config.WithAccountBalance(accountBalance),
 		config.WithMonthlyAddition(monthlyAddition),
 		config.WithExitOnLastOrder(req.ExitOnLastOrder),
+		config.WithStopLossEnabled(req.StopLossEnabled),
+		config.WithStopLossPercent(stopLossPercent),
+		config.WithStopLossBaseline(stopLossBaseline),
+		config.WithStopLossTimeoutMinutes(req.StopLossTimeoutMinutes),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config: %w", err)

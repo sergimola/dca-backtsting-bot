@@ -3,6 +3,7 @@ package position
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/shopspring/decimal"
 )
@@ -207,6 +208,17 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 				pos.TakeProfitTarget = CalculateTakeProfitTarget(pos.AverageEntryPrice, tpDist)
 			}
 
+			// T020: Recalculate SL trigger price after SO fills (average_entries mode)
+			if pos.StopLossEnabled && pos.StopLossBaseline == "average_entries" && !pos.AverageEntryPrice.IsZero() {
+				hundred := decimal.NewFromInt(100)
+				one := decimal.NewFromInt(1)
+				pos.SlTriggerPrice = pos.AverageEntryPrice.Mul(one.Sub(pos.StopLossPercent.Div(hundred)))
+				// If breach was active but new trigger now below candle Low → recovery
+				if !pos.SlBreachTimestamp.IsZero() && pos.SlTriggerPrice.LessThan(candle.Low) {
+					pos.SlBreachTimestamp = time.Time{}
+				}
+			}
+
 			// Recalculate fees
 			totalFees := decimal.NewFromInt(0)
 			for _, order := range pos.Orders {
@@ -251,8 +263,8 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 		}
 
 		// PHASE 8 (US6): Early exit on last order fill (T099-T106)
-		// If ExitOnLastOrder is enabled and all orders have been filled, close position immediately
-		if pos.ExitOnLastOrder && pos.NextOrderIndex >= len(pos.Prices) && len(filledOrders) > 0 {
+		// If ExitOnLastOrder is enabled (and SL is NOT enabled — FR-023) and all orders have been filled, close position immediately
+		if pos.ExitOnLastOrder && !pos.StopLossEnabled && pos.NextOrderIndex >= len(pos.Prices) && len(filledOrders) > 0 {
 			// Close position immediately (not via take-profit or liquidation)
 			totalSize := CalculatePositionQuantity(pos.Orders)
 			
@@ -316,6 +328,101 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 			return events, nil // Break execution (Step 3c return)
 		}
 
+		// Step 3c.5: Stop-Loss Check (019-engine-stop-loss FR-005–FR-012)
+		// Pessimistic execution order: Buy → Liquidation → Stop-Loss → Take-Profit
+		if pos.StopLossEnabled && pos.SlTriggerPrice.IsPositive() {
+			hundred := decimal.NewFromInt(100)
+			_ = hundred // used in average_entries recalc (Phase 4)
+
+			if candle.Low.LessThanOrEqual(pos.SlTriggerPrice) {
+				// Breach detected
+				if pos.StopLossTimeoutMinutes == 0 {
+					// Immediate SL execution (FR-006)
+					closingPrice := candle.Close
+					totalSize := pos.PositionQuantity
+					sellFee := CalculateFee(closingPrice, totalSize, OrderTypeMarket, 1)
+					pos.FeesAccumulated = pos.FeesAccumulated.Add(sellFee)
+					profit := CalculateProfit(closingPrice, totalSize, pos.Orders, pos.FeesAccumulated)
+					pos.Profit = profit
+					pos.State = StateClosed
+					pos.CloseTimestamp = &candle.Timestamp
+
+					duration := pos.CloseTimestamp.Sub(pos.OpenTimestamp).Nanoseconds()
+					slEvent := &StopLossExecutedEvent{
+						TradeID:        pos.TradeID,
+						Timestamp:      candle.Timestamp,
+						TradingPair:    pos.TradingPair,
+						ExecutionPrice: closingPrice.String(),
+						Size:           totalSize.String(),
+						RealizedLoss:   profit.String(),
+						Fee:            sellFee.String(),
+					}
+					events = append(events, slEvent)
+
+					tradeClosedEvent := &TradeClosedEvent{
+						TradeID:       pos.TradeID,
+						OpenTimestamp: pos.OpenTimestamp,
+						Timestamp:     candle.Timestamp,
+						TradingPair:   pos.TradingPair,
+						ClosingPrice:  closingPrice.String(),
+						Size:          totalSize.String(),
+						Profit:        profit.String(),
+						Duration:      duration,
+						Reason:        "stop_loss",
+					}
+					events = append(events, tradeClosedEvent)
+					return events, nil
+				}
+
+				// Timeout-based SL (FR-007)
+				timeout := time.Duration(pos.StopLossTimeoutMinutes) * time.Minute
+				if pos.SlBreachTimestamp.IsZero() {
+					// First breach candle — record timestamp
+					pos.SlBreachTimestamp = candle.Timestamp
+				} else if candle.Timestamp.Sub(pos.SlBreachTimestamp) >= timeout {
+					// Timeout elapsed — execute stop
+					closingPrice := candle.Close
+					totalSize := pos.PositionQuantity
+					sellFee := CalculateFee(closingPrice, totalSize, OrderTypeMarket, 1)
+					pos.FeesAccumulated = pos.FeesAccumulated.Add(sellFee)
+					profit := CalculateProfit(closingPrice, totalSize, pos.Orders, pos.FeesAccumulated)
+					pos.Profit = profit
+					pos.State = StateClosed
+					pos.CloseTimestamp = &candle.Timestamp
+
+					duration := pos.CloseTimestamp.Sub(pos.OpenTimestamp).Nanoseconds()
+					slEvent := &StopLossExecutedEvent{
+						TradeID:        pos.TradeID,
+						Timestamp:      candle.Timestamp,
+						TradingPair:    pos.TradingPair,
+						ExecutionPrice: closingPrice.String(),
+						Size:           totalSize.String(),
+						RealizedLoss:   profit.String(),
+						Fee:            sellFee.String(),
+					}
+					events = append(events, slEvent)
+
+					tradeClosedEvent := &TradeClosedEvent{
+						TradeID:       pos.TradeID,
+						OpenTimestamp: pos.OpenTimestamp,
+						Timestamp:     candle.Timestamp,
+						TradingPair:   pos.TradingPair,
+						ClosingPrice:  closingPrice.String(),
+						Size:          totalSize.String(),
+						Profit:        profit.String(),
+						Duration:      duration,
+						Reason:        "stop_loss",
+					}
+					events = append(events, tradeClosedEvent)
+					return events, nil
+				}
+				// else: breach is active but timeout hasn't elapsed — continue
+			} else if !pos.SlBreachTimestamp.IsZero() {
+				// Price recovered above trigger (FR-008) — reset breach
+				pos.SlBreachTimestamp = time.Time{}
+			}
+		}
+
 		// Step 3d: Check Take-Profit (ONLY after liquidation check is false)
 		// ASSERTION T057: This step happens AFTER Step 3c check
 		// Note: Take-profit target needs to be set (requires distance parameter)
@@ -329,6 +436,9 @@ func (sm *StateMachine) ProcessCandle(pos *Position, candle *Candle) ([]Event, e
 		}
 
 		if !pos.TakeProfitTarget.IsZero() && CheckTakeProfit(ctx, candle.High, pos.TakeProfitTarget) {
+			// T010: TP clears any active SL breach (FR-013)
+			pos.SlBreachTimestamp = time.Time{}
+
 			// Close position via take-profit at the configured limit price.
 			// A limit sell order fills at exactly TakeProfitTarget — not at candle.High
 			// (which would grant unrealistic positive slippage).

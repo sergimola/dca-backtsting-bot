@@ -195,7 +195,7 @@
         {
           "datasource": { "type": "postgres", "uid": "dca_postgres" },
           "format": "table", "rawQuery": true,
-          "rawSql": "SELECT ROUND(AVG(win_rate)::numeric, 2) AS \"Avg Win Rate\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
+          "rawSql": "SELECT ROUND(AVG(win_rate)::numeric * 100, 2) AS \"Avg Win Rate\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote})",
           "refId": "A"
         }
       ]
@@ -307,6 +307,21 @@
           {
             "matcher": { "id": "byName", "options": "Exec (ms)" },
             "properties": [{ "id": "unit", "value": "ms" }, { "id": "custom.width", "value": 90 }]
+          },
+          {
+            "matcher": { "id": "byName", "options": "Stops" },
+            "properties": [
+              { "id": "custom.width", "value": 60 },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }]
+                }
+              },
+              { "id": "custom.cellOptions", "value": { "type": "color-text" } },
+              { "id": "color", "value": { "mode": "thresholds" } }
+            ]
           }
         ]
       },
@@ -314,7 +329,7 @@
         {
           "datasource": { "type": "postgres", "uid": "dca_postgres" },
           "format": "table", "rawQuery": true,
-          "rawSql": "SELECT run_id::text AS \"Run ID\", ROUND(roi::numeric, 4) AS \"ROI %\", ROUND(max_drawdown::numeric, 4) AS \"Max Drawdown %\", ROUND(total_fees::numeric, 6) AS \"Total Fees\", ROUND(win_rate::numeric, 2) AS \"Win Rate %\", ROUND(capital_efficiency::numeric, 4) AS \"Cap. Efficiency\", execution_time_ms AS \"Exec (ms)\", config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) ORDER BY roi DESC LIMIT 2000",
+          "rawSql": "SELECT run_id::text AS \"Run ID\", ROUND(roi::numeric, 4) AS \"ROI %\", ROUND(max_drawdown::numeric, 4) AS \"Max Drawdown %\", ROUND(total_fees::numeric, 6) AS \"Total Fees\", ROUND(win_rate::numeric * 100, 2) AS \"Win Rate %\", ROUND(capital_efficiency::numeric, 4) AS \"Cap. Efficiency\", COALESCE(total_stops_triggered, 0) AS \"Stops\", execution_time_ms AS \"Exec (ms)\", config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\", config_json->>'stop_loss_enabled' AS \"SL Enabled\", config_json->>'stop_loss_percent' AS \"SL %\", config_json->>'stop_loss_baseline' AS \"SL Baseline\", config_json->>'stop_loss_timeout_minutes' AS \"SL Timeout\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) ORDER BY roi DESC LIMIT 2000",
           "refId": "A"
         }
       ]
@@ -592,7 +607,7 @@
         {
           "datasource": { "type": "postgres", "uid": "dca_postgres" },
           "format": "table", "rawQuery": true,
-          "rawSql": "SELECT config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\", COUNT(*) AS \"Runs\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI %\", ROUND(MAX(roi)::numeric, 4) AS \"Best ROI %\", ROUND(AVG(max_drawdown)::numeric, 4) AS \"Avg Drawdown %\", ROUND(AVG(win_rate)::numeric, 2) AS \"Avg Win Rate %\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1,2,3,4,5 ORDER BY AVG(roi) DESC LIMIT 200",
+          "rawSql": "SELECT config_json->>'price_entry' AS \"Price Entry\", config_json->>'price_scale' AS \"Price Scale\", config_json->>'amount_scale' AS \"Amount Scale\", (config_json->>'number_of_orders')::int AS \"# Orders\", config_json->>'take_profit_distance_percent' AS \"TP %\", config_json->>'stop_loss_enabled' AS \"SL Enabled\", config_json->>'stop_loss_percent' AS \"SL %\", COUNT(*) AS \"Runs\", ROUND(AVG(roi)::numeric, 4) AS \"Avg ROI %\", ROUND(MAX(roi)::numeric, 4) AS \"Best ROI %\", ROUND(AVG(max_drawdown)::numeric, 4) AS \"Avg Drawdown %\", ROUND(AVG(win_rate)::numeric * 100, 2) AS \"Avg Win Rate %\", ROUND(AVG(COALESCE(total_stops_triggered, 0))::numeric, 1) AS \"Avg Stops\" FROM sweep_run_summaries WHERE session_id::text = '${session_id}' AND config_json->>'price_entry' IN (${price_entry:singlequote}) AND config_json->>'price_scale' IN (${price_scale:singlequote}) AND config_json->>'amount_scale' IN (${amount_scale:singlequote}) AND config_json->>'number_of_orders' IN (${number_of_orders:singlequote}) AND config_json->>'take_profit_distance_percent' IN (${take_profit_distance_percent:singlequote}) GROUP BY 1,2,3,4,5,6,7 ORDER BY AVG(roi) DESC LIMIT 200",
           "refId": "A"
         }
       ]

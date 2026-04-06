@@ -68,7 +68,8 @@ func (e *LiquidationPriceUpdatedEvent) EventTimestamp() time.Time {
 	return e.Timestamp
 }
 
-// TradeClosedEvent is emitted when position closes (take-profit or liquidation)
+// TradeClosedEvent is emitted when position closes (take-profit, liquidation, or stop-loss)
+// Reason values: "take_profit", "liquidation", "end_of_backtest", "last_order_filled", "stop_loss"
 type TradeClosedEvent struct {
 	RunID         string    `json:"run_id"`
 	TradeID       string    `json:"trade_id"`
@@ -147,5 +148,26 @@ func (e *MonthlyAdditionEvent) EventType() string {
 }
 
 func (e *MonthlyAdditionEvent) EventTimestamp() time.Time {
+	return e.Timestamp
+}
+
+// StopLossExecutedEvent is emitted when a stop-loss triggers and closes a position.
+// 019-engine-stop-loss FR-009: SL executes as a taker (market) order with taker fee.
+type StopLossExecutedEvent struct {
+	RunID          string    `json:"run_id"`
+	TradeID        string    `json:"trade_id"`
+	Timestamp      time.Time `json:"timestamp"`
+	TradingPair    string    `json:"trading_pair"`
+	ExecutionPrice string    `json:"execution_price"` // candle.Close at execution
+	Size           string    `json:"size"`            // total base quantity (e.g., BTC)
+	RealizedLoss   string    `json:"realized_loss"`   // negative decimal string
+	Fee            string    `json:"fee"`             // taker fee decimal string
+}
+
+func (e *StopLossExecutedEvent) EventType() string {
+	return "stop_loss.executed"
+}
+
+func (e *StopLossExecutedEvent) EventTimestamp() time.Time {
 	return e.Timestamp
 }

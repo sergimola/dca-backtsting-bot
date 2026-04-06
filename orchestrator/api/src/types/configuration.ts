@@ -61,6 +61,18 @@ export interface ApiBacktestRequest {
   /** T070: Enable wide events — pass to Go engine so full trade-event JSONB is captured. */
   enable_wide_events?: boolean;
 
+  /** Enable stop-loss for this run */
+  stop_loss_enabled?: boolean;
+
+  /** Stop-loss trigger percentage as decimal string (e.g., "5.0") */
+  stop_loss_percent?: string;
+
+  /** Price baseline used for stop-loss calculation ("first_entry" | "average_entries") */
+  stop_loss_baseline?: string;
+
+  /** Minutes to wait before triggering stop-loss (integer >= 0, 0 = immediate) */
+  stop_loss_timeout_minutes?: number;
+
   /** Optional idempotency key (UUID RFC 4122) for duplicate suppression */
   idempotency_key?: string;
 }
@@ -452,5 +464,9 @@ export function validateBacktestRequest(request: any): ApiBacktestRequest & { ma
     exit_on_last_order: request.exit_on_last_order,
     idempotency_key: validatedIdempotencyKey,
     enable_wide_events: typeof request.enable_wide_events === 'boolean' ? request.enable_wide_events : undefined,
+    stop_loss_enabled: typeof request.stop_loss_enabled === 'boolean' ? request.stop_loss_enabled : false,
+    stop_loss_percent: typeof request.stop_loss_percent === 'string' ? request.stop_loss_percent : undefined,
+    stop_loss_baseline: typeof request.stop_loss_baseline === 'string' ? request.stop_loss_baseline : undefined,
+    stop_loss_timeout_minutes: typeof request.stop_loss_timeout_minutes === 'number' ? request.stop_loss_timeout_minutes : 0,
   };
 }

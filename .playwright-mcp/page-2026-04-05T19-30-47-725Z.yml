@@ -1,0 +1,326 @@
+- generic [ref=e3]:
+  - complementary [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]: QuantDCA
+      - button "New backtest" [ref=e7] [cursor=pointer]:
+        - img [ref=e8]
+    - generic [ref=e9]:
+      - button "Backtests" [ref=e10] [cursor=pointer]
+      - button "Optimizer" [active] [ref=e11] [cursor=pointer]
+    - generic [ref=e513]:
+      - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep fa509d22-e230-4fef-9557-e8cf5f836867" [ref=e514] [cursor=pointer]:
+        - generic [ref=e515]:
+          - generic [ref=e517]: BTC/USDC
+          - generic [ref=e518]:
+            - generic [ref=e519]: 8736 runs
+            - generic [ref=e520]: ·
+            - generic [ref=e521]: 5.80% max ROI
+          - generic [ref=e522]: 4/5/2026
+        - button "Delete sweep fa509d22-e230-4fef-9557-e8cf5f836867" [ref=e523]:
+          - img [ref=e524]
+      - button "BTC/USDC 8736 runs · 5.91% max ROI 4/5/2026 Delete sweep 4fc154f2-d587-470d-b656-52c12ab43e2b" [ref=e527] [cursor=pointer]:
+        - generic [ref=e528]:
+          - generic [ref=e530]: BTC/USDC
+          - generic [ref=e531]:
+            - generic [ref=e532]: 8736 runs
+            - generic [ref=e533]: ·
+            - generic [ref=e534]: 5.91% max ROI
+          - generic [ref=e535]: 4/5/2026
+        - button "Delete sweep 4fc154f2-d587-470d-b656-52c12ab43e2b" [ref=e536]:
+          - img [ref=e537]
+      - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep b926693f-ece0-46cf-8adb-de41bea24d92" [ref=e540] [cursor=pointer]:
+        - generic [ref=e541]:
+          - generic [ref=e543]: BTC/USDC
+          - generic [ref=e544]:
+            - generic [ref=e545]: 8736 runs
+            - generic [ref=e546]: ·
+            - generic [ref=e547]: 5.80% max ROI
+          - generic [ref=e548]: 4/5/2026
+        - button "Delete sweep b926693f-ece0-46cf-8adb-de41bea24d92" [ref=e549]:
+          - img [ref=e550]
+      - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep aa9e5ebb-f9b0-4c08-9982-54dd90b3ee62" [ref=e553] [cursor=pointer]:
+        - generic [ref=e554]:
+          - generic [ref=e556]: BTC/USDC
+          - generic [ref=e557]:
+            - generic [ref=e558]: 8736 runs
+            - generic [ref=e559]: ·
+            - generic [ref=e560]: 5.80% max ROI
+          - generic [ref=e561]: 4/5/2026
+        - button "Delete sweep aa9e5ebb-f9b0-4c08-9982-54dd90b3ee62" [ref=e562]:
+          - img [ref=e563]
+      - button "BTC/USDC running 0 runs · N/A 4/5/2026 Delete sweep e0d2dc2a-f23a-4d5f-8b96-7972a9fdf462" [ref=e566] [cursor=pointer]:
+        - generic [ref=e567]:
+          - generic [ref=e568]:
+            - generic [ref=e569]: BTC/USDC
+            - generic [ref=e570]: running
+          - generic [ref=e571]:
+            - generic [ref=e572]: 0 runs
+            - generic [ref=e573]: ·
+            - generic [ref=e574]: N/A
+          - generic [ref=e575]: 4/5/2026
+        - button "Delete sweep e0d2dc2a-f23a-4d5f-8b96-7972a9fdf462" [ref=e576]:
+          - img [ref=e577]
+      - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep 10f2065d-6bc0-4fee-a94f-336725eb2103" [ref=e580] [cursor=pointer]:
+        - generic [ref=e581]:
+          - generic [ref=e583]: BTC/USDC
+          - generic [ref=e584]:
+            - generic [ref=e585]: 8736 runs
+            - generic [ref=e586]: ·
+            - generic [ref=e587]: 5.80% max ROI
+          - generic [ref=e588]: 4/5/2026
+        - button "Delete sweep 10f2065d-6bc0-4fee-a94f-336725eb2103" [ref=e589]:
+          - img [ref=e590]
+      - button "BTC/USDC (cancelled) 54135 runs · 76.27% max ROI 4/4/2026 Delete sweep 16df28b4-2444-4f91-a29f-13339ea1a868" [ref=e593] [cursor=pointer]:
+        - generic [ref=e594]:
+          - generic [ref=e595]:
+            - generic [ref=e596]: BTC/USDC
+            - generic [ref=e597]: (cancelled)
+          - generic [ref=e598]:
+            - generic [ref=e599]: 54135 runs
+            - generic [ref=e600]: ·
+            - generic [ref=e601]: 76.27% max ROI
+          - generic [ref=e602]: 4/4/2026
+        - button "Delete sweep 16df28b4-2444-4f91-a29f-13339ea1a868" [ref=e603]:
+          - img [ref=e604]
+      - button "BTC/USDC (cancelled) 75617 runs · 76.27% max ROI 4/4/2026 Delete sweep fb3d910d-2e89-49f9-bcae-06d1cdc56a1f" [ref=e607] [cursor=pointer]:
+        - generic [ref=e608]:
+          - generic [ref=e609]:
+            - generic [ref=e610]: BTC/USDC
+            - generic [ref=e611]: (cancelled)
+          - generic [ref=e612]:
+            - generic [ref=e613]: 75617 runs
+            - generic [ref=e614]: ·
+            - generic [ref=e615]: 76.27% max ROI
+          - generic [ref=e616]: 4/4/2026
+        - button "Delete sweep fb3d910d-2e89-49f9-bcae-06d1cdc56a1f" [ref=e617]:
+          - img [ref=e618]
+      - button "BTC/USDC running 0 runs · N/A 4/3/2026 Delete sweep 2258cb1e-1711-4628-a54d-81f32c8935b7" [ref=e621] [cursor=pointer]:
+        - generic [ref=e622]:
+          - generic [ref=e623]:
+            - generic [ref=e624]: BTC/USDC
+            - generic [ref=e625]: running
+          - generic [ref=e626]:
+            - generic [ref=e627]: 0 runs
+            - generic [ref=e628]: ·
+            - generic [ref=e629]: N/A
+          - generic [ref=e630]: 4/3/2026
+        - button "Delete sweep 2258cb1e-1711-4628-a54d-81f32c8935b7" [ref=e631]:
+          - img [ref=e632]
+      - button "BTC/USDC 43680 runs · 10.63% max ROI 4/3/2026 Delete sweep 8db004ff-3af2-4d5e-bee0-5c6f0fc6e75c" [ref=e635] [cursor=pointer]:
+        - generic [ref=e636]:
+          - generic [ref=e638]: BTC/USDC
+          - generic [ref=e639]:
+            - generic [ref=e640]: 43680 runs
+            - generic [ref=e641]: ·
+            - generic [ref=e642]: 10.63% max ROI
+          - generic [ref=e643]: 4/3/2026
+        - button "Delete sweep 8db004ff-3af2-4d5e-bee0-5c6f0fc6e75c" [ref=e644]:
+          - img [ref=e645]
+      - button "BTC/USDC 43680 runs · 10.63% max ROI 4/3/2026 Delete sweep 1c89418e-ee1a-43f7-9e98-e8fcb811c1fb" [ref=e648] [cursor=pointer]:
+        - generic [ref=e649]:
+          - generic [ref=e651]: BTC/USDC
+          - generic [ref=e652]:
+            - generic [ref=e653]: 43680 runs
+            - generic [ref=e654]: ·
+            - generic [ref=e655]: 10.63% max ROI
+          - generic [ref=e656]: 4/3/2026
+        - button "Delete sweep 1c89418e-ee1a-43f7-9e98-e8fcb811c1fb" [ref=e657]:
+          - img [ref=e658]
+      - button "ETH/USDC 190936 runs · 71.43% max ROI 4/2/2026 Delete sweep 04a7d308-dec7-46c1-8b96-94184e8db2fa" [ref=e661] [cursor=pointer]:
+        - generic [ref=e662]:
+          - generic [ref=e664]: ETH/USDC
+          - generic [ref=e665]:
+            - generic [ref=e666]: 190936 runs
+            - generic [ref=e667]: ·
+            - generic [ref=e668]: 71.43% max ROI
+          - generic [ref=e669]: 4/2/2026
+        - button "Delete sweep 04a7d308-dec7-46c1-8b96-94184e8db2fa" [ref=e670]:
+          - img [ref=e671]
+      - button "ETH/USDC (cancelled) 46 runs · 330.01% max ROI 4/2/2026 Delete sweep 3940fbe1-3824-49e2-aeac-21a085de7e68" [ref=e674] [cursor=pointer]:
+        - generic [ref=e675]:
+          - generic [ref=e676]:
+            - generic [ref=e677]: ETH/USDC
+            - generic [ref=e678]: (cancelled)
+          - generic [ref=e679]:
+            - generic [ref=e680]: 46 runs
+            - generic [ref=e681]: ·
+            - generic [ref=e682]: 330.01% max ROI
+          - generic [ref=e683]: 4/2/2026
+        - button "Delete sweep 3940fbe1-3824-49e2-aeac-21a085de7e68" [ref=e684]:
+          - img [ref=e685]
+      - button "BTC/USDC 1 runs · 39.33% max ROI 4/2/2026 Delete sweep a1b8db50-f90e-4b83-ae6e-4a346f225d22" [ref=e688] [cursor=pointer]:
+        - generic [ref=e689]:
+          - generic [ref=e691]: BTC/USDC
+          - generic [ref=e692]:
+            - generic [ref=e693]: 1 runs
+            - generic [ref=e694]: ·
+            - generic [ref=e695]: 39.33% max ROI
+          - generic [ref=e696]: 4/2/2026
+        - button "Delete sweep a1b8db50-f90e-4b83-ae6e-4a346f225d22" [ref=e697]:
+          - img [ref=e698]
+      - button "BTC/USDC 6 runs · 5.26% max ROI 4/2/2026 Delete sweep 2133bf43-9e48-4c8d-ac08-b5a5e5dccb72" [ref=e701] [cursor=pointer]:
+        - generic [ref=e702]:
+          - generic [ref=e704]: BTC/USDC
+          - generic [ref=e705]:
+            - generic [ref=e706]: 6 runs
+            - generic [ref=e707]: ·
+            - generic [ref=e708]: 5.26% max ROI
+          - generic [ref=e709]: 4/2/2026
+        - button "Delete sweep 2133bf43-9e48-4c8d-ac08-b5a5e5dccb72" [ref=e710]:
+          - img [ref=e711]
+      - button "BTC/USDC 72639 runs · 14.92% max ROI 4/2/2026 Delete sweep e3286037-7052-4185-a3b3-d80174bb8c53" [ref=e714] [cursor=pointer]:
+        - generic [ref=e715]:
+          - generic [ref=e717]: BTC/USDC
+          - generic [ref=e718]:
+            - generic [ref=e719]: 72639 runs
+            - generic [ref=e720]: ·
+            - generic [ref=e721]: 14.92% max ROI
+          - generic [ref=e722]: 4/2/2026
+        - button "Delete sweep e3286037-7052-4185-a3b3-d80174bb8c53" [ref=e723]:
+          - img [ref=e724]
+      - button "BTC/USDC 72639 runs · 82.33% max ROI 4/1/2026 Delete sweep 7923a0ea-bd15-4db0-9f15-f9980075d7f6" [ref=e727] [cursor=pointer]:
+        - generic [ref=e728]:
+          - generic [ref=e730]: BTC/USDC
+          - generic [ref=e731]:
+            - generic [ref=e732]: 72639 runs
+            - generic [ref=e733]: ·
+            - generic [ref=e734]: 82.33% max ROI
+          - generic [ref=e735]: 4/1/2026
+        - button "Delete sweep 7923a0ea-bd15-4db0-9f15-f9980075d7f6" [ref=e736]:
+          - img [ref=e737]
+      - button "BTC/USDC (cancelled) 479 runs · 46.85% max ROI 4/1/2026 Delete sweep ad58cb4f-6468-4200-922b-57313c727567" [ref=e740] [cursor=pointer]:
+        - generic [ref=e741]:
+          - generic [ref=e742]:
+            - generic [ref=e743]: BTC/USDC
+            - generic [ref=e744]: (cancelled)
+          - generic [ref=e745]:
+            - generic [ref=e746]: 479 runs
+            - generic [ref=e747]: ·
+            - generic [ref=e748]: 46.85% max ROI
+          - generic [ref=e749]: 4/1/2026
+        - button "Delete sweep ad58cb4f-6468-4200-922b-57313c727567" [ref=e750]:
+          - img [ref=e751]
+      - button "BTC/USDC 1431 runs · 65.84% max ROI 4/1/2026 Delete sweep 9ee9402d-7bfa-48c1-87a6-3e4ac3f7a52f" [ref=e754] [cursor=pointer]:
+        - generic [ref=e755]:
+          - generic [ref=e757]: BTC/USDC
+          - generic [ref=e758]:
+            - generic [ref=e759]: 1431 runs
+            - generic [ref=e760]: ·
+            - generic [ref=e761]: 65.84% max ROI
+          - generic [ref=e762]: 4/1/2026
+        - button "Delete sweep 9ee9402d-7bfa-48c1-87a6-3e4ac3f7a52f" [ref=e763]:
+          - img [ref=e764]
+      - button "BTC/USDC 2 runs · 61.68% max ROI 4/1/2026 Delete sweep 42c4cde0-7189-4f27-8646-81742f0e89a4" [ref=e767] [cursor=pointer]:
+        - generic [ref=e768]:
+          - generic [ref=e770]: BTC/USDC
+          - generic [ref=e771]:
+            - generic [ref=e772]: 2 runs
+            - generic [ref=e773]: ·
+            - generic [ref=e774]: 61.68% max ROI
+          - generic [ref=e775]: 4/1/2026
+        - button "Delete sweep 42c4cde0-7189-4f27-8646-81742f0e89a4" [ref=e776]:
+          - img [ref=e777]
+    - button "Collapse sidebar" [ref=e414] [cursor=pointer]:
+      - img [ref=e415]
+  - main [ref=e417]:
+    - generic [ref=e781]:
+      - generic [ref=e783]:
+        - generic [ref=e784]:
+          - generic [ref=e785]:
+            - heading "Optimizer Config" [level=2] [ref=e786]
+            - generic [ref=e787]:
+              - button "Import" [ref=e788] [cursor=pointer]
+              - button "Export" [ref=e789] [cursor=pointer]
+          - generic [ref=e790]:
+            - generic [ref=e791]:
+              - text: Symbol
+              - textbox [ref=e792]: BTC/USDC
+            - generic [ref=e793]:
+              - text: Account Balance
+              - spinbutton [ref=e794]: "10000"
+            - generic [ref=e795]:
+              - generic [ref=e796]:
+                - text: Start Date
+                - textbox [ref=e797]: 2025-01-01T00:00:00Z
+              - generic [ref=e798]:
+                - text: End Date
+                - textbox [ref=e799]: 2025-01-31T00:00:00Z
+            - generic [ref=e800]:
+              - button "YTD" [ref=e801] [cursor=pointer]
+              - button "Last 6M" [ref=e802] [cursor=pointer]
+              - button "Last 30D" [ref=e803] [cursor=pointer]
+            - generic [ref=e804]:
+              - button "Since 2021" [ref=e805] [cursor=pointer]
+              - button "2021 Only" [ref=e806] [cursor=pointer]
+              - button "Since 2022" [ref=e807] [cursor=pointer]
+              - button "2022 Only" [ref=e808] [cursor=pointer]
+              - button "Since 2023" [ref=e809] [cursor=pointer]
+              - button "2023 Only" [ref=e810] [cursor=pointer]
+              - button "Since 2024" [ref=e811] [cursor=pointer]
+              - button "2024 Only" [ref=e812] [cursor=pointer]
+              - button "Since 2025" [ref=e813] [cursor=pointer]
+              - button "2025 Only" [ref=e814] [cursor=pointer]
+          - generic [ref=e817]:
+            - paragraph [ref=e818]: Stop-Loss
+            - generic [ref=e819] [cursor=pointer]:
+              - generic [ref=e820]: Disabled
+              - switch "Disabled" [ref=e821]
+          - generic [ref=e824]:
+            - paragraph [ref=e825]: Margin Type
+            - combobox [ref=e826]:
+              - option "Isolated" [selected]
+              - option "Cross"
+          - generic [ref=e828]:
+            - paragraph [ref=e829]: Parameters
+            - generic [ref=e830]:
+              - generic [ref=e831]:
+                - generic [ref=e832]: Price Entry (%)
+                - button "Fixed" [ref=e833] [cursor=pointer]
+              - spinbutton [ref=e834]: "2.0"
+            - generic [ref=e835]:
+              - generic [ref=e836]:
+                - generic [ref=e837]: Price Scale
+                - button "Fixed" [ref=e838] [cursor=pointer]
+              - spinbutton [ref=e839]: "1.1"
+            - generic [ref=e840]:
+              - generic [ref=e841]:
+                - generic [ref=e842]: Amount Scale
+                - button "Fixed" [ref=e843] [cursor=pointer]
+              - spinbutton [ref=e844]: "2.0"
+            - generic [ref=e845]:
+              - generic [ref=e846]:
+                - generic [ref=e847]: Amount Per Trade
+                - button "Fixed" [ref=e848] [cursor=pointer]
+              - spinbutton [ref=e849]: "1000"
+            - generic [ref=e850]:
+              - generic [ref=e851]:
+                - generic [ref=e852]: Monthly Addition
+                - button "Fixed" [ref=e853] [cursor=pointer]
+              - spinbutton [ref=e854]: "0"
+            - generic [ref=e855]:
+              - generic [ref=e856]:
+                - generic [ref=e857]: Number of Orders
+                - button "Fixed" [ref=e858] [cursor=pointer]
+              - spinbutton [ref=e859]: "10"
+            - generic [ref=e860]:
+              - generic [ref=e861]:
+                - generic [ref=e862]: Take Profit (%)
+                - button "Fixed" [ref=e863] [cursor=pointer]
+              - spinbutton [ref=e864]: "0.5"
+            - generic [ref=e865]:
+              - generic [ref=e866]:
+                - generic [ref=e867]: Multiplier
+                - button "Fixed" [ref=e868] [cursor=pointer]
+              - spinbutton [ref=e869]: "1"
+        - generic [ref=e870]:
+          - generic [ref=e871]:
+            - generic [ref=e872]: "Generated: 1"
+            - generic [ref=e873] [cursor=pointer]: "Pruned: 0"
+            - generic [ref=e874]: "Valid: 1"
+          - button "Launch Sweep" [ref=e875] [cursor=pointer]
+      - generic [ref=e877]:
+        - heading "Pre-Flight Preview" [level=2] [ref=e878]
+        - generic [ref=e880]:
+          - generic [ref=e881]: 📊
+          - paragraph [ref=e882]: Pre-Flight Analysis
+          - paragraph [ref=e883]: Configure parameters and launch a sweep to see risk analysis

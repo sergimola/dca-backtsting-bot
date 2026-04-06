@@ -1,0 +1,789 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: QuantDCA
+        - button "New backtest" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+      - generic [ref=e9]:
+        - button "Backtests" [ref=e10] [cursor=pointer]
+        - button "Optimizer" [ref=e11] [cursor=pointer]
+      - generic [ref=e13]:
+        - button "BTC/USDC 24 runs · 0.87% max ROI 4/5/2026 Delete sweep 1da900a9-4128-4c51-b8b7-068791071fa1" [ref=e14] [cursor=pointer]:
+          - generic [ref=e15]:
+            - generic [ref=e17]: BTC/USDC
+            - generic [ref=e18]:
+              - generic [ref=e19]: 24 runs
+              - generic [ref=e20]: ·
+              - generic [ref=e21]: 0.87% max ROI
+            - generic [ref=e22]: 4/5/2026
+          - button "Delete sweep 1da900a9-4128-4c51-b8b7-068791071fa1" [ref=e23]:
+            - img [ref=e24]
+        - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep fa509d22-e230-4fef-9557-e8cf5f836867" [ref=e27] [cursor=pointer]:
+          - generic [ref=e28]:
+            - generic [ref=e30]: BTC/USDC
+            - generic [ref=e31]:
+              - generic [ref=e32]: 8736 runs
+              - generic [ref=e33]: ·
+              - generic [ref=e34]: 5.80% max ROI
+            - generic [ref=e35]: 4/5/2026
+          - button "Delete sweep fa509d22-e230-4fef-9557-e8cf5f836867" [ref=e36]:
+            - img [ref=e37]
+        - button "BTC/USDC 8736 runs · 5.91% max ROI 4/5/2026 Delete sweep 4fc154f2-d587-470d-b656-52c12ab43e2b" [ref=e40] [cursor=pointer]:
+          - generic [ref=e41]:
+            - generic [ref=e43]: BTC/USDC
+            - generic [ref=e44]:
+              - generic [ref=e45]: 8736 runs
+              - generic [ref=e46]: ·
+              - generic [ref=e47]: 5.91% max ROI
+            - generic [ref=e48]: 4/5/2026
+          - button "Delete sweep 4fc154f2-d587-470d-b656-52c12ab43e2b" [ref=e49]:
+            - img [ref=e50]
+        - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep b926693f-ece0-46cf-8adb-de41bea24d92" [ref=e53] [cursor=pointer]:
+          - generic [ref=e54]:
+            - generic [ref=e56]: BTC/USDC
+            - generic [ref=e57]:
+              - generic [ref=e58]: 8736 runs
+              - generic [ref=e59]: ·
+              - generic [ref=e60]: 5.80% max ROI
+            - generic [ref=e61]: 4/5/2026
+          - button "Delete sweep b926693f-ece0-46cf-8adb-de41bea24d92" [ref=e62]:
+            - img [ref=e63]
+        - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep aa9e5ebb-f9b0-4c08-9982-54dd90b3ee62" [ref=e66] [cursor=pointer]:
+          - generic [ref=e67]:
+            - generic [ref=e69]: BTC/USDC
+            - generic [ref=e70]:
+              - generic [ref=e71]: 8736 runs
+              - generic [ref=e72]: ·
+              - generic [ref=e73]: 5.80% max ROI
+            - generic [ref=e74]: 4/5/2026
+          - button "Delete sweep aa9e5ebb-f9b0-4c08-9982-54dd90b3ee62" [ref=e75]:
+            - img [ref=e76]
+        - button "BTC/USDC running 0 runs · N/A 4/5/2026 Delete sweep e0d2dc2a-f23a-4d5f-8b96-7972a9fdf462" [ref=e79] [cursor=pointer]:
+          - generic [ref=e80]:
+            - generic [ref=e81]:
+              - generic [ref=e82]: BTC/USDC
+              - generic [ref=e83]: running
+            - generic [ref=e84]:
+              - generic [ref=e85]: 0 runs
+              - generic [ref=e86]: ·
+              - generic [ref=e87]: N/A
+            - generic [ref=e88]: 4/5/2026
+          - button "Delete sweep e0d2dc2a-f23a-4d5f-8b96-7972a9fdf462" [ref=e89]:
+            - img [ref=e90]
+        - button "BTC/USDC 8736 runs · 5.80% max ROI 4/5/2026 Delete sweep 10f2065d-6bc0-4fee-a94f-336725eb2103" [ref=e93] [cursor=pointer]:
+          - generic [ref=e94]:
+            - generic [ref=e96]: BTC/USDC
+            - generic [ref=e97]:
+              - generic [ref=e98]: 8736 runs
+              - generic [ref=e99]: ·
+              - generic [ref=e100]: 5.80% max ROI
+            - generic [ref=e101]: 4/5/2026
+          - button "Delete sweep 10f2065d-6bc0-4fee-a94f-336725eb2103" [ref=e102]:
+            - img [ref=e103]
+        - button "BTC/USDC (cancelled) 54135 runs · 76.27% max ROI 4/4/2026 Delete sweep 16df28b4-2444-4f91-a29f-13339ea1a868" [ref=e106] [cursor=pointer]:
+          - generic [ref=e107]:
+            - generic [ref=e108]:
+              - generic [ref=e109]: BTC/USDC
+              - generic [ref=e110]: (cancelled)
+            - generic [ref=e111]:
+              - generic [ref=e112]: 54135 runs
+              - generic [ref=e113]: ·
+              - generic [ref=e114]: 76.27% max ROI
+            - generic [ref=e115]: 4/4/2026
+          - button "Delete sweep 16df28b4-2444-4f91-a29f-13339ea1a868" [ref=e116]:
+            - img [ref=e117]
+        - button "BTC/USDC (cancelled) 75617 runs · 76.27% max ROI 4/4/2026 Delete sweep fb3d910d-2e89-49f9-bcae-06d1cdc56a1f" [ref=e120] [cursor=pointer]:
+          - generic [ref=e121]:
+            - generic [ref=e122]:
+              - generic [ref=e123]: BTC/USDC
+              - generic [ref=e124]: (cancelled)
+            - generic [ref=e125]:
+              - generic [ref=e126]: 75617 runs
+              - generic [ref=e127]: ·
+              - generic [ref=e128]: 76.27% max ROI
+            - generic [ref=e129]: 4/4/2026
+          - button "Delete sweep fb3d910d-2e89-49f9-bcae-06d1cdc56a1f" [ref=e130]:
+            - img [ref=e131]
+        - button "BTC/USDC running 0 runs · N/A 4/3/2026 Delete sweep 2258cb1e-1711-4628-a54d-81f32c8935b7" [ref=e134] [cursor=pointer]:
+          - generic [ref=e135]:
+            - generic [ref=e136]:
+              - generic [ref=e137]: BTC/USDC
+              - generic [ref=e138]: running
+            - generic [ref=e139]:
+              - generic [ref=e140]: 0 runs
+              - generic [ref=e141]: ·
+              - generic [ref=e142]: N/A
+            - generic [ref=e143]: 4/3/2026
+          - button "Delete sweep 2258cb1e-1711-4628-a54d-81f32c8935b7" [ref=e144]:
+            - img [ref=e145]
+        - button "BTC/USDC 43680 runs · 10.63% max ROI 4/3/2026 Delete sweep 8db004ff-3af2-4d5e-bee0-5c6f0fc6e75c" [ref=e148] [cursor=pointer]:
+          - generic [ref=e149]:
+            - generic [ref=e151]: BTC/USDC
+            - generic [ref=e152]:
+              - generic [ref=e153]: 43680 runs
+              - generic [ref=e154]: ·
+              - generic [ref=e155]: 10.63% max ROI
+            - generic [ref=e156]: 4/3/2026
+          - button "Delete sweep 8db004ff-3af2-4d5e-bee0-5c6f0fc6e75c" [ref=e157]:
+            - img [ref=e158]
+        - button "BTC/USDC 43680 runs · 10.63% max ROI 4/3/2026 Delete sweep 1c89418e-ee1a-43f7-9e98-e8fcb811c1fb" [ref=e161] [cursor=pointer]:
+          - generic [ref=e162]:
+            - generic [ref=e164]: BTC/USDC
+            - generic [ref=e165]:
+              - generic [ref=e166]: 43680 runs
+              - generic [ref=e167]: ·
+              - generic [ref=e168]: 10.63% max ROI
+            - generic [ref=e169]: 4/3/2026
+          - button "Delete sweep 1c89418e-ee1a-43f7-9e98-e8fcb811c1fb" [ref=e170]:
+            - img [ref=e171]
+        - button "ETH/USDC 190936 runs · 71.43% max ROI 4/2/2026 Delete sweep 04a7d308-dec7-46c1-8b96-94184e8db2fa" [ref=e174] [cursor=pointer]:
+          - generic [ref=e175]:
+            - generic [ref=e177]: ETH/USDC
+            - generic [ref=e178]:
+              - generic [ref=e179]: 190936 runs
+              - generic [ref=e180]: ·
+              - generic [ref=e181]: 71.43% max ROI
+            - generic [ref=e182]: 4/2/2026
+          - button "Delete sweep 04a7d308-dec7-46c1-8b96-94184e8db2fa" [ref=e183]:
+            - img [ref=e184]
+        - button "ETH/USDC (cancelled) 46 runs · 330.01% max ROI 4/2/2026 Delete sweep 3940fbe1-3824-49e2-aeac-21a085de7e68" [ref=e187] [cursor=pointer]:
+          - generic [ref=e188]:
+            - generic [ref=e189]:
+              - generic [ref=e190]: ETH/USDC
+              - generic [ref=e191]: (cancelled)
+            - generic [ref=e192]:
+              - generic [ref=e193]: 46 runs
+              - generic [ref=e194]: ·
+              - generic [ref=e195]: 330.01% max ROI
+            - generic [ref=e196]: 4/2/2026
+          - button "Delete sweep 3940fbe1-3824-49e2-aeac-21a085de7e68" [ref=e197]:
+            - img [ref=e198]
+        - button "BTC/USDC 1 runs · 39.33% max ROI 4/2/2026 Delete sweep a1b8db50-f90e-4b83-ae6e-4a346f225d22" [ref=e201] [cursor=pointer]:
+          - generic [ref=e202]:
+            - generic [ref=e204]: BTC/USDC
+            - generic [ref=e205]:
+              - generic [ref=e206]: 1 runs
+              - generic [ref=e207]: ·
+              - generic [ref=e208]: 39.33% max ROI
+            - generic [ref=e209]: 4/2/2026
+          - button "Delete sweep a1b8db50-f90e-4b83-ae6e-4a346f225d22" [ref=e210]:
+            - img [ref=e211]
+        - button "BTC/USDC 6 runs · 5.26% max ROI 4/2/2026 Delete sweep 2133bf43-9e48-4c8d-ac08-b5a5e5dccb72" [ref=e214] [cursor=pointer]:
+          - generic [ref=e215]:
+            - generic [ref=e217]: BTC/USDC
+            - generic [ref=e218]:
+              - generic [ref=e219]: 6 runs
+              - generic [ref=e220]: ·
+              - generic [ref=e221]: 5.26% max ROI
+            - generic [ref=e222]: 4/2/2026
+          - button "Delete sweep 2133bf43-9e48-4c8d-ac08-b5a5e5dccb72" [ref=e223]:
+            - img [ref=e224]
+        - button "BTC/USDC 72639 runs · 14.92% max ROI 4/2/2026 Delete sweep e3286037-7052-4185-a3b3-d80174bb8c53" [ref=e227] [cursor=pointer]:
+          - generic [ref=e228]:
+            - generic [ref=e230]: BTC/USDC
+            - generic [ref=e231]:
+              - generic [ref=e232]: 72639 runs
+              - generic [ref=e233]: ·
+              - generic [ref=e234]: 14.92% max ROI
+            - generic [ref=e235]: 4/2/2026
+          - button "Delete sweep e3286037-7052-4185-a3b3-d80174bb8c53" [ref=e236]:
+            - img [ref=e237]
+        - button "BTC/USDC 72639 runs · 82.33% max ROI 4/1/2026 Delete sweep 7923a0ea-bd15-4db0-9f15-f9980075d7f6" [ref=e240] [cursor=pointer]:
+          - generic [ref=e241]:
+            - generic [ref=e243]: BTC/USDC
+            - generic [ref=e244]:
+              - generic [ref=e245]: 72639 runs
+              - generic [ref=e246]: ·
+              - generic [ref=e247]: 82.33% max ROI
+            - generic [ref=e248]: 4/1/2026
+          - button "Delete sweep 7923a0ea-bd15-4db0-9f15-f9980075d7f6" [ref=e249]:
+            - img [ref=e250]
+        - button "BTC/USDC (cancelled) 479 runs · 46.85% max ROI 4/1/2026 Delete sweep ad58cb4f-6468-4200-922b-57313c727567" [ref=e253] [cursor=pointer]:
+          - generic [ref=e254]:
+            - generic [ref=e255]:
+              - generic [ref=e256]: BTC/USDC
+              - generic [ref=e257]: (cancelled)
+            - generic [ref=e258]:
+              - generic [ref=e259]: 479 runs
+              - generic [ref=e260]: ·
+              - generic [ref=e261]: 46.85% max ROI
+            - generic [ref=e262]: 4/1/2026
+          - button "Delete sweep ad58cb4f-6468-4200-922b-57313c727567" [ref=e263]:
+            - img [ref=e264]
+        - button "BTC/USDC 1431 runs · 65.84% max ROI 4/1/2026 Delete sweep 9ee9402d-7bfa-48c1-87a6-3e4ac3f7a52f" [ref=e267] [cursor=pointer]:
+          - generic [ref=e268]:
+            - generic [ref=e270]: BTC/USDC
+            - generic [ref=e271]:
+              - generic [ref=e272]: 1431 runs
+              - generic [ref=e273]: ·
+              - generic [ref=e274]: 65.84% max ROI
+            - generic [ref=e275]: 4/1/2026
+          - button "Delete sweep 9ee9402d-7bfa-48c1-87a6-3e4ac3f7a52f" [ref=e276]:
+            - img [ref=e277]
+        - button "BTC/USDC 2 runs · 61.68% max ROI 4/1/2026 Delete sweep 42c4cde0-7189-4f27-8646-81742f0e89a4" [ref=e280] [cursor=pointer]:
+          - generic [ref=e281]:
+            - generic [ref=e283]: BTC/USDC
+            - generic [ref=e284]:
+              - generic [ref=e285]: 2 runs
+              - generic [ref=e286]: ·
+              - generic [ref=e287]: 61.68% max ROI
+            - generic [ref=e288]: 4/1/2026
+          - button "Delete sweep 42c4cde0-7189-4f27-8646-81742f0e89a4" [ref=e289]:
+            - img [ref=e290]
+      - button "Collapse sidebar" [ref=e294] [cursor=pointer]:
+        - img [ref=e295]
+    - main [ref=e297]:
+      - generic [ref=e299]:
+        - generic [ref=e301]:
+          - generic [ref=e302]:
+            - generic [ref=e303]:
+              - heading "Optimizer Config" [level=2] [ref=e304]
+              - generic [ref=e305]:
+                - button "Import" [ref=e306] [cursor=pointer]
+                - button "Export" [ref=e307] [cursor=pointer]
+            - generic [ref=e308]:
+              - generic [ref=e309]:
+                - text: Symbol
+                - textbox [ref=e310]: BTC/USDC
+              - generic [ref=e311]:
+                - text: Account Balance
+                - spinbutton [ref=e312]: "1000"
+              - generic [ref=e313]:
+                - generic [ref=e314]:
+                  - text: Start Date
+                  - textbox [ref=e315]: 2025-12-31T00:00:00Z
+                - generic [ref=e316]:
+                  - text: End Date
+                  - textbox [ref=e317]: 2026-04-03T16:01:13Z
+              - generic [ref=e318]:
+                - button "YTD" [ref=e319] [cursor=pointer]
+                - button "Last 6M" [ref=e320] [cursor=pointer]
+                - button "Last 30D" [ref=e321] [cursor=pointer]
+              - generic [ref=e322]:
+                - button "Since 2021" [ref=e323] [cursor=pointer]
+                - button "2021 Only" [ref=e324] [cursor=pointer]
+                - button "Since 2022" [ref=e325] [cursor=pointer]
+                - button "2022 Only" [ref=e326] [cursor=pointer]
+                - button "Since 2023" [ref=e327] [cursor=pointer]
+                - button "2023 Only" [ref=e328] [cursor=pointer]
+                - button "Since 2024" [ref=e329] [cursor=pointer]
+                - button "2024 Only" [ref=e330] [cursor=pointer]
+                - button "Since 2025" [ref=e331] [cursor=pointer]
+                - button "2025 Only" [ref=e332] [cursor=pointer]
+            - generic [ref=e334]:
+              - generic [ref=e335]:
+                - paragraph [ref=e336]: Stop-Loss
+                - generic [ref=e337] [cursor=pointer]:
+                  - generic [ref=e338]: Enabled
+                  - switch "Enabled" [checked] [ref=e420]
+              - generic [ref=e421]:
+                - generic [ref=e422]:
+                  - text: Baseline
+                  - combobox [ref=e423]:
+                    - option "Average Entries"
+                    - option "First Entry" [selected]
+                - generic [ref=e424]:
+                  - generic [ref=e425]:
+                    - generic [ref=e426]: Stop Loss (%)
+                    - button "Fixed" [ref=e427] [cursor=pointer]
+                  - spinbutton [ref=e428]: "2"
+                - generic [ref=e429]:
+                  - generic [ref=e430]:
+                    - generic [ref=e431]: SL Timeout (min)
+                    - button "Fixed" [ref=e432] [cursor=pointer]
+                  - spinbutton [ref=e433]: "30"
+            - generic [ref=e342]:
+              - paragraph [ref=e343]: Margin Type
+              - combobox [ref=e344]:
+                - option "Isolated" [selected]
+                - option "Cross"
+            - generic [ref=e346]:
+              - paragraph [ref=e347]: Parameters
+              - generic [ref=e348]:
+                - generic [ref=e349]:
+                  - generic [ref=e350]: Price Entry (%)
+                  - button "Sweep" [ref=e407] [cursor=pointer]
+                - generic [ref=e408]:
+                  - textbox "1.0, 1.5, 2.0" [ref=e409]: 1.0, 1.5, 2.0, 3.0
+                  - button "Range" [ref=e410] [cursor=pointer]
+              - generic [ref=e353]:
+                - generic [ref=e354]:
+                  - generic [ref=e355]: Price Scale
+                  - button "Fixed" [ref=e356] [cursor=pointer]
+                - spinbutton [ref=e357]: "1.1"
+              - generic [ref=e358]:
+                - generic [ref=e359]:
+                  - generic [ref=e360]: Amount Scale
+                  - button "Sweep" [ref=e411] [cursor=pointer]
+                - generic [ref=e412]:
+                  - textbox "1.0, 1.5, 2.0" [ref=e413]: 1.1, 1.25, 1.5
+                  - button "Range" [ref=e414] [cursor=pointer]
+              - generic [ref=e363]:
+                - generic [ref=e364]:
+                  - generic [ref=e365]: Amount Per Trade
+                  - button "Fixed" [ref=e366] [cursor=pointer]
+                - spinbutton [ref=e367]: "1"
+              - generic [ref=e368]:
+                - generic [ref=e369]:
+                  - generic [ref=e370]: Monthly Addition
+                  - button "Fixed" [ref=e371] [cursor=pointer]
+                - spinbutton [ref=e372]: "250"
+              - generic [ref=e373]:
+                - generic [ref=e374]:
+                  - generic [ref=e375]: Number of Orders
+                  - button "Fixed" [ref=e376] [cursor=pointer]
+                - spinbutton [ref=e377]: "11"
+              - generic [ref=e378]:
+                - generic [ref=e379]:
+                  - generic [ref=e380]: Take Profit (%)
+                  - button "Sweep" [ref=e415] [cursor=pointer]
+                - generic [ref=e416]:
+                  - textbox "1.0, 1.5, 2.0" [ref=e417]: 0.3, 0.5, 0.8
+                  - button "Range" [ref=e418] [cursor=pointer]
+              - generic [ref=e383]:
+                - generic [ref=e384]:
+                  - generic [ref=e385]: Multiplier
+                  - button "Fixed" [ref=e386] [cursor=pointer]
+                - spinbutton [ref=e387]: "1"
+          - generic [ref=e388]:
+            - generic [ref=e398]:
+              - generic [ref=e399]: "Generated: 36"
+              - generic [ref=e400] [cursor=pointer]: "Pruned: 12"
+              - generic [ref=e401]: "Valid: 24"
+            - button "Launch Sweep" [ref=e389] [cursor=pointer]
+        - generic [ref=e462]:
+          - generic [ref=e463]:
+            - heading "Results — 24 runs" [level=2] [ref=e464]
+            - button "New Sweep" [ref=e465] [cursor=pointer]
+          - generic [ref=e466]:
+            - paragraph [ref=e467]: Heatmap
+            - generic [ref=e468]:
+              - generic [ref=e469]:
+                - generic [ref=e470]:
+                  - text: "X-Axis:"
+                  - combobox "X-Axis:" [ref=e471]:
+                    - option "price_entry" [selected]
+                    - option "take_profit_distance_percent"
+                - generic [ref=e472]:
+                  - text: "Y-Axis:"
+                  - combobox "Y-Axis:" [ref=e473]:
+                    - option "amount_scale" [selected]
+                    - option "take_profit_distance_percent"
+              - img [ref=e475]:
+                - generic [ref=e476]: "1.0"
+                - generic [ref=e477]: "1.5"
+                - generic [ref=e478]: "2.0"
+                - generic [ref=e479]: "3.0"
+                - generic [ref=e480]: "1.1"
+                - generic [ref=e481]: "1.25"
+                - generic [ref=e482]: price_entry
+                - generic [ref=e483]: amount_scale
+          - generic [ref=e492]:
+            - paragraph [ref=e493]: Leaderboard
+            - generic [ref=e494]:
+              - generic [ref=e495]:
+                - generic [ref=e496]: 24 results
+                - button "Export CSV" [ref=e498] [cursor=pointer]
+              - table [ref=e500]:
+                - rowgroup [ref=e501]:
+                  - row "Run ID ROI % ↓ Max DD % Fees Time (ms) Longest Trade Max SOs Used Stops Win Rate Status Actions" [ref=e502]:
+                    - columnheader [ref=e503]:
+                      - checkbox [ref=e504]
+                    - columnheader "Run ID" [ref=e505] [cursor=pointer]
+                    - columnheader "ROI % ↓" [ref=e506] [cursor=pointer]
+                    - columnheader "Max DD %" [ref=e507] [cursor=pointer]
+                    - columnheader "Fees" [ref=e508] [cursor=pointer]
+                    - columnheader "Time (ms)" [ref=e509] [cursor=pointer]
+                    - columnheader "Longest Trade" [ref=e510] [cursor=pointer]
+                    - columnheader "Max SOs Used" [ref=e511] [cursor=pointer]
+                    - columnheader "Stops" [ref=e512] [cursor=pointer]
+                    - columnheader "Win Rate" [ref=e513] [cursor=pointer]
+                    - columnheader "Status" [ref=e514]
+                    - columnheader "Actions" [ref=e515]
+                - rowgroup [ref=e516]:
+                  - row "c570405b -1.34% 2.55% $13.66 1087 3d 17h 48m 3 78 - Re-run with Details" [ref=e517]:
+                    - cell [ref=e518]:
+                      - checkbox [ref=e519]
+                    - cell "c570405b" [ref=e520]
+                    - cell "-1.34%" [ref=e521]:
+                      - generic [ref=e522]: "-1.34%"
+                    - cell "2.55%" [ref=e523]
+                    - cell "$13.66" [ref=e524]
+                    - cell "1087" [ref=e525]
+                    - cell "3d 17h 48m" [ref=e526]
+                    - cell "3" [ref=e527]
+                    - cell "78" [ref=e528]
+                    - cell "-" [ref=e529]
+                    - cell [ref=e530]
+                    - cell "Re-run with Details" [ref=e531]:
+                      - button "Re-run with Details" [ref=e532] [cursor=pointer]
+                  - row "49b1a952 -1.88% 3.40% $21.00 1034 3d 4h 32m 3 81 - Re-run with Details" [ref=e533]:
+                    - cell [ref=e534]:
+                      - checkbox [ref=e535]
+                    - cell "49b1a952" [ref=e536]
+                    - cell "-1.88%" [ref=e537]:
+                      - generic [ref=e538]: "-1.88%"
+                    - cell "3.40%" [ref=e539]
+                    - cell "$21.00" [ref=e540]
+                    - cell "1034" [ref=e541]
+                    - cell "3d 4h 32m" [ref=e542]
+                    - cell "3" [ref=e543]
+                    - cell "81" [ref=e544]
+                    - cell "-" [ref=e545]
+                    - cell [ref=e546]
+                    - cell "Re-run with Details" [ref=e547]:
+                      - button "Re-run with Details" [ref=e548] [cursor=pointer]
+                  - row "a62c25bc -2.05% 3.91% $17.61 1070 3d 17h 48m 4 78 - Re-run with Details" [ref=e549]:
+                    - cell [ref=e550]:
+                      - checkbox [ref=e551]
+                    - cell "a62c25bc" [ref=e552]
+                    - cell "-2.05%" [ref=e553]:
+                      - generic [ref=e554]: "-2.05%"
+                    - cell "3.91%" [ref=e555]
+                    - cell "$17.61" [ref=e556]
+                    - cell "1070" [ref=e557]
+                    - cell "3d 17h 48m" [ref=e558]
+                    - cell "4" [ref=e559]
+                    - cell "78" [ref=e560]
+                    - cell "-" [ref=e561]
+                    - cell [ref=e562]
+                    - cell "Re-run with Details" [ref=e563]:
+                      - button "Re-run with Details" [ref=e564] [cursor=pointer]
+                  - row "067ce57c -2.33% 4.48% $21.95 1058 3d 3h 34m 5 79 - Re-run with Details" [ref=e565]:
+                    - cell [ref=e566]:
+                      - checkbox [ref=e567]
+                    - cell "067ce57c" [ref=e568]
+                    - cell "-2.33%" [ref=e569]:
+                      - generic [ref=e570]: "-2.33%"
+                    - cell "4.48%" [ref=e571]
+                    - cell "$21.95" [ref=e572]
+                    - cell "1058" [ref=e573]
+                    - cell "3d 3h 34m" [ref=e574]
+                    - cell "5" [ref=e575]
+                    - cell "79" [ref=e576]
+                    - cell "-" [ref=e577]
+                    - cell [ref=e578]
+                    - cell "Re-run with Details" [ref=e579]:
+                      - button "Re-run with Details" [ref=e580] [cursor=pointer]
+                  - row "c9b02d4d -2.52% 4.58% $26.00 1081 2d 11h 16m 4 77 - Re-run with Details" [ref=e581]:
+                    - cell [ref=e582]:
+                      - checkbox [ref=e583]
+                    - cell "c9b02d4d" [ref=e584]
+                    - cell "-2.52%" [ref=e585]:
+                      - generic [ref=e586]: "-2.52%"
+                    - cell "4.58%" [ref=e587]
+                    - cell "$26.00" [ref=e588]
+                    - cell "1081" [ref=e589]
+                    - cell "2d 11h 16m" [ref=e590]
+                    - cell "4" [ref=e591]
+                    - cell "77" [ref=e592]
+                    - cell "-" [ref=e593]
+                    - cell [ref=e594]
+                    - cell "Re-run with Details" [ref=e595]:
+                      - button "Re-run with Details" [ref=e596] [cursor=pointer]
+                  - row "d116f827 -2.67% 4.75% $32.71 1090 3d 1h 42m 3 84 - Re-run with Details" [ref=e597]:
+                    - cell [ref=e598]:
+                      - checkbox [ref=e599]
+                    - cell "d116f827" [ref=e600]
+                    - cell "-2.67%" [ref=e601]:
+                      - generic [ref=e602]: "-2.67%"
+                    - cell "4.75%" [ref=e603]
+                    - cell "$32.71" [ref=e604]
+                    - cell "1090" [ref=e605]
+                    - cell "3d 1h 42m" [ref=e606]
+                    - cell "3" [ref=e607]
+                    - cell "84" [ref=e608]
+                    - cell "-" [ref=e609]
+                    - cell [ref=e610]
+                    - cell "Re-run with Details" [ref=e611]:
+                      - button "Re-run with Details" [ref=e612] [cursor=pointer]
+                  - row "585051f3 -2.75% 5.03% $33.75 1104 3d 4h 32m 5 78 - Re-run with Details" [ref=e613]:
+                    - cell [ref=e614]:
+                      - checkbox [ref=e615]
+                    - cell "585051f3" [ref=e616]
+                    - cell "-2.75%" [ref=e617]:
+                      - generic [ref=e618]: "-2.75%"
+                    - cell "5.03%" [ref=e619]
+                    - cell "$33.75" [ref=e620]
+                    - cell "1104" [ref=e621]
+                    - cell "3d 4h 32m" [ref=e622]
+                    - cell "5" [ref=e623]
+                    - cell "78" [ref=e624]
+                    - cell "-" [ref=e625]
+                    - cell [ref=e626]
+                    - cell "Re-run with Details" [ref=e627]:
+                      - button "Re-run with Details" [ref=e628] [cursor=pointer]
+                  - row "832e3336 -3.02% 5.73% $30.47 974 3d 17h 48m 3 78 - Re-run with Details" [ref=e629]:
+                    - cell [ref=e630]:
+                      - checkbox [ref=e631]
+                    - cell "832e3336" [ref=e632]
+                    - cell "-3.02%" [ref=e633]:
+                      - generic [ref=e634]: "-3.02%"
+                    - cell "5.73%" [ref=e635]
+                    - cell "$30.47" [ref=e636]
+                    - cell "974" [ref=e637]
+                    - cell "3d 17h 48m" [ref=e638]
+                    - cell "3" [ref=e639]
+                    - cell "78" [ref=e640]
+                    - cell "-" [ref=e641]
+                    - cell [ref=e642]
+                    - cell "Re-run with Details" [ref=e643]:
+                      - button "Re-run with Details" [ref=e644] [cursor=pointer]
+                  - row "5196f2e8 -3.24% 5.79% $41.18 1105 2d 11h 15m 4 77 - Re-run with Details" [ref=e645]:
+                    - cell [ref=e646]:
+                      - checkbox [ref=e647]
+                    - cell "5196f2e8" [ref=e648]
+                    - cell "-3.24%" [ref=e649]:
+                      - generic [ref=e650]: "-3.24%"
+                    - cell "5.79%" [ref=e651]
+                    - cell "$41.18" [ref=e652]
+                    - cell "1105" [ref=e653]
+                    - cell "2d 11h 15m" [ref=e654]
+                    - cell "4" [ref=e655]
+                    - cell "77" [ref=e656]
+                    - cell "-" [ref=e657]
+                    - cell [ref=e658]
+                    - cell "Re-run with Details" [ref=e659]:
+                      - button "Re-run with Details" [ref=e660] [cursor=pointer]
+                  - row "2fa2a6c2 -3.69% 6.89% $30.38 1046 3d 3h 41m 6 79 - Re-run with Details" [ref=e661]:
+                    - cell [ref=e662]:
+                      - checkbox [ref=e663]
+                    - cell "2fa2a6c2" [ref=e664]
+                    - cell "-3.69%" [ref=e665]:
+                      - generic [ref=e666]: "-3.69%"
+                    - cell "6.89%" [ref=e667]
+                    - cell "$30.38" [ref=e668]
+                    - cell "1046" [ref=e669]
+                    - cell "3d 3h 41m" [ref=e670]
+                    - cell "6" [ref=e671]
+                    - cell "79" [ref=e672]
+                    - cell "-" [ref=e673]
+                    - cell [ref=e674]
+                    - cell "Re-run with Details" [ref=e675]:
+                      - button "Re-run with Details" [ref=e676] [cursor=pointer]
+                  - row "7418754c -3.81% 7.04% $45.95 1085 2d 9h 35m 6 75 - Re-run with Details" [ref=e677]:
+                    - cell [ref=e678]:
+                      - checkbox [ref=e679]
+                    - cell "7418754c" [ref=e680]
+                    - cell "-3.81%" [ref=e681]:
+                      - generic [ref=e682]: "-3.81%"
+                    - cell "7.04%" [ref=e683]
+                    - cell "$45.95" [ref=e684]
+                    - cell "1085" [ref=e685]
+                    - cell "2d 9h 35m" [ref=e686]
+                    - cell "6" [ref=e687]
+                    - cell "75" [ref=e688]
+                    - cell "-" [ref=e689]
+                    - cell [ref=e690]
+                    - cell "Re-run with Details" [ref=e691]:
+                      - button "Re-run with Details" [ref=e692] [cursor=pointer]
+                  - row "01999e7f -4.01% 7.17% $52.69 1126 2d 9h 26m 5 81 - Re-run with Details" [ref=e693]:
+                    - cell [ref=e694]:
+                      - checkbox [ref=e695]
+                    - cell "01999e7f" [ref=e696]
+                    - cell "-4.01%" [ref=e697]:
+                      - generic [ref=e698]: "-4.01%"
+                    - cell "7.17%" [ref=e699]
+                    - cell "$52.69" [ref=e700]
+                    - cell "1126" [ref=e701]
+                    - cell "2d 9h 26m" [ref=e702]
+                    - cell "5" [ref=e703]
+                    - cell "81" [ref=e704]
+                    - cell "-" [ref=e705]
+                    - cell [ref=e706]
+                    - cell "Re-run with Details" [ref=e707]:
+                      - button "Re-run with Details" [ref=e708] [cursor=pointer]
+                  - row "496c81ad -4.18% 7.56% $46.82 1046 3d 4h 32m 3 81 - Re-run with Details" [ref=e709]:
+                    - cell [ref=e710]:
+                      - checkbox [ref=e711]
+                    - cell "496c81ad" [ref=e712]
+                    - cell "-4.18%" [ref=e713]:
+                      - generic [ref=e714]: "-4.18%"
+                    - cell "7.56%" [ref=e715]
+                    - cell "$46.82" [ref=e716]
+                    - cell "1046" [ref=e717]
+                    - cell "3d 4h 32m" [ref=e718]
+                    - cell "3" [ref=e719]
+                    - cell "81" [ref=e720]
+                    - cell "-" [ref=e721]
+                    - cell [ref=e722]
+                    - cell "Re-run with Details" [ref=e723]:
+                      - button "Re-run with Details" [ref=e724] [cursor=pointer]
+                  - row "f7a2dec9 -4.29% 8.00% $38.83 1016 3d 17h 48m 4 78 - Re-run with Details" [ref=e725]:
+                    - cell [ref=e726]:
+                      - checkbox [ref=e727]
+                    - cell "f7a2dec9" [ref=e728]
+                    - cell "-4.29%" [ref=e729]:
+                      - generic [ref=e730]: "-4.29%"
+                    - cell "8.00%" [ref=e731]
+                    - cell "$38.83" [ref=e732]
+                    - cell "1016" [ref=e733]
+                    - cell "3d 17h 48m" [ref=e734]
+                    - cell "4" [ref=e735]
+                    - cell "78" [ref=e736]
+                    - cell "-" [ref=e737]
+                    - cell [ref=e738]
+                    - cell "Re-run with Details" [ref=e739]:
+                      - button "Re-run with Details" [ref=e740] [cursor=pointer]
+                  - row "9a20819a -5.05% 9.62% $46.88 1047 3d 3h 35m 5 79 - Re-run with Details" [ref=e741]:
+                    - cell [ref=e742]:
+                      - checkbox [ref=e743]
+                    - cell "9a20819a" [ref=e744]
+                    - cell "-5.05%" [ref=e745]:
+                      - generic [ref=e746]: "-5.05%"
+                    - cell "9.62%" [ref=e747]
+                    - cell "$46.88" [ref=e748]
+                    - cell "1047" [ref=e749]
+                    - cell "3d 3h 35m" [ref=e750]
+                    - cell "5" [ref=e751]
+                    - cell "79" [ref=e752]
+                    - cell "-" [ref=e753]
+                    - cell [ref=e754]
+                    - cell "Re-run with Details" [ref=e755]:
+                      - button "Re-run with Details" [ref=e756] [cursor=pointer]
+                  - row "b646293b -5.39% 9.79% $57.16 1087 3d 4h 32m 4 78 - Re-run with Details" [ref=e757]:
+                    - cell [ref=e758]:
+                      - checkbox [ref=e759]
+                    - cell "b646293b" [ref=e760]
+                    - cell "-5.39%" [ref=e761]:
+                      - generic [ref=e762]: "-5.39%"
+                    - cell "9.79%" [ref=e763]
+                    - cell "$57.16" [ref=e764]
+                    - cell "1087" [ref=e765]
+                    - cell "3d 4h 32m" [ref=e766]
+                    - cell "4" [ref=e767]
+                    - cell "78" [ref=e768]
+                    - cell "-" [ref=e769]
+                    - cell [ref=e770]
+                    - cell "Re-run with Details" [ref=e771]:
+                      - button "Re-run with Details" [ref=e772] [cursor=pointer]
+                  - row "20cdd4fb -5.59% 9.98% $69.14 1132 2d 8h 45m 6 73 - Re-run with Details" [ref=e773]:
+                    - cell [ref=e774]:
+                      - checkbox [ref=e775]
+                    - cell "20cdd4fb" [ref=e776]
+                    - cell "-5.59%" [ref=e777]:
+                      - generic [ref=e778]: "-5.59%"
+                    - cell "9.98%" [ref=e779]
+                    - cell "$69.14" [ref=e780]
+                    - cell "1132" [ref=e781]
+                    - cell "2d 8h 45m" [ref=e782]
+                    - cell "6" [ref=e783]
+                    - cell "73" [ref=e784]
+                    - cell "-" [ref=e785]
+                    - cell [ref=e786]
+                    - cell "Re-run with Details" [ref=e787]:
+                      - button "Re-run with Details" [ref=e788] [cursor=pointer]
+                  - row "d15f945a -5.81% 10.63% $71.33 1081 3d 4h 32m 5 78 - Re-run with Details" [ref=e789]:
+                    - cell [ref=e790]:
+                      - checkbox [ref=e791]
+                    - cell "d15f945a" [ref=e792]
+                    - cell "-5.81%" [ref=e793]:
+                      - generic [ref=e794]: "-5.81%"
+                    - cell "10.63%" [ref=e795]
+                    - cell "$71.33" [ref=e796]
+                    - cell "1081" [ref=e797]
+                    - cell "3d 4h 32m" [ref=e798]
+                    - cell "5" [ref=e799]
+                    - cell "78" [ref=e800]
+                    - cell "-" [ref=e801]
+                    - cell [ref=e802]
+                    - cell "Re-run with Details" [ref=e803]:
+                      - button "Re-run with Details" [ref=e804] [cursor=pointer]
+                  - row "bfa5669b -6.01% 10.69% $72.14 1045 3d 1h 42m 3 84 - Re-run with Details" [ref=e805]:
+                    - cell [ref=e806]:
+                      - checkbox [ref=e807]
+                    - cell "bfa5669b" [ref=e808]
+                    - cell "-6.01%" [ref=e809]:
+                      - generic [ref=e810]: "-6.01%"
+                    - cell "10.69%" [ref=e811]
+                    - cell "$72.14" [ref=e812]
+                    - cell "1045" [ref=e813]
+                    - cell "3d 1h 42m" [ref=e814]
+                    - cell "3" [ref=e815]
+                    - cell "84" [ref=e816]
+                    - cell "-" [ref=e817]
+                    - cell [ref=e818]
+                    - cell "Re-run with Details" [ref=e819]:
+                      - button "Re-run with Details" [ref=e820] [cursor=pointer]
+                  - row "3ef0d969 -6.97% 13.25% $62.63 1020 3d 3h 41m 6 79 - Re-run with Details" [ref=e821]:
+                    - cell [ref=e822]:
+                      - checkbox [ref=e823]
+                    - cell "3ef0d969" [ref=e824]
+                    - cell "-6.97%" [ref=e825]:
+                      - generic [ref=e826]: "-6.97%"
+                    - cell "13.25%" [ref=e827]
+                    - cell "$62.63" [ref=e828]
+                    - cell "1020" [ref=e829]
+                    - cell "3d 3h 41m" [ref=e830]
+                    - cell "6" [ref=e831]
+                    - cell "79" [ref=e832]
+                    - cell "-" [ref=e833]
+                    - cell [ref=e834]
+                    - cell "Re-run with Details" [ref=e835]:
+                      - button "Re-run with Details" [ref=e836] [cursor=pointer]
+                  - row "edaf10c4 -7.13% 13.20% $94.76 1107 2d 9h 36m 6 75 - Re-run with Details" [ref=e837]:
+                    - cell [ref=e838]:
+                      - checkbox [ref=e839]
+                    - cell "edaf10c4" [ref=e840]
+                    - cell "-7.13%" [ref=e841]:
+                      - generic [ref=e842]: "-7.13%"
+                    - cell "13.20%" [ref=e843]
+                    - cell "$94.76" [ref=e844]
+                    - cell "1107" [ref=e845]
+                    - cell "2d 9h 36m" [ref=e846]
+                    - cell "6" [ref=e847]
+                    - cell "75" [ref=e848]
+                    - cell "-" [ref=e849]
+                    - cell [ref=e850]
+                    - cell "Re-run with Details" [ref=e851]:
+                      - button "Re-run with Details" [ref=e852] [cursor=pointer]
+                  - row "2fa8b3c0 -7.24% 12.94% $89.11 1110 2d 11h 15m 4 80 - Re-run with Details" [ref=e853]:
+                    - cell [ref=e854]:
+                      - checkbox [ref=e855]
+                    - cell "2fa8b3c0" [ref=e856]
+                    - cell "-7.24%" [ref=e857]:
+                      - generic [ref=e858]: "-7.24%"
+                    - cell "12.94%" [ref=e859]
+                    - cell "$89.11" [ref=e860]
+                    - cell "1110" [ref=e861]
+                    - cell "2d 11h 15m" [ref=e862]
+                    - cell "4" [ref=e863]
+                    - cell "80" [ref=e864]
+                    - cell "-" [ref=e865]
+                    - cell [ref=e866]
+                    - cell "Re-run with Details" [ref=e867]:
+                      - button "Re-run with Details" [ref=e868] [cursor=pointer]
+                  - row "da170cc5 -8.28% 14.85% $113.01 1117 2d 9h 29m 5 81 - Re-run with Details" [ref=e869]:
+                    - cell [ref=e870]:
+                      - checkbox [ref=e871]
+                    - cell "da170cc5" [ref=e872]
+                    - cell "-8.28%" [ref=e873]:
+                      - generic [ref=e874]: "-8.28%"
+                    - cell "14.85%" [ref=e875]
+                    - cell "$113.01" [ref=e876]
+                    - cell "1117" [ref=e877]
+                    - cell "2d 9h 29m" [ref=e878]
+                    - cell "5" [ref=e879]
+                    - cell "81" [ref=e880]
+                    - cell "-" [ref=e881]
+                    - cell [ref=e882]
+                    - cell "Re-run with Details" [ref=e883]:
+                      - button "Re-run with Details" [ref=e884] [cursor=pointer]
+                  - row "531ca4b0 -11.17% 19.94% $141.81 1109 2d 8h 48m 6 77 - Re-run with Details" [ref=e885]:
+                    - cell [ref=e886]:
+                      - checkbox [ref=e887]
+                    - cell "531ca4b0" [ref=e888]
+                    - cell "-11.17%" [ref=e889]:
+                      - generic [ref=e890]: "-11.17%"
+                    - cell "19.94%" [ref=e891]
+                    - cell "$141.81" [ref=e892]
+                    - cell "1109" [ref=e893]
+                    - cell "2d 8h 48m" [ref=e894]
+                    - cell "6" [ref=e895]
+                    - cell "77" [ref=e896]
+                    - cell "-" [ref=e897]
+                    - cell [ref=e898]
+                    - cell "Re-run with Details" [ref=e899]:
+                      - button "Re-run with Details" [ref=e900] [cursor=pointer]
+  - status [ref=e419]: 1Password menu is available. Press down arrow to select.

@@ -11,7 +11,7 @@ interface Props {
   formState: OptimizerFormState
   sweepCounts: SweepCounts | null
   onUpdateField: (name: string, patch: Partial<ParameterField>) => void
-  onUpdateFormField: (field: string, value: string) => void
+  onUpdateFormField: (field: string, value: string | boolean) => void
   onLaunch: () => void
   isLaunching?: boolean
 }
@@ -248,10 +248,83 @@ export function OptimizerConfigurator({
         {/* Divider */}
         <div className="border-t border-slate-700" />
 
+        {/* Stop-Loss Configuration */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Stop-Loss</p>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span className="text-xs text-slate-400">
+                {formState.stop_loss_enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formState.stop_loss_enabled}
+                onClick={() => onUpdateFormField('stop_loss_enabled', !formState.stop_loss_enabled)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+                  formState.stop_loss_enabled ? 'bg-blue-600' : 'bg-slate-600'
+                }`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${
+                    formState.stop_loss_enabled ? 'translate-x-4' : 'translate-x-1'
+                  }`}
+                />
+              </button>
+            </label>
+          </div>
+
+          {formState.stop_loss_enabled && (
+            <div className="space-y-3 pl-2 border-l-2 border-blue-600/30">
+              <div>
+                <label className="text-xs text-slate-400 font-medium">Baseline</label>
+                <select
+                  value={formState.stop_loss_baseline}
+                  onChange={e => onUpdateFormField('stop_loss_baseline', e.target.value)}
+                  className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-slate-200"
+                >
+                  <option value="average_entries">Average Entries</option>
+                  <option value="first_entry">First Entry</option>
+                </select>
+              </div>
+              {formState.parameters
+                .filter(p => p.name === 'stop_loss_percent' || p.name === 'stop_loss_timeout_minutes')
+                .map(p => (
+                  <SweepParameterField
+                    key={p.name}
+                    field={p}
+                    onChange={patch => onUpdateField(p.name, patch)}
+                  />
+                ))}
+            </div>
+          )}
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-slate-700" />
+
+        {/* Margin Type */}
+        <div className="space-y-2">
+          <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Margin Type</p>
+          <select
+            value={formState.marginType}
+            onChange={e => onUpdateFormField('marginType', e.target.value)}
+            className="w-full px-2 py-1.5 bg-slate-800 border border-slate-700 rounded text-sm text-slate-200"
+          >
+            <option value="isolated">Isolated</option>
+            <option value="cross">Cross</option>
+          </select>
+        </div>
+
+        {/* Divider */}
+        <div className="border-t border-slate-700" />
+
         {/* Sweepable parameters */}
         <div className="space-y-3">
           <p className="text-xs text-slate-500 font-medium uppercase tracking-wider">Parameters</p>
-          {formState.parameters.map(p => (
+          {formState.parameters
+            .filter(p => p.name !== 'stop_loss_percent' && p.name !== 'stop_loss_timeout_minutes')
+            .map(p => (
             <SweepParameterField
               key={p.name}
               field={p}

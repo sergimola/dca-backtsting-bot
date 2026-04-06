@@ -124,7 +124,7 @@
       "targets": [
         {
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
-          "rawSql": "SELECT toFloat64(sumIf(realized_pnl, event_type = 'PositionClosed')) AS \"Total Realized PnL\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "rawSql": "SELECT toFloat64(sumIf(realized_pnl, event_type = 'position_closed')) AS \"Total Realized PnL\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
           "refId": "A",
           "format": 1
         }
@@ -171,11 +171,114 @@
       ]
     },
     {
+      "id": 14,
+      "type": "stat",
+      "title": "Win Rate",
+      "description": "Percentage of positions closed at take-profit.",
+      "gridPos": { "x": 0, "y": 6, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent", "decimals": 2,
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "red", "value": null }, { "color": "yellow", "value": 50 }, { "color": "green", "value": 70 }] },
+          "color": { "mode": "thresholds" }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT countIf(event_type = 'position_closed' AND close_reason = 'take_profit') / nullIf(countIf(event_type = 'position_closed'), 0) * 100 AS \"Win Rate\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A", "format": 1
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "type": "stat",
+      "title": "Take Profits",
+      "gridPos": { "x": 6, "y": 6, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "fixedColor": "green", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT countIf(event_type = 'position_closed' AND close_reason = 'take_profit') AS \"Take Profits\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A", "format": 1
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "type": "stat",
+      "title": "Stop Losses",
+      "gridPos": { "x": 12, "y": 6, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1 }, { "color": "red", "value": 5 }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT countIf(event_type = 'stop_loss_executed') AS \"Stop Losses\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A", "format": 1
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "type": "stat",
+      "title": "Total Fees",
+      "gridPos": { "x": 18, "y": 6, "w": 6, "h": 4 },
+      "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "orientation": "auto", "textMode": "auto", "colorMode": "background", "graphMode": "none", "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD", "decimals": 4,
+          "color": { "fixedColor": "orange", "mode": "fixed" },
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "orange", "value": null }] }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
+          "rawSql": "SELECT toFloat64(sum(toFloat64(action_fee))) AS \"Total Fees\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}'",
+          "refId": "A", "format": 1
+        }
+      ]
+    },
+    {
       "id": 6,
       "type": "timeseries",
       "title": "Account Balance Over Time",
       "description": "Running account balance (sampled at 1-minute intervals to manage volume).",
-      "gridPos": { "x": 0, "y": 6, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 10, "w": 24, "h": 9 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "none" },
@@ -210,7 +313,7 @@
       "type": "timeseries",
       "title": "Price & Capital Deployed",
       "description": "Market close price (candle) vs total capital deployed into the position. Gap-ups indicate safety order fills.",
-      "gridPos": { "x": 0, "y": 15, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 19, "w": 24, "h": 9 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "none" },
@@ -259,7 +362,7 @@
       "type": "timeseries",
       "title": "Unrealized PnL & Drawdown %",
       "description": "Unrealised P&L and drawdown percentage over the run timeline.",
-      "gridPos": { "x": 0, "y": 24, "w": 24, "h": 9 },
+      "gridPos": { "x": 0, "y": 28, "w": 24, "h": 9 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "none" },
@@ -319,7 +422,7 @@
       "type": "timeseries",
       "title": "Filled Orders Count (Safety Order Depth)",
       "description": "Number of safety orders filled at any point in time. Higher = deeper in the DCA ladder.",
-      "gridPos": { "x": 0, "y": 33, "w": 24, "h": 7 },
+      "gridPos": { "x": 0, "y": 37, "w": 24, "h": 7 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "tooltip": { "mode": "multi", "sort": "none" },
@@ -354,7 +457,7 @@
       "type": "table",
       "title": "Individual Trades (Position Opens & Closes)",
       "description": "Each completed trade cycle: entry, exit, realized PnL and close reason.",
-      "gridPos": { "x": 0, "y": 40, "w": 24, "h": 12 },
+      "gridPos": { "x": 0, "y": 44, "w": 24, "h": 12 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "cellHeight": "sm",
@@ -400,7 +503,7 @@
       "targets": [
         {
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
-          "rawSql": "SELECT timestamp AS \"Closed At\", trade_id AS \"Trade ID\", toFloat64(action_price) AS \"Close Price\", toFloat64(action_quantity) AS \"Quantity\", toFloat64(action_fee) AS \"Fee\", toFloat64(realized_pnl) AS \"Realized PnL\", close_reason AS \"Close Reason\", toUInt16(filled_orders_count) AS \"SO Depth\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'PositionClosed' ORDER BY timestamp",
+          "rawSql": "SELECT timestamp AS \"Closed At\", trade_id AS \"Trade ID\", toFloat64(action_price) AS \"Close Price\", toFloat64(action_quantity) AS \"Quantity\", toFloat64(action_fee) AS \"Fee\", toFloat64(realized_pnl) AS \"Realized PnL\", close_reason AS \"Close Reason\", toUInt16(filled_orders_count) AS \"SO Depth\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'position_closed' ORDER BY timestamp",
           "refId": "A",
           "format": 1
         }
@@ -409,9 +512,9 @@
     {
       "id": 11,
       "type": "table",
-      "title": "Liquidation Events",
-      "description": "Empty when no liquidations occurred — a good sign!",
-      "gridPos": { "x": 0, "y": 52, "w": 24, "h": 8 },
+      "title": "Stop Loss Events",
+      "description": "Empty when no stop losses occurred.",
+      "gridPos": { "x": 0, "y": 56, "w": 24, "h": 8 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "cellHeight": "sm",
@@ -424,7 +527,7 @@
         },
         "overrides": [
           {
-            "matcher": { "id": "byName", "options": "Liquidation Price" },
+            "matcher": { "id": "byName", "options": "SL Price" },
             "properties": [{ "id": "unit", "value": "currencyUSD" }]
           },
           {
@@ -436,7 +539,7 @@
       "targets": [
         {
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
-          "rawSql": "SELECT timestamp AS \"Liquidated At\", trade_id AS \"Trade ID\", toFloat64(action_price) AS \"Liquidation Price\", toFloat64(total_capital_deployed) AS \"Capital Deployed\", toFloat64(fees_accumulated) AS \"Fees Lost\", toUInt16(filled_orders_count) AS \"SO Depth At Liquidation\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'LiquidationEvent' ORDER BY timestamp",
+          "rawSql": "SELECT timestamp AS \"Triggered At\", trade_id AS \"Trade ID\", toFloat64(action_price) AS \"SL Price\", toFloat64(total_capital_deployed) AS \"Capital Deployed\", toFloat64(fees_accumulated) AS \"Fees At Stop\", toUInt16(filled_orders_count) AS \"SO Depth\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'stop_loss_executed' ORDER BY timestamp",
           "refId": "A",
           "format": 1
         }
@@ -447,7 +550,7 @@
       "type": "barchart",
       "title": "Safety Order Level Usage",
       "description": "How many times each safety order level was filled across all trades in this run.",
-      "gridPos": { "x": 0, "y": 60, "w": 12, "h": 8 },
+      "gridPos": { "x": 0, "y": 64, "w": 12, "h": 8 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "orientation": "vertical",
@@ -468,7 +571,7 @@
       "targets": [
         {
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
-          "rawSql": "SELECT toString(order_number) AS \"SO Level\", countIf(event_type = 'OrderFilled') AS \"Times Filled\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'OrderFilled' AND order_number > 0 GROUP BY order_number ORDER BY order_number",
+          "rawSql": "SELECT toString(order_number) AS \"SO Level\", countIf(event_type = 'order_filled') AS \"Times Filled\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'order_filled' AND order_number > 0 GROUP BY order_number ORDER BY order_number",
           "refId": "A",
           "format": 1
         }
@@ -479,7 +582,7 @@
       "type": "piechart",
       "title": "Close Reason Breakdown",
       "description": "How positions were closed: take-profit hits vs liquidations.",
-      "gridPos": { "x": 12, "y": 60, "w": 12, "h": 8 },
+      "gridPos": { "x": 12, "y": 64, "w": 12, "h": 8 },
       "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
       "options": {
         "pieType": "pie",
@@ -496,9 +599,31 @@
       "targets": [
         {
           "datasource": { "type": "grafana-clickhouse-datasource", "uid": "dca_clickhouse" },
-          "rawSql": "SELECT close_reason AS \"Close Reason\", count() AS \"Count\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type IN ('PositionClosed', 'LiquidationEvent') AND close_reason != '' GROUP BY close_reason ORDER BY 2 DESC",
+          "rawSql": "SELECT close_reason AS \"Close Reason\", count() AS \"Count\" FROM data.wide_events WHERE run_id = '${run_id}' AND symbol = '${symbol}' AND event_type = 'position_closed' AND close_reason != '' GROUP BY close_reason ORDER BY 2 DESC",
           "refId": "A",
           "format": 1
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "type": "table",
+      "title": "Run Configuration",
+      "description": "Parameters used for this backtest run.",
+      "gridPos": { "x": 0, "y": 72, "w": 24, "h": 4 },
+      "datasource": { "type": "postgres", "uid": "dca_postgres" },
+      "options": {
+        "footer": { "show": false },
+        "showHeader": true,
+        "cellHeight": "sm"
+      },
+      "fieldConfig": { "defaults": {}, "overrides": [] },
+      "targets": [
+        {
+          "datasource": { "type": "postgres", "uid": "dca_postgres" },
+          "rawSql": "SELECT config->>'trading_pair' AS \"Pair\", LEFT(config->>'start_date',10) AS \"Start\", LEFT(config->>'end_date',10) AS \"End\", config->>'account_balance' AS \"Balance\", config->>'number_of_orders' AS \"Orders\", config->>'price_entry' AS \"Entry\", config->>'take_profit_distance_percent' AS \"TP %\", config->>'price_scale' AS \"Price Scale\", config->>'amount_scale' AS \"Amt Scale\", config->>'multiplier' AS \"Leverage\", COALESCE(config->>'stop_loss_enabled','false') AS \"SL Enabled\", config->>'stop_loss_percent' AS \"SL %\", config->>'stop_loss_baseline' AS \"SL Baseline\", config->>'stop_loss_timeout_minutes' AS \"SL Timeout (min)\" FROM backtests WHERE id::text = '${run_id}'",
+          "refId": "A",
+          "format": "table"
         }
       ]
     }

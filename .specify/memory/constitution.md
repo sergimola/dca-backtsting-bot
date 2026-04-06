@@ -46,8 +46,9 @@ RabbitMQ) with stateless workers to support fault tolerance and pause/resume sem
 - The maintenance margin rate (`mmr`) MUST satisfy 0 ≤ mmr < 1 to avoid division-by-zero in
 	liquidation formulas.
 - The execution loop MUST evaluate 1-minute candles pessimistically in this order: check candle
-	`low` for buy triggers, check `low` for liquidation risk, then check `high` for take-profit
-	targets.
+	`low` for buy triggers, check `low` for liquidation risk, check `low` for stop-loss triggers,
+	then check `high` for take-profit targets. *(PATCH 2026-04-03 — stop-loss step inserted between
+	liquidation and take-profit by spec 019-engine-stop-loss; see FR-011.)*
 - The Gap-Down Rule: if a candle gaps down past multiple limit orders, the system MUST fill those
 	orders at their pre-calculated limit prices (no opportunistic price improvements).
 
@@ -95,4 +96,4 @@ impact, and approval by two maintainers. Versioning follows semantic versioning:
 - MINOR: added principle or material guidance expansion
 - PATCH: wording clarifications or non-semantic refinements
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-07 | **Last Amended**: 2026-03-07
+**Version**: 1.0.1 | **Ratified**: 2026-03-07 | **Last Amended**: 2026-04-03

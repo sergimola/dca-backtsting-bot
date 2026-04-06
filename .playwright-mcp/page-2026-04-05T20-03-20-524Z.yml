@@ -1,0 +1,546 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - complementary [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6]: QuantDCA
+        - button "New backtest" [ref=e7] [cursor=pointer]:
+          - img [ref=e8]
+      - generic [ref=e9]:
+        - button "Backtests" [ref=e10] [cursor=pointer]
+        - button "Optimizer" [ref=e11] [cursor=pointer]
+      - generic [ref=e12]:
+        - button "#c5a32091 BTC/USDC 2025-12-31 → 2026-04-03 ROI -7.50% / -$75.03" [ref=e901] [cursor=pointer]:
+          - generic [ref=e902]:
+            - generic [ref=e903]: "#c5a32091"
+            - generic [ref=e904]: BTC/USDC
+          - generic [ref=e905]: 2025-12-31 → 2026-04-03
+          - generic [ref=e906]:
+            - generic [ref=e907]: ROI -7.50%
+            - generic [ref=e908]: / -$75.03
+        - button "#a2d824b1 BTC/USDC 2025-12-31 → 2026-04-03 ROI -8.92% / -$89.16" [ref=e909] [cursor=pointer]:
+          - generic [ref=e910]:
+            - generic [ref=e911]: "#a2d824b1"
+            - generic [ref=e912]: BTC/USDC
+          - generic [ref=e913]: 2025-12-31 → 2026-04-03
+          - generic [ref=e914]:
+            - generic [ref=e915]: ROI -8.92%
+            - generic [ref=e916]: / -$89.16
+        - button "#eda274f9 BTC/USDC 2025-12-31 → 2026-04-03 ROI -8.92% / -$89.16" [ref=e917] [cursor=pointer]:
+          - generic [ref=e918]:
+            - generic [ref=e919]: "#eda274f9"
+            - generic [ref=e920]: BTC/USDC
+          - generic [ref=e921]: 2025-12-31 → 2026-04-03
+          - generic [ref=e922]:
+            - generic [ref=e923]: ROI -8.92%
+            - generic [ref=e924]: / -$89.16
+        - button "#9c6c81a7 BTC/USDC 2025-12-31 → 2026-04-03 ROI -7.50% / -$75.03" [ref=e925] [cursor=pointer]:
+          - generic [ref=e926]:
+            - generic [ref=e927]: "#9c6c81a7"
+            - generic [ref=e928]: BTC/USDC
+          - generic [ref=e929]: 2025-12-31 → 2026-04-03
+          - generic [ref=e930]:
+            - generic [ref=e931]: ROI -7.50%
+            - generic [ref=e932]: / -$75.03
+        - button "#d0b5d05e BTC/USDC 2025-12-31 → 2026-04-03 ROI -8.92% / -$89.16" [ref=e933] [cursor=pointer]:
+          - generic [ref=e934]:
+            - generic [ref=e935]: "#d0b5d05e"
+            - generic [ref=e936]: BTC/USDC
+          - generic [ref=e937]: 2025-12-31 → 2026-04-03
+          - generic [ref=e938]:
+            - generic [ref=e939]: ROI -8.92%
+            - generic [ref=e940]: / -$89.16
+        - button "#9a0ddc1b BTC/USDC 2025-12-31 → 2026-04-03 ROI -3.81% / -$38.05" [ref=e941] [cursor=pointer]:
+          - generic [ref=e942]:
+            - generic [ref=e943]: "#9a0ddc1b"
+            - generic [ref=e944]: BTC/USDC
+          - generic [ref=e945]: 2025-12-31 → 2026-04-03
+          - generic [ref=e946]:
+            - generic [ref=e947]: ROI -3.81%
+            - generic [ref=e948]: / -$38.05
+        - button "#a4324780 BTC/USDC 2025-12-31 → 2026-04-03 ROI -7.19% / -$71.91" [ref=e949] [cursor=pointer]:
+          - generic [ref=e950]:
+            - generic [ref=e951]: "#a4324780"
+            - generic [ref=e952]: BTC/USDC
+          - generic [ref=e953]: 2025-12-31 → 2026-04-03
+          - generic [ref=e954]:
+            - generic [ref=e955]: ROI -7.19%
+            - generic [ref=e956]: / -$71.91
+        - button "#a9dcac54 BTC/USDC 2025-12-31 → 2026-04-03 ROI -3.73% / -$37.33" [ref=e957] [cursor=pointer]:
+          - generic [ref=e958]:
+            - generic [ref=e959]: "#a9dcac54"
+            - generic [ref=e960]: BTC/USDC
+          - generic [ref=e961]: 2025-12-31 → 2026-04-03
+          - generic [ref=e962]:
+            - generic [ref=e963]: ROI -3.73%
+            - generic [ref=e964]: / -$37.33
+        - button "#70005882 BTC/USDC 2025-12-31 → 2026-04-03 ROI -6.02% / -$60.16" [ref=e965] [cursor=pointer]:
+          - generic [ref=e966]:
+            - generic [ref=e967]: "#70005882"
+            - generic [ref=e968]: BTC/USDC
+          - generic [ref=e969]: 2025-12-31 → 2026-04-03
+          - generic [ref=e970]:
+            - generic [ref=e971]: ROI -6.02%
+            - generic [ref=e972]: / -$60.16
+        - button "#efd0f535 BTC/USDC 2025-12-31 → 2026-04-03 ROI -7.58% / -$75.80" [ref=e973] [cursor=pointer]:
+          - generic [ref=e974]:
+            - generic [ref=e975]: "#efd0f535"
+            - generic [ref=e976]: BTC/USDC
+          - generic [ref=e977]: 2025-12-31 → 2026-04-03
+          - generic [ref=e978]:
+            - generic [ref=e979]: ROI -7.58%
+            - generic [ref=e980]: / -$75.80
+        - button "#aae3b359 BTC/USDC 2025-12-31 → 2026-04-03 ROI -5.68% / -$56.84" [ref=e981] [cursor=pointer]:
+          - generic [ref=e982]:
+            - generic [ref=e983]: "#aae3b359"
+            - generic [ref=e984]: BTC/USDC
+          - generic [ref=e985]: 2025-12-31 → 2026-04-03
+          - generic [ref=e986]:
+            - generic [ref=e987]: ROI -5.68%
+            - generic [ref=e988]: / -$56.84
+        - button "#9ab058da BTC/USDC 2025-12-31 → 2026-04-03 ROI -5.68% / -$56.84" [ref=e989] [cursor=pointer]:
+          - generic [ref=e990]:
+            - generic [ref=e991]: "#9ab058da"
+            - generic [ref=e992]: BTC/USDC
+          - generic [ref=e993]: 2025-12-31 → 2026-04-03
+          - generic [ref=e994]:
+            - generic [ref=e995]: ROI -5.68%
+            - generic [ref=e996]: / -$56.84
+        - button "#1254d498 BTC/USDC 2025-12-31 → 2026-04-03 ROI 0.28% / $2.77" [ref=e997] [cursor=pointer]:
+          - generic [ref=e998]:
+            - generic [ref=e999]: "#1254d498"
+            - generic [ref=e1000]: BTC/USDC
+          - generic [ref=e1001]: 2025-12-31 → 2026-04-03
+          - generic [ref=e1002]:
+            - generic [ref=e1003]: ROI 0.28%
+            - generic [ref=e1004]: / $2.77
+        - button "#460f45a6 BTC/USDC 2025-12-31 → 2026-04-03 ROI 0.28% / $2.77" [ref=e1005] [cursor=pointer]:
+          - generic [ref=e1006]:
+            - generic [ref=e1007]: "#460f45a6"
+            - generic [ref=e1008]: BTC/USDC
+          - generic [ref=e1009]: 2025-12-31 → 2026-04-03
+          - generic [ref=e1010]:
+            - generic [ref=e1011]: ROI 0.28%
+            - generic [ref=e1012]: / $2.77
+        - button "#33c537f8 BTC/USDC 2025-12-31 → 2026-04-03 ROI 0.28% / $2.77" [ref=e1013] [cursor=pointer]:
+          - generic [ref=e1014]:
+            - generic [ref=e1015]: "#33c537f8"
+            - generic [ref=e1016]: BTC/USDC
+          - generic [ref=e1017]: 2025-12-31 → 2026-04-03
+          - generic [ref=e1018]:
+            - generic [ref=e1019]: ROI 0.28%
+            - generic [ref=e1020]: / $2.77
+        - button "#35a6ea0a BTC/USDC 2025-12-31 → 2026-04-03 ROI 0.28% / $2.77" [ref=e1021] [cursor=pointer]:
+          - generic [ref=e1022]:
+            - generic [ref=e1023]: "#35a6ea0a"
+            - generic [ref=e1024]: BTC/USDC
+          - generic [ref=e1025]: 2025-12-31 → 2026-04-03
+          - generic [ref=e1026]:
+            - generic [ref=e1027]: ROI 0.28%
+            - generic [ref=e1028]: / $2.77
+        - button "#bd346055 ETH/USDC 2020-01-01 → 2026-04-01 ROI 2202.51% / $22025.13" [ref=e1029] [cursor=pointer]:
+          - generic [ref=e1030]:
+            - generic [ref=e1031]: "#bd346055"
+            - generic [ref=e1032]: ETH/USDC
+          - generic [ref=e1033]: 2020-01-01 → 2026-04-01
+          - generic [ref=e1034]:
+            - generic [ref=e1035]: ROI 2202.51%
+            - generic [ref=e1036]: / $22025.13
+        - button "#54f02bac BTC/USDC 2024-01-01 → 2026-04-01 ROI -7.30% / -$73.04" [ref=e1037] [cursor=pointer]:
+          - generic [ref=e1038]:
+            - generic [ref=e1039]: "#54f02bac"
+            - generic [ref=e1040]: BTC/USDC
+          - generic [ref=e1041]: 2024-01-01 → 2026-04-01
+          - generic [ref=e1042]:
+            - generic [ref=e1043]: ROI -7.30%
+            - generic [ref=e1044]: / -$73.04
+        - button "#7cd0da25 BTC/USDC 2024-01-01 → 2026-04-01 ROI -84.46% / -$844.60" [ref=e1045] [cursor=pointer]:
+          - generic [ref=e1046]:
+            - generic [ref=e1047]: "#7cd0da25"
+            - generic [ref=e1048]: BTC/USDC
+          - generic [ref=e1049]: 2024-01-01 → 2026-04-01
+          - generic [ref=e1050]:
+            - generic [ref=e1051]: ROI -84.46%
+            - generic [ref=e1052]: / -$844.60
+        - button "#3a04242b BTC/USDC 2024-01-01 → 2026-04-01 ROI -61.01% / -$610.11" [ref=e1053] [cursor=pointer]:
+          - generic [ref=e1054]:
+            - generic [ref=e1055]: "#3a04242b"
+            - generic [ref=e1056]: BTC/USDC
+          - generic [ref=e1057]: 2024-01-01 → 2026-04-01
+          - generic [ref=e1058]:
+            - generic [ref=e1059]: ROI -61.01%
+            - generic [ref=e1060]: / -$610.11
+        - button "#4af11976 BTC/USDC 2024-01-01 → 2026-04-01 ROI -66.36% / -$663.60" [ref=e1061] [cursor=pointer]:
+          - generic [ref=e1062]:
+            - generic [ref=e1063]: "#4af11976"
+            - generic [ref=e1064]: BTC/USDC
+          - generic [ref=e1065]: 2024-01-01 → 2026-04-01
+          - generic [ref=e1066]:
+            - generic [ref=e1067]: ROI -66.36%
+            - generic [ref=e1068]: / -$663.60
+        - button "#c12af5e0 BTC/USDC 2024-01-01 → 2026-04-01 ROI -19.73% / -$197.34" [ref=e1069] [cursor=pointer]:
+          - generic [ref=e1070]:
+            - generic [ref=e1071]: "#c12af5e0"
+            - generic [ref=e1072]: BTC/USDC
+          - generic [ref=e1073]: 2024-01-01 → 2026-04-01
+          - generic [ref=e1074]:
+            - generic [ref=e1075]: ROI -19.73%
+            - generic [ref=e1076]: / -$197.34
+        - button "#b4becb0b BTC/USDC 2024-01-01 → 2026-03-31 ROI -1.86% / -$18.56" [ref=e1077] [cursor=pointer]:
+          - generic [ref=e1078]:
+            - generic [ref=e1079]: "#b4becb0b"
+            - generic [ref=e1080]: BTC/USDC
+          - generic [ref=e1081]: 2024-01-01 → 2026-03-31
+          - generic [ref=e1082]:
+            - generic [ref=e1083]: ROI -1.86%
+            - generic [ref=e1084]: / -$18.56
+        - button "#25820e31 BTC/USDC 2024-01-01 → 2026-04-01 ROI 4.22% / $42.15" [ref=e1085] [cursor=pointer]:
+          - generic [ref=e1086]:
+            - generic [ref=e1087]: "#25820e31"
+            - generic [ref=e1088]: BTC/USDC
+          - generic [ref=e1089]: 2024-01-01 → 2026-04-01
+          - generic [ref=e1090]:
+            - generic [ref=e1091]: ROI 4.22%
+            - generic [ref=e1092]: / $42.15
+        - button "#aede2485 BTC/USDC 2024-01-01 → 2026-03-31 ROI 5.25% / $52.50" [ref=e1093] [cursor=pointer]:
+          - generic [ref=e1094]:
+            - generic [ref=e1095]: "#aede2485"
+            - generic [ref=e1096]: BTC/USDC
+          - generic [ref=e1097]: 2024-01-01 → 2026-03-31
+          - generic [ref=e1098]:
+            - generic [ref=e1099]: ROI 5.25%
+            - generic [ref=e1100]: / $52.50
+        - button "#d062f9af BTC/USDC 2024-01-01 → 2026-03-31 ROI 5.25% / $52.50" [ref=e1101] [cursor=pointer]:
+          - generic [ref=e1102]:
+            - generic [ref=e1103]: "#d062f9af"
+            - generic [ref=e1104]: BTC/USDC
+          - generic [ref=e1105]: 2024-01-01 → 2026-03-31
+          - generic [ref=e1106]:
+            - generic [ref=e1107]: ROI 5.25%
+            - generic [ref=e1108]: / $52.50
+        - button "#4da468f5 BTC/USDC 2023-03-01 → 2026-04-01 ROI -23.99% / -$239.91" [ref=e1109] [cursor=pointer]:
+          - generic [ref=e1110]:
+            - generic [ref=e1111]: "#4da468f5"
+            - generic [ref=e1112]: BTC/USDC
+          - generic [ref=e1113]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1114]:
+            - generic [ref=e1115]: ROI -23.99%
+            - generic [ref=e1116]: / -$239.91
+        - button "#9dc8dfd8 BTC/USDC 2023-03-01 → 2026-04-01 ROI -15.06% / -$150.60" [ref=e1117] [cursor=pointer]:
+          - generic [ref=e1118]:
+            - generic [ref=e1119]: "#9dc8dfd8"
+            - generic [ref=e1120]: BTC/USDC
+          - generic [ref=e1121]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1122]:
+            - generic [ref=e1123]: ROI -15.06%
+            - generic [ref=e1124]: / -$150.60
+        - button "#eb11ffb9 BTC/USDC 2023-03-01 → 2026-04-01 ROI -40.51% / -$405.12" [ref=e1125] [cursor=pointer]:
+          - generic [ref=e1126]:
+            - generic [ref=e1127]: "#eb11ffb9"
+            - generic [ref=e1128]: BTC/USDC
+          - generic [ref=e1129]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1130]:
+            - generic [ref=e1131]: ROI -40.51%
+            - generic [ref=e1132]: / -$405.12
+        - button "#f5a380f0 BTC/USDC 2023-03-01 → 2026-04-01 ROI -5.20% / -$51.99" [ref=e1133] [cursor=pointer]:
+          - generic [ref=e1134]:
+            - generic [ref=e1135]: "#f5a380f0"
+            - generic [ref=e1136]: BTC/USDC
+          - generic [ref=e1137]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1138]:
+            - generic [ref=e1139]: ROI -5.20%
+            - generic [ref=e1140]: / -$51.99
+        - button "#bc7f57e0 BTC/USDC 2023-03-01 → 2026-04-01 ROI -8.42% / -$84.22" [ref=e1141] [cursor=pointer]:
+          - generic [ref=e1142]:
+            - generic [ref=e1143]: "#bc7f57e0"
+            - generic [ref=e1144]: BTC/USDC
+          - generic [ref=e1145]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1146]:
+            - generic [ref=e1147]: ROI -8.42%
+            - generic [ref=e1148]: / -$84.22
+        - button "#e67033ca BTC/USDC 2023-03-01 → 2026-04-01 ROI -14.94% / -$149.36" [ref=e1149] [cursor=pointer]:
+          - generic [ref=e1150]:
+            - generic [ref=e1151]: "#e67033ca"
+            - generic [ref=e1152]: BTC/USDC
+          - generic [ref=e1153]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1154]:
+            - generic [ref=e1155]: ROI -14.94%
+            - generic [ref=e1156]: / -$149.36
+        - button "#961cdac5 BTC/USDC 2023-03-01 → 2026-04-01 ROI -24.48% / -$244.78" [ref=e1157] [cursor=pointer]:
+          - generic [ref=e1158]:
+            - generic [ref=e1159]: "#961cdac5"
+            - generic [ref=e1160]: BTC/USDC
+          - generic [ref=e1161]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1162]:
+            - generic [ref=e1163]: ROI -24.48%
+            - generic [ref=e1164]: / -$244.78
+        - button "#09d24df0 BTC/USDC 2023-03-01 → 2026-04-01 ROI -8.59% / -$85.95" [ref=e1165] [cursor=pointer]:
+          - generic [ref=e1166]:
+            - generic [ref=e1167]: "#09d24df0"
+            - generic [ref=e1168]: BTC/USDC
+          - generic [ref=e1169]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1170]:
+            - generic [ref=e1171]: ROI -8.59%
+            - generic [ref=e1172]: / -$85.95
+        - button "#8f97a570 BTC/USDC 2023-03-01 → 2026-04-01 ROI -13.86% / -$138.63" [ref=e1173] [cursor=pointer]:
+          - generic [ref=e1174]:
+            - generic [ref=e1175]: "#8f97a570"
+            - generic [ref=e1176]: BTC/USDC
+          - generic [ref=e1177]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1178]:
+            - generic [ref=e1179]: ROI -13.86%
+            - generic [ref=e1180]: / -$138.63
+        - button "#ee51905a BTC/USDC 2023-03-01 → 2026-04-01 ROI -14.75% / -$147.51" [ref=e1181] [cursor=pointer]:
+          - generic [ref=e1182]:
+            - generic [ref=e1183]: "#ee51905a"
+            - generic [ref=e1184]: BTC/USDC
+          - generic [ref=e1185]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1186]:
+            - generic [ref=e1187]: ROI -14.75%
+            - generic [ref=e1188]: / -$147.51
+        - button "#6ee1bc56 BTC/USDC 2023-03-01 → 2026-04-01 ROI -23.62% / -$236.18" [ref=e1189] [cursor=pointer]:
+          - generic [ref=e1190]:
+            - generic [ref=e1191]: "#6ee1bc56"
+            - generic [ref=e1192]: BTC/USDC
+          - generic [ref=e1193]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1194]:
+            - generic [ref=e1195]: ROI -23.62%
+            - generic [ref=e1196]: / -$236.18
+        - button "#43900bf0 BTC/USDC 2023-03-01 → 2026-04-01 ROI -42.59% / -$425.86" [ref=e1197] [cursor=pointer]:
+          - generic [ref=e1198]:
+            - generic [ref=e1199]: "#43900bf0"
+            - generic [ref=e1200]: BTC/USDC
+          - generic [ref=e1201]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1202]:
+            - generic [ref=e1203]: ROI -42.59%
+            - generic [ref=e1204]: / -$425.86
+        - button "#7140ce58 BTC/USDC 2023-03-01 → 2026-04-01 ROI -73.80% / -$738.04" [ref=e1205] [cursor=pointer]:
+          - generic [ref=e1206]:
+            - generic [ref=e1207]: "#7140ce58"
+            - generic [ref=e1208]: BTC/USDC
+          - generic [ref=e1209]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1210]:
+            - generic [ref=e1211]: ROI -73.80%
+            - generic [ref=e1212]: / -$738.04
+        - button "#922bb215 BTC/USDC 2023-03-01 → 2026-04-01 ROI -41.39% / -$413.89" [ref=e1213] [cursor=pointer]:
+          - generic [ref=e1214]:
+            - generic [ref=e1215]: "#922bb215"
+            - generic [ref=e1216]: BTC/USDC
+          - generic [ref=e1217]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1218]:
+            - generic [ref=e1219]: ROI -41.39%
+            - generic [ref=e1220]: / -$413.89
+        - button "#78fce76f BTC/USDC 2023-03-01 → 2026-04-01 ROI -27.13% / -$271.26" [ref=e1221] [cursor=pointer]:
+          - generic [ref=e1222]:
+            - generic [ref=e1223]: "#78fce76f"
+            - generic [ref=e1224]: BTC/USDC
+          - generic [ref=e1225]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1226]:
+            - generic [ref=e1227]: ROI -27.13%
+            - generic [ref=e1228]: / -$271.26
+        - button "#0c49376c BTC/USDC 2023-03-01 → 2026-04-01 ROI -42.35% / -$423.51" [ref=e1229] [cursor=pointer]:
+          - generic [ref=e1230]:
+            - generic [ref=e1231]: "#0c49376c"
+            - generic [ref=e1232]: BTC/USDC
+          - generic [ref=e1233]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1234]:
+            - generic [ref=e1235]: ROI -42.35%
+            - generic [ref=e1236]: / -$423.51
+        - button "#0ccb4c2f BTC/USDC 2023-03-01 → 2026-04-01 ROI -24.95% / -$249.54" [ref=e1237] [cursor=pointer]:
+          - generic [ref=e1238]:
+            - generic [ref=e1239]: "#0ccb4c2f"
+            - generic [ref=e1240]: BTC/USDC
+          - generic [ref=e1241]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1242]:
+            - generic [ref=e1243]: ROI -24.95%
+            - generic [ref=e1244]: / -$249.54
+        - button "#776ed761 BTC/USDC 2023-03-01 → 2026-04-01 ROI -30.21% / -$302.13" [ref=e1245] [cursor=pointer]:
+          - generic [ref=e1246]:
+            - generic [ref=e1247]: "#776ed761"
+            - generic [ref=e1248]: BTC/USDC
+          - generic [ref=e1249]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1250]:
+            - generic [ref=e1251]: ROI -30.21%
+            - generic [ref=e1252]: / -$302.13
+        - button "#b9bd094e BTC/USDC 2023-03-01 → 2026-04-01 ROI -80.25% / -$802.54" [ref=e1253] [cursor=pointer]:
+          - generic [ref=e1254]:
+            - generic [ref=e1255]: "#b9bd094e"
+            - generic [ref=e1256]: BTC/USDC
+          - generic [ref=e1257]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1258]:
+            - generic [ref=e1259]: ROI -80.25%
+            - generic [ref=e1260]: / -$802.54
+        - button "#b78a59c6 BTC/USDC 2023-03-01 → 2026-04-01 ROI -51.10% / -$511.04" [ref=e1261] [cursor=pointer]:
+          - generic [ref=e1262]:
+            - generic [ref=e1263]: "#b78a59c6"
+            - generic [ref=e1264]: BTC/USDC
+          - generic [ref=e1265]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1266]:
+            - generic [ref=e1267]: ROI -51.10%
+            - generic [ref=e1268]: / -$511.04
+        - button "#a6984853 BTC/USDC 2023-03-01 → 2026-04-01 ROI -120.65% / -$1206.49" [ref=e1269] [cursor=pointer]:
+          - generic [ref=e1270]:
+            - generic [ref=e1271]: "#a6984853"
+            - generic [ref=e1272]: BTC/USDC
+          - generic [ref=e1273]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1274]:
+            - generic [ref=e1275]: ROI -120.65%
+            - generic [ref=e1276]: / -$1206.49
+        - button "#72f59e46 BTC/USDC 2023-03-01 → 2026-04-01 ROI -96.42% / -$964.24" [ref=e1277] [cursor=pointer]:
+          - generic [ref=e1278]:
+            - generic [ref=e1279]: "#72f59e46"
+            - generic [ref=e1280]: BTC/USDC
+          - generic [ref=e1281]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1282]:
+            - generic [ref=e1283]: ROI -96.42%
+            - generic [ref=e1284]: / -$964.24
+        - button "#5e410e63 BTC/USDC 2023-03-01 → 2026-04-01 ROI -38.22% / -$382.25" [ref=e1285] [cursor=pointer]:
+          - generic [ref=e1286]:
+            - generic [ref=e1287]: "#5e410e63"
+            - generic [ref=e1288]: BTC/USDC
+          - generic [ref=e1289]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1290]:
+            - generic [ref=e1291]: ROI -38.22%
+            - generic [ref=e1292]: / -$382.25
+        - button "#3805fe94 BTC/USDC 2023-03-01 → 2026-04-01 ROI -64.34% / -$643.44" [ref=e1293] [cursor=pointer]:
+          - generic [ref=e1294]:
+            - generic [ref=e1295]: "#3805fe94"
+            - generic [ref=e1296]: BTC/USDC
+          - generic [ref=e1297]: 2023-03-01 → 2026-04-01
+          - generic [ref=e1298]:
+            - generic [ref=e1299]: ROI -64.34%
+            - generic [ref=e1300]: / -$643.44
+      - button "Collapse sidebar" [ref=e281] [cursor=pointer]:
+        - img [ref=e282]
+    - main [ref=e284]:
+      - generic [ref=e1301]:
+        - generic [ref=e1302]:
+          - img [ref=e1303]
+          - heading "New Backtest" [level=2] [ref=e1306]
+          - paragraph [ref=e1307]: Configure your DCA strategy parameters and run a historical simulation.
+        - generic [ref=e1308]:
+          - generic [ref=e1309]:
+            - button "Import Config" [ref=e1310] [cursor=pointer]
+            - button "Export Config" [ref=e1311] [cursor=pointer]
+          - generic [ref=e1312]:
+            - generic [ref=e1313]:
+              - generic [ref=e1314]:
+                - generic [ref=e1315]: Trading Pair
+                - textbox "Trading pair" [ref=e1316]:
+                  - /placeholder: BTC/USDT
+                  - text: BTC/USDC
+              - generic [ref=e1317]:
+                - generic [ref=e1318]: Start Date
+                - textbox "Start date" [ref=e1319]:
+                  - /placeholder: YYYY-MM-DDTHH:MM:SSZ
+                  - text: 2025-12-31T00:00:00Z
+              - generic [ref=e1320]:
+                - generic [ref=e1321]: End Date
+                - textbox "End date" [ref=e1322]:
+                  - /placeholder: YYYY-MM-DDTHH:MM:SSZ
+                  - text: 2026-04-03T16:01:13Z
+              - generic [ref=e1323]:
+                - button "YTD" [ref=e1324] [cursor=pointer]
+                - button "Last 6M" [ref=e1325] [cursor=pointer]
+                - button "Last 30D" [ref=e1326] [cursor=pointer]
+                - button "Since 2021" [ref=e1327] [cursor=pointer]
+                - button "2021 Only" [ref=e1328] [cursor=pointer]
+                - button "Since 2022" [ref=e1329] [cursor=pointer]
+                - button "2022 Only" [ref=e1330] [cursor=pointer]
+                - button "Since 2023" [ref=e1331] [cursor=pointer]
+                - button "2023 Only" [ref=e1332] [cursor=pointer]
+                - button "Since 2024" [ref=e1333] [cursor=pointer]
+                - button "2024 Only" [ref=e1334] [cursor=pointer]
+                - button "Since 2025" [ref=e1335] [cursor=pointer]
+                - button "2025 Only" [ref=e1336] [cursor=pointer]
+              - generic [ref=e1337]:
+                - generic [ref=e1338]: Price Entry (First Safety Order Drop %)
+                - generic [ref=e1339]:
+                  - textbox "Entry price" [ref=e1340]:
+                    - /placeholder: "1.5"
+                    - text: "1"
+                  - generic [ref=e1341]: "%"
+              - generic [ref=e1342]:
+                - generic [ref=e1343]: Price Scale
+                - generic [ref=e1344]:
+                  - textbox "Price scale" [ref=e1345]:
+                    - /placeholder: "1.10"
+                    - text: "1.1"
+                  - generic [ref=e1346]: "%"
+              - generic [ref=e1347]:
+                - generic [ref=e1348]: Amount Scale
+                - generic [ref=e1349]:
+                  - textbox "Amount scale" [ref=e1350]:
+                    - /placeholder: "2.0"
+                    - text: "1.1"
+                  - generic [ref=e1351]: x
+              - generic [ref=e1352]:
+                - generic [ref=e1353]: Number of Orders
+                - textbox "Number of orders" [ref=e1354]:
+                  - /placeholder: "5"
+                  - text: "11"
+              - generic [ref=e1355]:
+                - generic [ref=e1356]: Amount Per Trade
+                - textbox "Amount per trade" [ref=e1357]:
+                  - /placeholder: "0.10"
+                  - text: "1"
+              - generic [ref=e1358]:
+                - generic [ref=e1359]: Margin Type
+                - combobox "Margin type" [ref=e1360]:
+                  - option "isolated" [selected]
+                  - option "cross"
+              - generic [ref=e1361]:
+                - generic [ref=e1362]: Multiplier
+                - textbox "Multiplier" [ref=e1363]:
+                  - /placeholder: "1"
+                  - text: "1"
+              - generic [ref=e1364]:
+                - generic [ref=e1365]: Take Profit %
+                - generic [ref=e1366]:
+                  - textbox "Take profit distance percent" [ref=e1367]:
+                    - /placeholder: "2.5"
+                    - text: "0.8"
+                  - generic [ref=e1368]: "%"
+              - generic [ref=e1369]:
+                - generic [ref=e1370]: Account Balance
+                - generic [ref=e1371]:
+                  - generic [ref=e1372]: $
+                  - textbox "Account balance" [ref=e1373]:
+                    - /placeholder: "1000"
+                    - text: "1000"
+              - generic [ref=e1374]:
+                - generic [ref=e1375]: Monthly Addition (optional)
+                - generic [ref=e1376]:
+                  - generic [ref=e1377]: $
+                  - spinbutton "Monthly addition" [ref=e1378]: "250"
+              - generic [ref=e1379]:
+                - generic [ref=e1380]: Exit on Last Order
+                - switch [ref=e1381] [cursor=pointer]
+                - checkbox [ref=e1383]
+              - generic [ref=e1384]:
+                - generic [ref=e1385]: Enable Wide Events
+                - switch "Enable Wide Events" [checked] [ref=e1386] [cursor=pointer]
+                - checkbox [checked] [ref=e1388]
+              - generic [ref=e1389]:
+                - generic [ref=e1390]:
+                  - generic [ref=e1391]: Stop-Loss
+                  - switch [checked] [ref=e1392] [cursor=pointer]
+                - generic [ref=e1402]:
+                  - generic [ref=e1403]:
+                    - generic [ref=e1404]: SL Trigger %
+                    - generic [ref=e1405]:
+                      - textbox "Stop-loss percent" [ref=e1406]:
+                        - /placeholder: "5.0"
+                        - text: "2"
+                      - generic [ref=e1407]: "%"
+                  - generic [ref=e1408]:
+                    - generic [ref=e1409]: Timeout (min)
+                    - textbox "Stop-loss timeout minutes" [ref=e1410]:
+                      - /placeholder: "0"
+                      - text: "30"
+                  - generic [ref=e1411]:
+                    - generic [ref=e1412]: Baseline
+                    - combobox "Stop-loss baseline" [ref=e1413]:
+                      - option "Average Entries"
+                      - option "First Entry" [selected]
+            - button "Run Backtest" [ref=e1395] [cursor=pointer]
+  - status [ref=e1401]: 1Password menu is available. Press down arrow to select.
