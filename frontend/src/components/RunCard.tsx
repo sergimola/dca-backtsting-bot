@@ -28,15 +28,13 @@ export function RunCard({ run, isSelected, isExpanded, onSelect, onViewDashboard
   // When list-view returns tradeEvents:[] (select omission), use pnlSummary directly.
   const { displayNetProfit, displayNetRoi } = (() => {
     if (!completedResults) return { displayNetProfit: 0, displayNetRoi: 0 };
-    if (completedResults.tradeEvents.length > 0) {
-      const np = metrics?.netProfit ?? 0;
-      const balance = parseFloat(run.config.accountBalance) || 1;
-      return { displayNetProfit: np, displayNetRoi: (np / balance) * 100 };
-    }
-    // Fallback: pnlSummary.roi is already net — use it directly without fee deduction.
-    const balance = parseFloat(run.config.accountBalance) || 1;
-    const netProfit = (completedResults.pnlSummary.roi / 100) * balance;
     const netRoi = completedResults.pnlSummary.roi;
+    if (completedResults.tradeEvents.length > 0) {
+      return { displayNetProfit: metrics?.netProfit ?? 0, displayNetRoi: netRoi };
+    }
+    // Fallback when tradeEvents are empty (list-view omission): derive dollar amount from roi.
+    const balance = parseFloat(run.config.accountBalance) || 1;
+    const netProfit = (netRoi / 100) * balance;
     return { displayNetProfit: netProfit, displayNetRoi: netRoi };
   })();
   

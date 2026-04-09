@@ -382,7 +382,7 @@ func TestBatch_WinRate_ThreeTPOneLiquidation(t *testing.T) {
 		makeClosedEvent("take_profit"),
 		makeClosedEvent("stop_loss"),
 	}
-	result := buildBatchResultPayload("wr-test", events, cfg, 10, 5, 4)
+	result := buildBatchResultPayload("wr-test", events, cfg, 10, 5, 4, nil, decimal.Zero)
 	data, _ := json.Marshal(result)
 	var probe winRateProbe
 	if err := json.Unmarshal(data, &probe); err != nil {
@@ -405,7 +405,7 @@ func TestBatch_WinRate_ZeroCloses_NilNotPanic(t *testing.T) {
 	// Verify win rate is nil (not 0) when zero positions closed — no divide-by-zero
 	cfg := minimalConfig(t)
 	events := []Event{} // no PositionClosed events
-	result := buildBatchResultPayload("wr-nil-test", events, cfg, 10, 5, 0)
+	result := buildBatchResultPayload("wr-nil-test", events, cfg, 10, 5, 0, nil, decimal.Zero)
 	data, _ := json.Marshal(result)
 	var probe winRateProbe
 	json.Unmarshal(data, &probe)
@@ -427,7 +427,7 @@ func TestBatch_WinRate_AllTP_One(t *testing.T) {
 		makeClosedEvent("take_profit"),
 		makeClosedEvent("take_profit"),
 	}
-	result := buildBatchResultPayload("wr-full-test", events, cfg, 10, 5, 5)
+	result := buildBatchResultPayload("wr-full-test", events, cfg, 10, 5, 5, nil, decimal.Zero)
 	data, _ := json.Marshal(result)
 	var probe winRateProbe
 	json.Unmarshal(data, &probe)
@@ -476,7 +476,7 @@ func TestBatch_ROI_StopLossReducesROI(t *testing.T) {
 		makeClosedEventWithProfit("take_profit", "10"),
 		makeClosedEventWithProfit("stop_loss", "-5"),
 	}
-	result := buildBatchResultPayload("roi-sl-test", events, cfg, 10, 5, 2)
+	result := buildBatchResultPayload("roi-sl-test", events, cfg, 10, 5, 2, nil, decimal.Zero)
 	data, _ := json.Marshal(result)
 
 	var probe struct {
@@ -511,7 +511,7 @@ func TestBatch_ROI_OnlyStopLosses_NegativeROI(t *testing.T) {
 		makeClosedEventWithProfit("stop_loss", "-100"),
 		makeClosedEventWithProfit("stop_loss", "-100"),
 	}
-	result := buildBatchResultPayload("roi-sl-only-test", events, cfg, 10, 5, 3)
+	result := buildBatchResultPayload("roi-sl-only-test", events, cfg, 10, 5, 3, nil, decimal.Zero)
 	data, _ := json.Marshal(result)
 
 	var probe struct {

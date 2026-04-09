@@ -100,8 +100,8 @@ export function useResultsMetrics(
 
     const trueCapitalAvailable = accountBalance + totalAdditions;
 
-    // ROI is relative to initial account balance only (not including capital injections)
-    const roi = accountBalance > 0 ? (netProfit / accountBalance) * 100 : 0
+    // ROI: consume the engine's authoritative value directly (FR-002)
+    const roi = pnlSummary.roi
     const profitFactor = grossLosses.gt(0) ? grossWins.div(grossLosses).toNumber() : Infinity
     const capitalUtilized = trueCapitalAvailable > 0
       ? totalCapitalD.div(trueCapitalAvailable).times(100).toNumber()
