@@ -49,10 +49,10 @@ describe('useResultsMetrics', () => {
     expect(result.current.totalFees).toBeCloseTo(2, 2)
   })
 
-  it('computes roi based on accountBalance', () => {
+  it('passes through roi from pnlSummary (engine authoritative value)', () => {
     const { result } = renderHook(() => useResultsMetrics(results, config))
-    // roi = (netProfit / accountBalance) * 100 = (13 / 1000) * 100 = 1.3
-    expect(result.current.roi).toBeCloseTo(1.3, 0)
+    // roi comes directly from pnlSummary.roi = 5.0 (no local re-derivation)
+    expect(result.current.roi).toBe(5.0)
   })
 
   it('computes winRate as percentage of winning trades', () => {
@@ -101,5 +101,14 @@ describe('useResultsMetrics', () => {
   it('passes safetyOrderUsage through', () => {
     const { result } = renderHook(() => useResultsMetrics(results, config))
     expect(result.current.safetyOrderUsage).toEqual(results.safetyOrderUsage)
+  })
+
+  it('passes through annualizedReturn from pnlSummary', () => {
+    const resultsWithAR: BacktestResults = {
+      ...results,
+      pnlSummary: { ...results.pnlSummary, annualizedReturn: 8.5 },
+    }
+    const { result } = renderHook(() => useResultsMetrics(resultsWithAR, config))
+    expect(result.current.annualizedReturn).toBe(8.5)
   })
 })

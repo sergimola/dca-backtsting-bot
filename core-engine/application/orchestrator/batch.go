@@ -352,7 +352,14 @@ func runSingleBatchJob(job BatchJob, candles []Candle) batchJobResult {
 
 	// Build the result payload with aggregated data.
 	allEvents := backtest.EventBus.GetAllEvents()
-	result := buildBatchResultPayload(job.RunID, allEvents, cfg, execMs, backtest.CandleCount, backtest.EventCount)
+
+	// Derive last candle close for mark-to-market valuation of any open position.
+	lastClose := decimal.Zero
+	if len(candles) > 0 {
+		lastClose = candles[len(candles)-1].Close
+	}
+
+	result := buildBatchResultPayload(job.RunID, allEvents, cfg, execMs, backtest.CandleCount, backtest.EventCount, backtest.FinalPosition, lastClose)
 	data, _ := json.Marshal(result)
 	return batchJobResult{data: data, isErr: false}
 }
@@ -369,7 +376,7 @@ func makeErrorResult(runID, errMsg string) batchJobResult {
 // buildBatchResultPayload aggregates events into a result JSON payload.
 // This mirrors the single-run aggregation in cmd/engine/aggregator.go
 // but returns a minimal result (PnL summary only, no trade events for batch mode).
-func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, execMs int64, candleCount, eventCount int) interface{} {
+func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, execMs int64, candleCount, eventCount int, finalPos *position.Position, lastClose decimal.Decimal) interface{} {
 	var (
 		entryFees      decimal.Decimal
 		tradingFees    decimal.Decimal
@@ -469,11 +476,24 @@ func buildBatchResultPayload(runID string, events []Event, cfg *config.Config, e
 	}
 
 	totalFees := entryFees.Add(tradingFees)
-	// ROI denominator = initial balance only (capital injections excluded)
-	roiDenominator := startBalance
+
+	// Compute unrealized PnL from the final open position (if any),
+	// matching the single-run aggregator.go logic.
+	unrealizedPnl := decimal.Zero
+	if finalPos != nil && finalPos.State != position.StateClosed && finalPos.PositionQuantity.IsPositive() && lastClose.IsPositive() {
+		marketValue := finalPos.PositionQuantity.Mul(lastClose)
+		deployedCost := decimal.Zero
+		for _, o := range finalPos.Orders {
+			deployedCost = deployedCost.Add(o.QuoteAmount)
+		}
+		unrealizedPnl = marketValue.Sub(deployedCost).Sub(finalPos.FeesAccumulated)
+	}
+
+	// ROI = (realizedPnl + unrealizedPnl) / (accountBalance + totalAdditions) x 100 (FR-020)
+	roiDenominator := startBalance.Add(totalAdditions)
 	roi := decimal.Zero
 	if roiDenominator.IsPositive() {
-		roi = realizedPnl.Div(roiDenominator).Mul(decimal.NewFromInt(100))
+		roi = realizedPnl.Add(unrealizedPnl).Div(roiDenominator).Mul(decimal.NewFromInt(100))
 	}
 
 	// Win rate: TPs / (TPs + SLs) — uses shopspring/decimal; FP only at serialisation boundary.

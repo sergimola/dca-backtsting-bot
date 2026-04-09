@@ -40,6 +40,8 @@ Auto-generated from all feature plans. Last updated: 2026-03-07
 - PostgreSQL (sweep summaries, migrations), ClickHouse (wide events, market data) (019-engine-stop-loss)
 - TypeScript 5.1.3 / Node.js v24.11.0 (orchestrator layer); React 18 (frontend) + Decimal.js ^10.4.3 (fixed-point math), Drizzle ORM ^0.45.1 (schema + migrations), Express ^5.2.1 (API routes), pg ^8.20.0 (PostgreSQL client), @opentelemetry/api ^1.9.1 (tracing, non-blocking batched) (020-annualized-return)
 - PostgreSQL — `sweep_run_summaries` table; `annualized_return numeric(10,4)` column added via hand-written Drizzle migration (020-annualized-return)
+- TypeScript 5.1 (frontend), React 18.2 + `decimal.js ^10.6.0` (already installed), Jest 29, Testing Library 14 (021-roi-unification)
+- N/A — pure computational/rendering change; no schema or DB involvement (021-roi-unification)
 
 - Go 1.20+ + github.com/shopspring/decimal (fixed-point arithmetic library) (001-core-domain-config)
 
@@ -59,9 +61,9 @@ tests/
 Go 1.20+: Follow standard conventions
 
 ## Recent Changes
+- 021-roi-unification: Added TypeScript 5.1 (frontend), React 18.2 + `decimal.js ^10.6.0` (already installed), Jest 29, Testing Library 14
 - 020-annualized-return: Added TypeScript 5.1.3 / Node.js v24.11.0 (orchestrator layer); React 18 (frontend) + Decimal.js ^10.4.3 (fixed-point math), Drizzle ORM ^0.45.1 (schema + migrations), Express ^5.2.1 (API routes), pg ^8.20.0 (PostgreSQL client), @opentelemetry/api ^1.9.1 (tracing, non-blocking batched)
 - 019-engine-stop-loss: Added Go 1.22 (core engine), TypeScript 5.x (API + frontend), React 18 (frontend) + `shopspring/decimal` (Go fixed-point), Drizzle ORM (Postgres), React/Tailwind (frontend)
-- 019-engine-stop-loss: Added [e.g., Python 3.11, Swift 5.9, Rust 1.75 or NEEDS CLARIFICATION] + [e.g., FastAPI, UIKit, LLVM or NEEDS CLARIFICATION]
 
 
 <!-- MANUAL ADDITIONS START -->

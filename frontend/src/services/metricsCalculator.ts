@@ -3,13 +3,11 @@ import type { BacktestResults, BacktestFormState } from './types'
 
 export interface NetMetrics {
   netProfit: number
-  roi: number
   closedTradesCount: number
 }
 
-export function calculateNetMetrics(results: BacktestResults, config: BacktestFormState): NetMetrics {
+export function calculateNetMetrics(results: BacktestResults, _config: BacktestFormState): NetMetrics {
   const { tradeEvents } = results
-  const accountBalance = parseFloat(config.accountBalance) || 0
 
   // Group events by trade_id
   const groupMap = new Map<string, typeof tradeEvents>()
@@ -43,7 +41,6 @@ export function calculateNetMetrics(results: BacktestResults, config: BacktestFo
   }
 
   const netProfit = netProfitD.toNumber()
-  const roi = accountBalance > 0 ? (netProfit / accountBalance) * 100 : 0
 
-  return { netProfit, roi, closedTradesCount }
+  return { netProfit, closedTradesCount }
 }
